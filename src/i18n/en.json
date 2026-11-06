@@ -1,0 +1,38 @@
+{
+  "%n charge cycle(s)": {
+    "one": "%n charge cycle",
+    "other": "%n charge cycles"
+  },
+  "%n failed": {
+    "one": "%n failed",
+    "other": "%n failed"
+  },
+  "%n problem(s) to look at": {
+    "one": "%n problem to look at",
+    "other": "%n problems to look at"
+  },
+  "%n result(s). Press Enter to go to the first.": {
+    "one": "%n result. Press Enter to go to it.",
+    "other": "%n results. Press Enter to go to the first."
+  },
+  "%n service(s) failed.": {
+    "one": "%n service failed.",
+    "other": "%n services failed."
+  },
+  "Keep this connection? Going back to the previous one in %n second(s).": {
+    "one": "Keep this connection? Going back to the previous one in %n second.",
+    "other": "Keep this connection? Going back to the previous one in %n seconds."
+  },
+  "Keep this layout? Restoring the previous one in %n second(s).": {
+    "one": "Keep this layout? Restoring the previous one in %n second.",
+    "other": "Keep this layout? Restoring the previous one in %n seconds."
+  },
+  "Show %n": {
+    "one": "Show %n",
+    "other": "Show %n"
+  },
+  "Omarchy changed %n command(s) since this app was tested, so those settings are paused.": {
+    "one": "Omarchy changed %n command since this app was tested, so its settings are paused.",
+    "other": "Omarchy changed %n commands since this app was tested, so those settings are paused."
+  }
+}

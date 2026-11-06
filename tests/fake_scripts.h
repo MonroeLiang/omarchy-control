@@ -1,0 +1,121 @@
+#pragma once
+
+// Shell bodies for the fake commands. They live here because moc cannot tokenize
+// these raw strings, and the test source includes this past its view.
+
+namespace {
+
+// A compositor with one display whose x position lives in a file, moved by eval.
+const char kStatefulCompositor[] = R"SH(
+root="$(dirname "$HOME")"
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  monitors) printf '[{"name":"eDP-1","width":1920,"height":1200,"refreshRate":60,"x":%s,"y":0,"scale":1,"transform":0,"disabled":false,"focused":true,"mirrorOf":"none","availableModes":["1920x1200@60.00Hz"]}]' "$(cat "$root/x")";;
+  eval)
+    echo "${args[1]}" >> "$root/hypr-eval"
+    if [ "$(cat "$root/obeys")" = "1" ]; then
+      x=$(printf '%s' "${args[1]}" | sed -n 's/.*position = "\([0-9-]*\)x.*/\1/p')
+      printf '%s\n' "$x" > "$root/x"
+    fi;;
+esac
+)SH";
+
+// Monitor names built to break out of a Lua string, as hostile EDID data could try.
+const char kHostileMonitor[] = R"([{"name":"DP\"); os.execute(\"x","width":1,"height":1,"refreshRate":60,"x":0,"y":0,"scale":1,"transform":0,"availableModes":["1x1@60.00Hz"]}])";
+const char kHostileMonitorNoModes[] = R"([{"name":"X\"); os.execute(\"y","width":1,"height":1,"refreshRate":60,"availableModes":[]}])";
+
+const char kReloadsButCannotAnswer[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  devices) echo '{"mice":[],"touch":[]}';;
+  configerrors) echo '[""]';;
+  getoption) if grep -q repeat_rate "$HOME/.config/hypr/omarchy-control.lua"; then echo '{"int":31}'; else exit 1; fi;;
+esac
+)SH";
+
+const char kScript0[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+state=")SH";
+const char kScript1[] = R"SH(/hypr"
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  devices) echo '{"mice":[{"name":"test-touchpad"}],"touch":[]}';;
+  configerrors) cat "$state-errors" 2>/dev/null || echo '[""]';;
+  getoption) f="$state-${args[1]//:/_}"; if [ -f "$f" ]; then cat "$f"; else echo '{"int":40}'; fi;;
+  reload) ;;
+  binds) cat "$state-binds" 2>/dev/null || echo '[]';;
+  monitors) cat "$state-monitors" 2>/dev/null || echo '[]';;
+  eval) echo "${args[1]}" >> "$state-eval";;
+esac
+)SH";
+const char kScript2[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+mod="$HOME/.config/hypr/omarchy-control.lua"
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  devices) echo '{"mice":[],"touch":[]}';;
+  configerrors) echo '[""]';;
+  getoption) v=$(sed -n 's/.*repeat_rate = \([0-9]*\).*/\1/p' "$mod" 2>/dev/null); echo "{\"int\":${v:-40}}";;
+  reload) ;;
+esac)SH";
+const char kScript3[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  devices) echo '{"mice":[],"touch":[]}';;
+  configerrors) if [ -f "$HOME/.config/hypr/omarchy-control.lua" ]; then echo '["old problem","bad value in omarchy-control.lua"]'; else echo '["old problem"]'; fi;;
+  getoption) echo '{"int":40}';;
+esac)SH";
+const char kScript4[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+mod="$HOME/.config/hypr/omarchy-control.lua"
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  devices) echo '{"mice":[],"touch":[]}';;
+  configerrors) echo '["an older problem in my own file"]';;
+  getoption) v=$(sed -n 's/.*repeat_rate = \([0-9]*\).*/\1/p' "$mod" 2>/dev/null); echo "{\"int\":${v:-40}}";;
+esac)SH";
+const char kScript5[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  devices) echo '{"mice":[],"touch":[]}';;
+  configerrors) echo '[""]';;
+  getoption) echo '{"int":99}';;
+esac)SH";
+const char kScript6[] = R"SH(case "$*" in
+  "-f json list sinks") echo '[{"name":"a","description":"A","volume":{},"properties":{"object.id":"1"}},{"name":"b","description":"B","volume":{},"properties":{"object.id":"2"}}]';;
+  "-f json list sources"|"-f json list sink-inputs") echo '[]';;
+  get-default-sink) echo a;;
+esac)SH";
+const char kScript7[] = R"SH(case "$*" in *CheckpointCreate*) echo 'o "/org/freedesktop/NetworkManager/Checkpoint/7"';; esac)SH";
+const char kScript8[] = R"SH(case "$*" in *CheckpointCreate*) echo 'o "/org/freedesktop/NetworkManager/Checkpoint/8"';; esac)SH";
+const char kScript9[] = R"SH(case "$*" in *CheckpointCreate*) echo 'o "/org/freedesktop/NetworkManager/Checkpoint/9"';; esac)SH";
+const char kScript10[] = R"SH(case "$*" in *"connection up"*) echo 'secrets required' >&2; exit 4;; esac)SH";
+const char kScript11[] = R"SH(case "$*" in *show*) printf 'ActiveState=failed\nResult=exit-code\n';; *list-*) echo '[]';; esac)SH";
+const char kScript12[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+case "${args[0]}" in
+  binds) if grep -q 'SUPER + Y' "$HOME/.config/hypr/omarchy-control.lua" 2>/dev/null; then echo '[{"modmask":64,"key":"Y","description":"Mine"}]'; else echo '[]'; fi;;
+  reload|configerrors) echo '[""]';;
+esac)SH";
+const char kScript13[] = R"SH(case "$*" in "plugin list --json") echo '[{"id":"omarchy.a","name":"A","enabled":false}]';; esac)SH";
+const char kScript14[] = R"SH(
+args=("$@"); [ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+case "${args[0]}" in
+  monitors) echo '[{"name":"eDP-1","width":1,"height":1,"refreshRate":60,"availableModes":[]}]';;
+  eval) exit 1;;
+esac)SH";
+const char kScript15[] = R"SH(case "$*" in version) echo 9.9.9;; *) exit 1;; esac)SH";
+const char kScript16[] = R"SH(case "$*" in
+  version) echo 4.5.0-3;;
+  "shell shell ping") echo ok;;
+  "hyprland corners") echo theme;;
+  "plugin list --json") echo '[]';;
+  "theme list"|"font list"|"powerprofiles list") echo Example;;
+esac)SH";
+const char kScript17[] = R"SH(case "$*" in *json*) echo '[]';; esac)SH";
+
+}  // namespace

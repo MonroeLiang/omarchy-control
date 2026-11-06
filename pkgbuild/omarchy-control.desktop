@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Omarchy Control
+Comment=Settings and tools for this computer
+Comment[da]=Indstillinger og værktøjer til denne computer.
+Comment[de]=Einstellungen und Werkzeuge für diesen Computer.
+Comment[ar]=إعدادات وأدوات لهذا الحاسوب.
+Exec=omarchy-control open
+Icon=omarchy-control
+Terminal=false
+Categories=Settings;System;Utility;
+Keywords=Settings;Control Panel;Preferences;System;Configuration;
+StartupWMClass=omarchy-control

@@ -1,0 +1,3583 @@
+[
+ {
+  "id": "appearance.theme",
+  "page": "appearance",
+  "section": "Theme",
+  "label": "Theme",
+  "type": "choice",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Colors for the desktop, terminals, and supported apps.",
+  "keywords": [
+   "color scheme",
+   "dark mode",
+   "light mode",
+   "colours",
+   "palette"
+  ],
+  "sources": [
+   "omarchy theme set",
+   "omarchy theme current",
+   "omarchy theme list",
+   "appearance.theme"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "theme",
+    "current"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "theme",
+    "set",
+    "{value}"
+   ],
+   "timeout": 60000
+  },
+  "choicesFrom": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "theme",
+    "list"
+   ]
+  },
+  "recovery": "best-effort",
+  "effects": [
+   "Rewrites theme files for the shell, terminals, and supported apps.",
+   "Runs any theme hooks you have installed."
+  ],
+  "scope": "per-user",
+  "quick": true
+ },
+ {
+  "id": "appearance.background",
+  "page": "appearance",
+  "section": "Theme",
+  "label": "Background",
+  "type": "choice",
+  "domain": "C01",
+  "integration": "native",
+  "description": "The image or video behind your windows, from the current theme's collection.",
+  "keywords": [
+   "wallpaper",
+   "desktop picture"
+  ],
+  "sources": [
+   "omarchy theme bg set",
+   "omarchy theme bg current",
+   "omarchy theme bg next",
+   "appearance.background"
+  ],
+  "read": {
+   "kind": "symlink",
+   "file": "~/.local/state/omarchy/current/background"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "theme",
+    "bg",
+    "set",
+    "{value}"
+   ]
+  },
+  "choicesFrom": {
+   "kind": "dir",
+   "dirs": [
+    "~/.local/state/omarchy/current/theme/backgrounds",
+    "~/.config/omarchy/backgrounds/{theme}"
+   ],
+   "extensions": [
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "gif",
+    "mp4",
+    "webm"
+   ]
+  },
+  "recovery": "auto-undo",
+  "scope": "per-user",
+  "requiresCaps": [
+   "shell"
+  ],
+  "softRequires": true
+ },
+ {
+  "id": "appearance.font",
+  "page": "appearance",
+  "section": "Text",
+  "label": "Font",
+  "type": "choice",
+  "domain": "C01",
+  "integration": "native",
+  "description": "The monospace font used across the desktop and terminals.",
+  "keywords": [
+   "typeface",
+   "monospace"
+  ],
+  "sources": [
+   "omarchy font set",
+   "omarchy font current",
+   "omarchy font list",
+   "appearance.font"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "font",
+    "current"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "font",
+    "set",
+    "{value}"
+   ],
+   "timeout": 30000
+  },
+  "choicesFrom": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "font",
+    "list"
+   ]
+  },
+  "recovery": "best-effort",
+  "restart": "Restarts the Omarchy shell. Open Ghostty and Foot windows need reopening.",
+  "effects": [
+   "Updates terminal configs and fontconfig.",
+   "Restarts the Omarchy shell.",
+   "Runs any font hooks you have installed."
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "appearance.fontcjk",
+  "page": "appearance",
+  "section": "Text",
+  "label": "Chinese, Japanese, and Korean glyphs",
+  "type": "choice",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Which regional forms to prefer when a font covers these languages.",
+  "keywords": [
+   "cjk",
+   "han",
+   "kanji",
+   "hanzi"
+  ],
+  "sources": [
+   "omarchy font cjk"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "font",
+    "cjk"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "font",
+    "cjk",
+    "{value}"
+   ],
+   "timeout": 60000
+  },
+  "choices": [
+   {
+    "value": "default",
+    "label": "Automatic"
+   },
+   {
+    "value": "jp",
+    "label": "Japanese"
+   },
+   {
+    "value": "kr",
+    "label": "Korean"
+   },
+   {
+    "value": "sc",
+    "label": "Simplified Chinese"
+   },
+   {
+    "value": "tc",
+    "label": "Traditional Chinese"
+   },
+   {
+    "value": "hk",
+    "label": "Hong Kong"
+   }
+  ],
+  "recovery": "auto-undo",
+  "scope": "per-user"
+ },
+ {
+  "id": "appearance.textsize",
+  "page": "appearance",
+  "section": "Text",
+  "label": "Text size",
+  "type": "int",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Scales text in the Omarchy shell, GTK apps, and terminals together.",
+  "keywords": [
+   "bigger text",
+   "larger text",
+   "make text bigger",
+   "smaller text",
+   "font size",
+   "zoom",
+   "readability",
+   "accessibility"
+  ],
+  "sources": [
+   "omarchy display text size"
+  ],
+  "read": {
+   "kind": "toml",
+   "file": "~/.config/omarchy/shell.toml",
+   "section": "font",
+   "key": "base-size",
+   "fallbackFile": "~/.local/state/omarchy/current/theme/shell.toml",
+   "default": "12"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "display",
+    "text",
+    "size",
+    "{value}"
+   ],
+   "timeout": 20000
+  },
+  "min": 9,
+  "max": 20,
+  "step": 1,
+  "unit": "px",
+  "recovery": "best-effort",
+  "reset": [
+   "omarchy",
+   "display",
+   "text",
+   "size",
+   "reset"
+  ],
+  "restart": "Already open GTK apps and terminals may need reopening.",
+  "effects": [
+   "Changes the shell font size.",
+   "Changes the GTK text scaling factor.",
+   "Changes terminal font sizes."
+  ],
+  "scope": "per-user",
+  "quick": true,
+  "crossPages": [
+   "input"
+  ]
+ },
+ {
+  "id": "appearance.corners",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Window corners",
+  "type": "choice",
+  "domain": "C03",
+  "integration": "native",
+  "description": "Follow the theme, or always use sharp or rounded corners.",
+  "keywords": [
+   "rounding",
+   "radius",
+   "round corners"
+  ],
+  "sources": [
+   "omarchy hyprland corners",
+   "appearance.windows.corners*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "corners"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "corners",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "theme",
+    "label": "Follow theme"
+   },
+   {
+    "value": "sharp",
+    "label": "Sharp"
+   },
+   {
+    "value": "rounded",
+    "label": "Rounded"
+   }
+  ],
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "appearance.transparency",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Window transparency",
+  "type": "choice",
+  "domain": "C03",
+  "integration": "native",
+  "description": "How see-through windows are.",
+  "keywords": [
+   "opacity",
+   "glass",
+   "blur",
+   "see through"
+  ],
+  "sources": [
+   "omarchy hyprland window transparency",
+   "appearance.windows.transparency*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "window",
+    "transparency"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "window",
+    "transparency",
+    "{value}"
+   ],
+   "timeout": 20000
+  },
+  "choices": [
+   {
+    "value": "opaque",
+    "label": "Opaque"
+   },
+   {
+    "value": "transparent",
+    "label": "Transparent"
+   },
+   {
+    "value": "glassy",
+    "label": "Glassy"
+   }
+  ],
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "restart": "Reloads terminals and btop.",
+  "scope": "per-user"
+ },
+ {
+  "id": "appearance.gaps",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Window gaps",
+  "type": "toggle",
+  "domain": "C03",
+  "integration": "native",
+  "description": "Space between windows.",
+  "keywords": [
+   "padding",
+   "margins"
+  ],
+  "sources": [
+   "omarchy hyprland window gaps toggle",
+   "appearance.windows.gaps-*"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/hypr/window-no-gaps.lua",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "toggle",
+    "window-no-gaps",
+    "{value}"
+   ],
+   "map": {
+    "true": "off",
+    "false": "on"
+   }
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "appearance.singlewindow",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Square single window",
+  "type": "toggle",
+  "domain": "C03",
+  "integration": "native",
+  "description": "Keeps a lone window from stretching across a wide screen.",
+  "keywords": [
+   "aspect ratio",
+   "ultrawide"
+  ],
+  "sources": [
+   "omarchy hyprland window single square aspect toggle",
+   "appearance.windows.one-window-ratio-*"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/hypr/single-window-aspect-ratio.lua",
+   "invert": false
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "toggle",
+    "single-window-aspect-ratio",
+    "{value}"
+   ],
+   "map": {
+    "true": "on",
+    "false": "off"
+   }
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "appearance.animations",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Animations and blur",
+  "type": "toggle",
+  "domain": "C03",
+  "integration": "native",
+  "description": "Turn off to reduce motion, or on machines without a capable GPU.",
+  "keywords": [
+   "reduce motion",
+   "motion",
+   "shadows",
+   "accessibility"
+  ],
+  "sources": [
+   "omarchy toggle animations",
+   "appearance.animations-*"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/hypr/no-animations.lua",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "animations",
+    "{value}"
+   ],
+   "map": {
+    "true": "on",
+    "false": "off"
+   }
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "crossPages": [
+   "input"
+  ]
+ },
+ {
+  "id": "appearance.gaps_in",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Gap between windows",
+  "type": "int",
+  "domain": "C03",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "padding"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "general:gaps_in"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "general",
+    "gaps_in"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": 0,
+  "max": 40,
+  "step": 1,
+  "unit": "px"
+ },
+ {
+  "id": "appearance.gaps_out",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Gap to screen edge",
+  "type": "int",
+  "domain": "C03",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "margin"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "general:gaps_out"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "general",
+    "gaps_out"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": 0,
+  "max": 60,
+  "step": 1,
+  "unit": "px"
+ },
+ {
+  "id": "appearance.border",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Border width",
+  "type": "int",
+  "domain": "C03",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "outline"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "general:border_size"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "general",
+    "border_size"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": 0,
+  "max": 10,
+  "step": 1,
+  "unit": "px"
+ },
+ {
+  "id": "appearance.dim",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Dim inactive windows",
+  "type": "toggle",
+  "domain": "C03",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "focus",
+   "darken"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "decoration:dim_inactive"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "decoration",
+    "dim_inactive"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true
+ },
+ {
+  "id": "appearance.dim_strength",
+  "page": "appearance",
+  "section": "Windows",
+  "label": "Dim strength",
+  "type": "float",
+  "domain": "C03",
+  "integration": "native",
+  "description": "",
+  "keywords": [],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "decoration:dim_strength"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "decoration",
+    "dim_strength"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": 0,
+  "max": 1,
+  "step": 0.05
+ },
+ {
+  "id": "appearance.plymouth",
+  "page": "appearance",
+  "section": "Boot and unlock",
+  "label": "Boot screen theme",
+  "type": "status",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Which theme styles the boot and disk-unlock screen.",
+  "keywords": [
+   "plymouth",
+   "splash",
+   "sddm"
+  ],
+  "sources": [
+   "omarchy plymouth current",
+   "omarchy plymouth list"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "plymouth",
+    "current"
+   ]
+  },
+  "requiresCommands": [
+   "plymouth"
+  ],
+  "softRequires": true
+ },
+ {
+  "id": "desktop.bar.visible",
+  "page": "desktop",
+  "section": "Bar",
+  "label": "Show the bar",
+  "type": "toggle",
+  "domain": "C02",
+  "integration": "native",
+  "description": "Hide or show the bar without restarting the shell.",
+  "keywords": [
+   "hide bar",
+   "menu bar",
+   "top bar",
+   "status bar",
+   "panel"
+  ],
+  "sources": [
+   "omarchy toggle bar",
+   "appearance.top-bar.hide",
+   "appearance.top-bar.show"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/bar-off",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "bar",
+    "{value}"
+   ],
+   "map": {
+    "true": "off",
+    "false": "on"
+   }
+  },
+  "recovery": "auto-undo",
+  "scope": "per-user",
+  "quick": false
+ },
+ {
+  "id": "desktop.bar.position",
+  "page": "desktop",
+  "section": "Bar",
+  "label": "Bar position",
+  "type": "choice",
+  "domain": "C02",
+  "integration": "native",
+  "description": "Which edge of the screen the bar sits on.",
+  "keywords": [
+   "move bar"
+  ],
+  "sources": [
+   "omarchy bar",
+   "appearance.top-bar.position*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "position"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "position",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "top",
+    "label": "Top"
+   },
+   {
+    "value": "bottom",
+    "label": "Bottom"
+   },
+   {
+    "value": "left",
+    "label": "Left"
+   },
+   {
+    "value": "right",
+    "label": "Right"
+   }
+  ],
+  "recovery": "auto-undo",
+  "note": "custombar",
+  "scope": "per-user"
+ },
+ {
+  "id": "desktop.bar.background",
+  "page": "desktop",
+  "section": "Bar",
+  "label": "Bar background",
+  "type": "choice",
+  "domain": "C02",
+  "integration": "native",
+  "description": "Solid, blurred, or clear.",
+  "keywords": [
+   "transparent bar",
+   "glass bar"
+  ],
+  "sources": [
+   "appearance.top-bar.background*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "background"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "background",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "opaque",
+    "label": "Opaque"
+   },
+   {
+    "value": "glassy",
+    "label": "Glassy"
+   },
+   {
+    "value": "none",
+    "label": "Clear"
+   }
+  ],
+  "recovery": "auto-undo",
+  "note": "custombar",
+  "scope": "per-user"
+ },
+ {
+  "id": "desktop.clock.format",
+  "page": "desktop",
+  "section": "Bar",
+  "label": "Clock format",
+  "type": "choice",
+  "domain": "C15",
+  "integration": "native",
+  "description": "How the bar shows the date and time.",
+  "keywords": [
+   "time format",
+   "24 hour",
+   "12 hour",
+   "date format"
+  ],
+  "sources": [
+   "appearance.top-bar.indicators.clock.sunday*",
+   "appearance.top-bar.indicators.clock.time*",
+   "appearance.top-bar.indicators.clock.date*",
+   "appearance.top-bar.indicators.clock.week",
+   "appearance.top-bar.indicators.clock.iso"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "get",
+    "omarchy.clock",
+    "format"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "set",
+    "omarchy.clock",
+    "format",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "HH:mm",
+    "label": "14:30"
+   },
+   {
+    "value": "h:mm AP",
+    "label": "2:30 PM"
+   },
+   {
+    "value": "dddd HH:mm",
+    "label": "Sunday 14:30"
+   },
+   {
+    "value": "dddd h:mm AP",
+    "label": "Sunday 2:30 PM"
+   },
+   {
+    "value": "dddd HH:mm:ss",
+    "label": "Sunday 14:30:05"
+   },
+   {
+    "value": "dddd h:mm:ss AP",
+    "label": "Sunday 2:30:05 PM"
+   },
+   {
+    "value": "ddd d MMM HH:mm",
+    "label": "Sun 3 May 14:30"
+   },
+   {
+    "value": "ddd d MMM h:mm AP",
+    "label": "Sun 3 May 2:30 PM"
+   },
+   {
+    "value": "d MMMM 'W'ww yyyy",
+    "label": "3 May W18 2026"
+   },
+   {
+    "value": "yyyy-MM-dd HH:mm",
+    "label": "2026-05-03 14:30"
+   }
+  ],
+  "recovery": "auto-undo",
+  "allowCustomValue": true,
+  "note": "custombar",
+  "scope": "per-user",
+  "requiresCaps": [
+   "shell"
+  ]
+ },
+ {
+  "id": "desktop.clock.vertical",
+  "page": "desktop",
+  "section": "Bar",
+  "label": "Clock format on a side bar",
+  "type": "choice",
+  "domain": "C15",
+  "integration": "native",
+  "description": "How a left or right bar stacks the time.",
+  "keywords": [
+   "vertical clock"
+  ],
+  "sources": [
+   "appearance.top-bar.indicators.clock.stacked*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "get",
+    "omarchy.clock",
+    "verticalFormat"
+   ],
+   "raw": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "bar",
+    "set",
+    "omarchy.clock",
+    "verticalFormat",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "HH\n—\nmm",
+    "label": "14 — 30"
+   },
+   {
+    "value": "h\n—\nmm\nAP",
+    "label": "2 — 30 PM"
+   },
+   {
+    "value": "dd\nMMM\n'W'ww\n''yy",
+    "label": "03 May W18 '26"
+   },
+   {
+    "value": "HH\nmm",
+    "label": "14 30"
+   }
+  ],
+  "recovery": "auto-undo",
+  "allowCustomValue": true,
+  "note": "custombar",
+  "scope": "per-user",
+  "requiresCaps": [
+   "shell"
+  ]
+ },
+ {
+  "id": "desktop.dock.position",
+  "page": "desktop",
+  "section": "Dock",
+  "label": "Dock position",
+  "type": "choice",
+  "domain": "C02",
+  "integration": "native",
+  "description": "Where the dock appears on floating workspaces.",
+  "keywords": [
+   "launcher"
+  ],
+  "sources": [
+   "omarchy dock",
+   "appearance.dock.position*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "dock",
+    "position"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "dock",
+    "position",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "bottom",
+    "label": "Bottom"
+   },
+   {
+    "value": "top",
+    "label": "Top"
+   },
+   {
+    "value": "left",
+    "label": "Left"
+   },
+   {
+    "value": "right",
+    "label": "Right"
+   }
+  ],
+  "recovery": "auto-undo",
+  "note": "customdock",
+  "scope": "per-user"
+ },
+ {
+  "id": "desktop.dock.autohide",
+  "page": "desktop",
+  "section": "Dock",
+  "label": "Hide the dock automatically",
+  "type": "toggle",
+  "domain": "C02",
+  "integration": "native",
+  "description": "The dock stays hidden until the pointer reaches its edge.",
+  "keywords": [
+   "auto hide"
+  ],
+  "sources": [
+   "appearance.dock.autohide",
+   "appearance.dock.always-on"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "dock",
+    "autohide"
+   ],
+   "map": {
+    "on": "true",
+    "off": "false"
+   }
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "dock",
+    "autohide",
+    "{value}"
+   ],
+   "map": {
+    "true": "on",
+    "false": "off"
+   }
+  },
+  "recovery": "auto-undo",
+  "note": "customdock",
+  "scope": "per-user"
+ },
+ {
+  "id": "desktop.layout",
+  "page": "desktop",
+  "section": "Workspaces",
+  "label": "Default workspace layout",
+  "type": "choice",
+  "domain": "C03",
+  "integration": "native",
+  "description": "Used by workspaces without a layout of their own.",
+  "keywords": [
+   "tiling",
+   "scrolling",
+   "floating",
+   "dwindle"
+  ],
+  "sources": [
+   "omarchy hyprland workspace layout default",
+   "appearance.workspace-layout*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "workspace",
+    "layout",
+    "default"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "workspace",
+    "layout",
+    "default",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "dwindle",
+    "label": "Tiling"
+   },
+   {
+    "value": "scrolling",
+    "label": "Scrolling"
+   },
+   {
+    "value": "floating",
+    "label": "Floating"
+   }
+  ],
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "desktop.dnd",
+  "page": "desktop",
+  "section": "Notifications",
+  "label": "Silence notifications",
+  "type": "toggle",
+  "domain": "C13",
+  "integration": "native",
+  "description": "Do not disturb: new notifications stay quiet until you turn this off.",
+  "keywords": [
+   "do not disturb",
+   "dnd",
+   "focus",
+   "mute notifications"
+  ],
+  "sources": [
+   "omarchy toggle notification silencing",
+   "trigger.toggle.notifications-*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "shell",
+    "notifications",
+    "isDnd"
+   ],
+   "map": {
+    "on": "true",
+    "off": "false"
+   }
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "shell",
+    "notifications",
+    "setDnd",
+    "{value}"
+   ],
+   "map": {
+    "true": "on",
+    "false": "off"
+   },
+   "after": [
+    "omarchy",
+    "shell",
+    "-q",
+    "omarchy.indicators",
+    "refresh"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "shell"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "desktop.crashcapture",
+  "page": "desktop",
+  "section": "Notifications",
+  "label": "Crash notifications",
+  "type": "toggle",
+  "domain": "C13",
+  "integration": "native",
+  "description": "Tell you when a program crashes, with a route to diagnose it.",
+  "keywords": [
+   "core dump",
+   "segfault"
+  ],
+  "sources": [
+   "omarchy toggle crash capture",
+   "trigger.toggle.crash-capture-*"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/crash-capture-off",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "crash",
+    "capture"
+   ],
+   "toggleOnly": true
+  },
+  "recovery": "auto-undo",
+  "scope": "per-user"
+ },
+ {
+  "id": "desktop.themesync",
+  "page": "desktop",
+  "section": "Theme",
+  "label": "Mirror theme to Herdr machines",
+  "type": "toggle",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Keep the theme in step with machines you reach through Herdr.",
+  "keywords": [
+   "herdr"
+  ],
+  "sources": [
+   "omarchy toggle theme sync"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/herdr-theme-sync",
+   "invert": false
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "theme",
+    "sync"
+   ],
+   "toggleOnly": true
+  },
+  "recovery": "auto-undo",
+  "scope": "per-user",
+  "requiresCommands": [
+   "herdr"
+  ]
+ },
+ {
+  "id": "displays.brightness",
+  "page": "displays",
+  "section": "Screen",
+  "label": "Screen brightness",
+  "type": "slider",
+  "domain": "C04",
+  "integration": "native",
+  "description": "Brightness of the focused display.",
+  "keywords": [
+   "dim screen",
+   "backlight",
+   "too bright"
+  ],
+  "sources": [
+   "omarchy brightness display",
+   "omarchy brightness display apple",
+   "omarchy brightness display ddc"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "brightness",
+    "display"
+   ],
+   "parse": "int"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "brightness",
+    "display",
+    "--no-osd",
+    "{value}%"
+   ]
+  },
+  "min": 1,
+  "max": 100,
+  "step": 1,
+  "unit": "%",
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "device",
+  "quick": true
+ },
+ {
+  "id": "displays.scale",
+  "page": "displays",
+  "section": "Screen",
+  "label": "Scale of the focused display",
+  "type": "choice",
+  "domain": "C04",
+  "integration": "native",
+  "description": "Hyprland rounds to the nearest scale this mode can display exactly.",
+  "keywords": [
+   "hidpi",
+   "retina",
+   "ui size",
+   "zoom"
+  ],
+  "sources": [
+   "omarchy hyprland monitor scaling"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "monitor",
+    "scaling"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hyprland",
+    "monitor",
+    "scaling",
+    "{value}"
+   ],
+   "timeout": 15000,
+   "verify": "near"
+  },
+  "choices": [
+   {
+    "value": "1",
+    "label": "100%"
+   },
+   {
+    "value": "1.25",
+    "label": "125%"
+   },
+   {
+    "value": "1.6",
+    "label": "160%"
+   },
+   {
+    "value": "2",
+    "label": "200%"
+   },
+   {
+    "value": "3",
+    "label": "300%"
+   },
+   {
+    "value": "4",
+    "label": "400%"
+   }
+  ],
+  "allowCustomValue": true,
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "effects": [
+   "Saves a rule for this monitor in monitors.lua."
+  ],
+  "scope": "device",
+  "pattern": "^[0-9]+(\\.[0-9]+)?$"
+ },
+ {
+  "id": "displays.nightlight",
+  "page": "displays",
+  "section": "Screen",
+  "label": "Night light",
+  "type": "toggle",
+  "domain": "C04",
+  "integration": "native",
+  "description": "A warmer screen color for the evening.",
+  "keywords": [
+   "blue light",
+   "warm screen",
+   "hyprsunset",
+   "red shift"
+  ],
+  "sources": [
+   "omarchy toggle nightlight",
+   "trigger.toggle.nightlight-*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "nightlight",
+    "--status"
+   ],
+   "parse": "json:enabled"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "nightlight"
+   ],
+   "toggleOnly": true,
+   "timeout": 15000
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "runtime"
+ },
+ {
+  "id": "input.repeat_rate",
+  "page": "input",
+  "section": "Keyboard",
+  "label": "Key repeat rate",
+  "type": "int",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "typing speed"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:repeat_rate"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "repeat_rate"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": 1,
+  "max": 100,
+  "step": 1,
+  "unit": "/s"
+ },
+ {
+  "id": "input.repeat_delay",
+  "page": "input",
+  "section": "Keyboard",
+  "label": "Key repeat delay",
+  "type": "int",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "typing"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:repeat_delay"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "repeat_delay"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": 100,
+  "max": 2000,
+  "step": 50,
+  "unit": "ms"
+ },
+ {
+  "id": "input.numlock",
+  "page": "input",
+  "section": "Keyboard",
+  "label": "Num Lock on at login",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "numeric keypad"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:numlock_by_default"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "numlock_by_default"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true
+ },
+ {
+  "id": "input.sensitivity",
+  "page": "input",
+  "section": "Mouse",
+  "label": "Pointer speed",
+  "type": "float",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "mouse speed",
+   "cursor speed",
+   "trackpad speed"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:sensitivity"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "sensitivity"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": -1,
+  "max": 1,
+  "step": 0.05
+ },
+ {
+  "id": "input.accel",
+  "page": "input",
+  "section": "Mouse",
+  "label": "Pointer acceleration",
+  "type": "choice",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "mouse acceleration"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:accel_profile"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "accel_profile"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "choices": [
+   {
+    "value": "",
+    "label": "Default"
+   },
+   {
+    "value": "adaptive",
+    "label": "Adaptive"
+   },
+   {
+    "value": "flat",
+    "label": "Off (flat)"
+   }
+  ]
+ },
+ {
+  "id": "input.natural_mouse",
+  "page": "input",
+  "section": "Mouse",
+  "label": "Natural scrolling for mice",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "reverse scroll",
+   "invert scroll"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:natural_scroll"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "natural_scroll"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true
+ },
+ {
+  "id": "input.follow_mouse",
+  "page": "input",
+  "section": "Mouse",
+  "label": "Focus follows mouse",
+  "type": "choice",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "sloppy focus"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:follow_mouse"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "follow_mouse"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "choices": [
+   {
+    "value": "0",
+    "label": "Off"
+   },
+   {
+    "value": "1",
+    "label": "Always"
+   },
+   {
+    "value": "2",
+    "label": "On click, keep keyboard focus"
+   },
+   {
+    "value": "3",
+    "label": "Separate pointer and keyboard focus"
+   }
+  ]
+ },
+ {
+  "id": "input.tp_natural",
+  "page": "input",
+  "section": "Touchpad",
+  "label": "Natural scrolling",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "reverse scroll",
+   "invert scroll",
+   "two finger"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:touchpad:natural_scroll"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "touchpad",
+    "natural_scroll"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "requiresHardware": [
+   "touchpad"
+  ]
+ },
+ {
+  "id": "input.tp_scroll",
+  "page": "input",
+  "section": "Touchpad",
+  "label": "Scroll speed",
+  "type": "float",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:touchpad:scroll_factor"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "touchpad",
+    "scroll_factor"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "min": 0.1,
+  "max": 3,
+  "step": 0.1,
+  "requiresHardware": [
+   "touchpad"
+  ]
+ },
+ {
+  "id": "input.tp_tap",
+  "page": "input",
+  "section": "Touchpad",
+  "label": "Tap to click",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:touchpad:tap-to-click"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "touchpad",
+    "tap_to_click"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "requiresHardware": [
+   "touchpad"
+  ]
+ },
+ {
+  "id": "input.tp_click",
+  "page": "input",
+  "section": "Touchpad",
+  "label": "Two-finger click for right click",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "right click"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:touchpad:clickfinger_behavior"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "touchpad",
+    "clickfinger_behavior"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "requiresHardware": [
+   "touchpad"
+  ]
+ },
+ {
+  "id": "input.tp_dwt",
+  "page": "input",
+  "section": "Touchpad",
+  "label": "Disable while typing",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "palm rejection"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:touchpad:disable_while_typing"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "touchpad",
+    "disable_while_typing"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "requiresHardware": [
+   "touchpad"
+  ]
+ },
+ {
+  "id": "input.tp_drag",
+  "page": "input",
+  "section": "Touchpad",
+  "label": "Three-finger drag",
+  "type": "choice",
+  "domain": "C05",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "drag"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "hypr",
+   "option": "input:touchpad:drag_3fg"
+  },
+  "write": {
+   "kind": "hypr",
+   "path": [
+    "input",
+    "touchpad",
+    "drag_3fg"
+   ]
+  },
+  "recovery": "auto-undo",
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "per-user",
+  "reloads": "Reloads Hyprland's configuration.",
+  "owned": true,
+  "choices": [
+   {
+    "value": "0",
+    "label": "Off"
+   },
+   {
+    "value": "1",
+    "label": "Three fingers"
+   },
+   {
+    "value": "2",
+    "label": "Four fingers"
+   }
+  ],
+  "requiresHardware": [
+   "touchpad"
+  ]
+ },
+ {
+  "id": "input.touchpad",
+  "page": "input",
+  "section": "Touchpad",
+  "label": "Touchpad enabled",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "Turn the built-in touchpad on or off.",
+  "keywords": [
+   "disable trackpad"
+  ],
+  "sources": [
+   "omarchy toggle touchpad",
+   "trigger.hardware.touchpad-*"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/hypr/touchpad-disabled-name",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "touchpad",
+    "{value}"
+   ],
+   "map": {
+    "true": "on",
+    "false": "off"
+   }
+  },
+  "recovery": "auto-undo",
+  "requiresHardware": [
+   "touchpad"
+  ],
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "confirmWhen": {
+   "false": "Make sure you have another way to control the pointer before turning this off."
+  },
+  "scope": "device"
+ },
+ {
+  "id": "input.touchscreen",
+  "page": "input",
+  "section": "Touchscreen",
+  "label": "Touchscreen enabled",
+  "type": "toggle",
+  "domain": "C05",
+  "integration": "native",
+  "description": "Turn touch input on or off.",
+  "keywords": [
+   "touch input"
+  ],
+  "sources": [
+   "omarchy toggle touchscreen",
+   "trigger.hardware.touchscreen-*"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/hypr/touchscreen-disabled-name",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "touchscreen",
+    "{value}"
+   ],
+   "map": {
+    "true": "on",
+    "false": "off"
+   }
+  },
+  "recovery": "auto-undo",
+  "requiresHardware": [
+   "touchscreen"
+  ],
+  "requiresCaps": [
+   "hyprland"
+  ],
+  "scope": "device"
+ },
+ {
+  "id": "input.dictation.mode",
+  "page": "input",
+  "section": "Dictation",
+  "label": "Superwhisper mode",
+  "type": "choice",
+  "domain": "C06",
+  "integration": "native",
+  "description": "Offline modes need their models downloaded first, in Superwhisper's settings.",
+  "keywords": [
+   "speech to text",
+   "voice typing",
+   "offline",
+   "cloud"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "models",
+    "show"
+   ],
+   "parse": "json:processing"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "models",
+    "select",
+    "{value}"
+   ],
+   "timeout": 30000
+  },
+  "choices": [
+   {
+    "value": "cloud",
+    "label": "Cloud"
+   },
+   {
+    "value": "offline",
+    "label": "Offline"
+   },
+   {
+    "value": "offline_lite",
+    "label": "Offline Lite"
+   }
+  ],
+  "recovery": "auto-undo",
+  "requiresCommands": [
+   "superwhisper"
+  ],
+  "scope": "per-user",
+  "effects": [
+   "Cloud mode sends your speech over the internet."
+  ]
+ },
+ {
+  "id": "input.dictation.language",
+  "page": "input",
+  "section": "Dictation",
+  "label": "Dictation language",
+  "type": "choice",
+  "domain": "C06",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "speech language"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "show"
+   ],
+   "parse": "json:config.language"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "set",
+    "language",
+    "\"{value}\""
+   ],
+   "timeout": 15000
+  },
+  "recovery": "auto-undo",
+  "requiresCommands": [
+   "superwhisper"
+  ],
+  "scope": "per-user",
+  "choices": [
+   {
+    "value": "auto",
+    "label": "Same as desktop"
+   },
+   {
+    "value": "en",
+    "label": "English"
+   },
+   {
+    "value": "en-GB",
+    "label": "English (UK)"
+   },
+   {
+    "value": "de",
+    "label": "German"
+   },
+   {
+    "value": "fr",
+    "label": "French"
+   },
+   {
+    "value": "es",
+    "label": "Spanish"
+   },
+   {
+    "value": "it",
+    "label": "Italian"
+   },
+   {
+    "value": "pt",
+    "label": "Portuguese"
+   },
+   {
+    "value": "nl",
+    "label": "Dutch"
+   },
+   {
+    "value": "pl",
+    "label": "Polish"
+   },
+   {
+    "value": "ja",
+    "label": "Japanese"
+   },
+   {
+    "value": "ko",
+    "label": "Korean"
+   },
+   {
+    "value": "zh",
+    "label": "Chinese"
+   },
+   {
+    "value": "ar",
+    "label": "Arabic"
+   }
+  ],
+  "allowCustomValue": true,
+  "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?$|^auto$"
+ },
+ {
+  "id": "input.dictation.tone",
+  "page": "input",
+  "section": "Dictation",
+  "label": "Dictation tone",
+  "type": "choice",
+  "domain": "C06",
+  "integration": "native",
+  "description": "How cleaned-up dictated text should sound.",
+  "keywords": [],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "show"
+   ],
+   "parse": "json:config.tone"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "set",
+    "tone",
+    "\"{value}\""
+   ],
+   "timeout": 15000
+  },
+  "recovery": "auto-undo",
+  "requiresCommands": [
+   "superwhisper"
+  ],
+  "scope": "per-user",
+  "choices": [
+   {
+    "value": "casual",
+    "label": "Casual"
+   },
+   {
+    "value": "semi-casual",
+    "label": "Semi-casual"
+   },
+   {
+    "value": "balanced",
+    "label": "Balanced"
+   },
+   {
+    "value": "semi-formal",
+    "label": "Semi-formal"
+   },
+   {
+    "value": "formal",
+    "label": "Formal"
+   }
+  ]
+ },
+ {
+  "id": "input.dictation.paste",
+  "page": "input",
+  "section": "Dictation",
+  "label": "Paste dictated text",
+  "type": "toggle",
+  "domain": "C06",
+  "integration": "native",
+  "description": "Off copies it to the clipboard only.",
+  "keywords": [
+   "clipboard"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "show"
+   ],
+   "parse": "json:config.autoPasteEnabled"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "set",
+    "autoPasteEnabled",
+    "{value}"
+   ],
+   "timeout": 15000
+  },
+  "recovery": "auto-undo",
+  "requiresCommands": [
+   "superwhisper"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "input.dictation.login",
+  "page": "input",
+  "section": "Dictation",
+  "label": "Start Superwhisper at login",
+  "type": "toggle",
+  "domain": "C06",
+  "integration": "native",
+  "description": "",
+  "keywords": [],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "show"
+   ],
+   "parse": "json:config.launchAtLogin"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "superwhisper",
+    "general",
+    "set",
+    "launchAtLogin",
+    "{value}"
+   ],
+   "timeout": 15000
+  },
+  "recovery": "auto-undo",
+  "requiresCommands": [
+   "superwhisper"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "network.dns",
+  "page": "network",
+  "section": "DNS",
+  "label": "DNS provider",
+  "type": "choice",
+  "domain": "C10",
+  "integration": "native",
+  "description": "Who answers name lookups for this computer.",
+  "keywords": [
+   "name server",
+   "resolver",
+   "cloudflare",
+   "google dns",
+   "1.1.1.1",
+   "8.8.8.8"
+  ],
+  "sources": [
+   "omarchy dns",
+   "setup.network.dns*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "dns"
+   ],
+   "timeout": 5000
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "dns",
+    "{value}"
+   ],
+   "timeout": 60000
+  },
+  "choices": [
+   {
+    "value": "DHCP",
+    "label": "From the network (DHCP)"
+   },
+   {
+    "value": "Cloudflare",
+    "label": "Cloudflare"
+   },
+   {
+    "value": "Google",
+    "label": "Google"
+   }
+  ],
+  "recovery": "auto-undo",
+  "effects": [
+   "Changes system-wide NetworkManager settings.",
+   "You may be asked to authenticate."
+  ],
+  "confirmAlways": "This changes DNS for the whole system and can briefly interrupt connections.",
+  "scope": "system-wide"
+ },
+ {
+  "id": "network.band",
+  "page": "network",
+  "section": "Wi-Fi settings",
+  "label": "Wi-Fi band",
+  "type": "choice",
+  "domain": "C10",
+  "integration": "native",
+  "description": "Pin the active connection to a band, or let it choose.",
+  "keywords": [
+   "2.4ghz",
+   "5ghz",
+   "6ghz",
+   "wifi frequency"
+  ],
+  "sources": [
+   "omarchy network band"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "network",
+    "band"
+   ],
+   "parse": "field:selected"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "network",
+    "band",
+    "{value}"
+   ],
+   "timeout": 30000
+  },
+  "choices": [
+   {
+    "value": "auto",
+    "label": "Automatic"
+   },
+   {
+    "value": "2.4",
+    "label": "2.4 GHz"
+   },
+   {
+    "value": "5",
+    "label": "5 GHz"
+   },
+   {
+    "value": "6",
+    "label": "6 GHz"
+   }
+  ],
+  "recovery": "auto-undo",
+  "requiresHardware": [
+   "wifi"
+  ],
+  "scope": "device",
+  "confirmAlways": "Changing the band reconnects Wi-Fi, which briefly interrupts your connection."
+ },
+ {
+  "id": "power.profile",
+  "page": "power",
+  "section": "Power",
+  "label": "Power profile",
+  "type": "choice",
+  "domain": "C12",
+  "integration": "native",
+  "description": "Used now, and remembered for the current power source.",
+  "keywords": [
+   "battery saver",
+   "performance mode",
+   "fan",
+   "balanced"
+  ],
+  "sources": [
+   "omarchy powerprofiles set",
+   "omarchy powerprofiles list"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "powerprofiles",
+    "list",
+    "--active-state"
+   ],
+   "parse": "activeRow"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "powerprofiles",
+    "set",
+    "autodetect",
+    "{value}"
+   ]
+  },
+  "choicesFrom": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "powerprofiles",
+    "list"
+   ],
+   "labels": {
+    "power-saver": "Power saver",
+    "balanced": "Balanced",
+    "performance": "Performance"
+   }
+  },
+  "recovery": "auto-undo",
+  "requiresCommands": [
+   "powerprofilesctl"
+  ],
+  "scope": "per-user",
+  "quick": true
+ },
+ {
+  "id": "power.profile.ac",
+  "page": "power",
+  "section": "Power",
+  "label": "Profile on AC power",
+  "type": "choice",
+  "domain": "C12",
+  "integration": "native",
+  "description": "Remembered for when the computer is plugged in. Also becomes the active profile right now.",
+  "keywords": [
+   "plugged in"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "filetext",
+   "file": "~/.local/state/omarchy/powerprofiles/ac",
+   "default": ""
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "powerprofiles",
+    "set",
+    "ac",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "power-saver",
+    "label": "Power saver"
+   },
+   {
+    "value": "balanced",
+    "label": "Balanced"
+   },
+   {
+    "value": "performance",
+    "label": "Performance"
+   }
+  ],
+  "recovery": "auto-undo",
+  "requiresHardware": [
+   "battery"
+  ],
+  "requiresCommands": [
+   "powerprofilesctl"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "power.profile.battery",
+  "page": "power",
+  "section": "Power",
+  "label": "Profile on battery",
+  "type": "choice",
+  "domain": "C12",
+  "integration": "native",
+  "description": "Remembered for when the computer is unplugged. Also becomes the active profile right now.",
+  "keywords": [],
+  "sources": [],
+  "read": {
+   "kind": "filetext",
+   "file": "~/.local/state/omarchy/powerprofiles/battery",
+   "default": ""
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "powerprofiles",
+    "set",
+    "battery",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "power-saver",
+    "label": "Power saver"
+   },
+   {
+    "value": "balanced",
+    "label": "Balanced"
+   },
+   {
+    "value": "performance",
+    "label": "Performance"
+   }
+  ],
+  "recovery": "auto-undo",
+  "requiresHardware": [
+   "battery"
+  ],
+  "requiresCommands": [
+   "powerprofilesctl"
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "power.idle.lock",
+  "page": "power",
+  "section": "Lock and screensaver",
+  "label": "Lock after",
+  "type": "choice",
+  "domain": "C12",
+  "integration": "native",
+  "description": "How long the computer sits idle before it locks.",
+  "keywords": [
+   "stop locking",
+   "lock screen timeout",
+   "idle timeout",
+   "auto lock",
+   "stop sleeping"
+  ],
+  "sources": [
+   "omarchy debug idle"
+  ],
+  "read": {
+   "kind": "json",
+   "file": "~/.config/omarchy/shell.json",
+   "fallbackFile": "{omarchy}/config/omarchy/shell.json",
+   "path": [
+    "idle",
+    "lock"
+   ],
+   "default": "300"
+  },
+  "write": {
+   "kind": "json",
+   "file": "~/.config/omarchy/shell.json",
+   "path": [
+    "idle",
+    "lock"
+   ],
+   "valueType": "int",
+   "after": [
+    "omarchy",
+    "shell",
+    "-q",
+    "shell",
+    "reloadConfig"
+   ]
+  },
+  "choices": [
+   {
+    "value": "0",
+    "label": "Never"
+   },
+   {
+    "value": "60",
+    "label": "1 minute"
+   },
+   {
+    "value": "120",
+    "label": "2 minutes"
+   },
+   {
+    "value": "150",
+    "label": "2.5 minutes"
+   },
+   {
+    "value": "180",
+    "label": "3 minutes"
+   },
+   {
+    "value": "300",
+    "label": "5 minutes"
+   },
+   {
+    "value": "600",
+    "label": "10 minutes"
+   },
+   {
+    "value": "900",
+    "label": "15 minutes"
+   },
+   {
+    "value": "1800",
+    "label": "30 minutes"
+   },
+   {
+    "value": "3600",
+    "label": "1 hour"
+   }
+  ],
+  "allowCustomValue": true,
+  "pattern": "^[0-9]{1,6}$",
+  "recovery": "auto-undo",
+  "scope": "per-user",
+  "quick": true,
+  "note": "",
+  "files": [
+   "~/.config/omarchy/shell.json"
+  ]
+ },
+ {
+  "id": "power.idle.screensaver",
+  "page": "power",
+  "section": "Lock and screensaver",
+  "label": "Start screensaver after",
+  "type": "choice",
+  "domain": "C12",
+  "integration": "native",
+  "description": "How long the computer sits idle before the screensaver starts.",
+  "keywords": [
+   "idle timeout"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "json",
+   "file": "~/.config/omarchy/shell.json",
+   "fallbackFile": "{omarchy}/config/omarchy/shell.json",
+   "path": [
+    "idle",
+    "screensaver"
+   ],
+   "default": "150"
+  },
+  "write": {
+   "kind": "json",
+   "file": "~/.config/omarchy/shell.json",
+   "path": [
+    "idle",
+    "screensaver"
+   ],
+   "valueType": "int",
+   "after": [
+    "omarchy",
+    "shell",
+    "-q",
+    "shell",
+    "reloadConfig"
+   ]
+  },
+  "choices": [
+   {
+    "value": "0",
+    "label": "Never"
+   },
+   {
+    "value": "60",
+    "label": "1 minute"
+   },
+   {
+    "value": "120",
+    "label": "2 minutes"
+   },
+   {
+    "value": "150",
+    "label": "2.5 minutes"
+   },
+   {
+    "value": "180",
+    "label": "3 minutes"
+   },
+   {
+    "value": "300",
+    "label": "5 minutes"
+   },
+   {
+    "value": "600",
+    "label": "10 minutes"
+   },
+   {
+    "value": "900",
+    "label": "15 minutes"
+   },
+   {
+    "value": "1800",
+    "label": "30 minutes"
+   },
+   {
+    "value": "3600",
+    "label": "1 hour"
+   }
+  ],
+  "allowCustomValue": true,
+  "pattern": "^[0-9]{1,6}$",
+  "recovery": "auto-undo",
+  "scope": "per-user",
+  "files": [
+   "~/.config/omarchy/shell.json"
+  ]
+ },
+ {
+  "id": "power.stayawake",
+  "page": "power",
+  "section": "Lock and screensaver",
+  "label": "Stay awake",
+  "type": "toggle",
+  "domain": "C12",
+  "integration": "native",
+  "description": "Skip the lock and screensaver timers until you turn this off.",
+  "keywords": [
+   "stop sleeping",
+   "keep awake",
+   "caffeine",
+   "no sleep",
+   "prevent sleep",
+   "presentation"
+  ],
+  "sources": [
+   "omarchy toggle idle",
+   "trigger.toggle.idle-lock-*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "idle",
+    "status"
+   ],
+   "parse": "json:enabled"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "idle",
+    "{value}"
+   ],
+   "map": {
+    "true": "stay-awake",
+    "false": "allow-idle"
+   }
+  },
+  "recovery": "auto-undo",
+  "scope": "per-user",
+  "quick": true
+ },
+ {
+  "id": "power.screensaver",
+  "page": "power",
+  "section": "Lock and screensaver",
+  "label": "Screensaver available",
+  "type": "toggle",
+  "domain": "C12",
+  "integration": "native",
+  "description": "Turn off to go straight from idle to lock.",
+  "keywords": [],
+  "sources": [
+   "omarchy toggle screensaver",
+   "trigger.toggle.screensaver-*"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/screensaver-off",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "screensaver"
+   ],
+   "toggleOnly": true
+  },
+  "recovery": "auto-undo",
+  "scope": "per-user"
+ },
+ {
+  "id": "power.suspend",
+  "page": "power",
+  "section": "Session",
+  "label": "Show Suspend in the system menu",
+  "type": "toggle",
+  "domain": "C12",
+  "integration": "native",
+  "description": "Whether the system menu offers Suspend.",
+  "keywords": [
+   "sleep"
+  ],
+  "sources": [
+   "omarchy toggle suspend"
+  ],
+  "read": {
+   "kind": "exists",
+   "file": "~/.local/state/omarchy/toggles/suspend-off",
+   "invert": true
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "toggle",
+    "suspend"
+   ],
+   "toggleOnly": true
+  },
+  "recovery": "auto-undo",
+  "scope": "per-user"
+ },
+ {
+  "id": "power.hibernation",
+  "page": "power",
+  "section": "Session",
+  "label": "Hibernation",
+  "type": "status",
+  "domain": "C12",
+  "integration": "native",
+  "description": "Whether this computer is set up to hibernate.",
+  "keywords": [
+   "suspend to disk",
+   "swap"
+  ],
+  "sources": [
+   "omarchy hibernation available"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "hibernation",
+    "available"
+   ],
+   "parse": "exitBool"
+  },
+  "map": {
+   "true": "Available",
+   "false": "Not set up"
+  }
+ },
+ {
+  "id": "apps.default.browser",
+  "page": "apps",
+  "section": "Default apps",
+  "label": "Web browser",
+  "type": "choice",
+  "domain": "C14",
+  "integration": "native",
+  "description": "Opens web links. Only installed browsers are listed; install others below.",
+  "keywords": [
+   "chrome",
+   "firefox",
+   "default browser",
+   "open links"
+  ],
+  "sources": [
+   "omarchy default browser",
+   "setup.default.browser*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "default",
+    "browser"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "default",
+    "browser",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "chromium",
+    "label": "Chromium",
+    "requiresCommand": "chromium"
+   },
+   {
+    "value": "chrome",
+    "label": "Chrome",
+    "requiresCommand": "google-chrome-stable"
+   },
+   {
+    "value": "brave",
+    "label": "Brave",
+    "requiresCommand": "brave"
+   },
+   {
+    "value": "brave-origin",
+    "label": "Brave Origin",
+    "requiresCommand": "brave-origin"
+   },
+   {
+    "value": "edge",
+    "label": "Edge",
+    "requiresCommand": "microsoft-edge-stable"
+   },
+   {
+    "value": "firefox",
+    "label": "Firefox",
+    "requiresCommand": "firefox"
+   },
+   {
+    "value": "zen",
+    "label": "Zen",
+    "requiresCommand": "zen-browser"
+   }
+  ],
+  "recovery": "auto-undo",
+  "scope": "per-user"
+ },
+ {
+  "id": "apps.default.terminal",
+  "page": "apps",
+  "section": "Default apps",
+  "label": "Terminal",
+  "type": "choice",
+  "domain": "C14",
+  "integration": "native",
+  "description": "Used by Super+Return and terminal apps. Only installed terminals are listed.",
+  "keywords": [
+   "default terminal",
+   "console"
+  ],
+  "sources": [
+   "omarchy default terminal",
+   "setup.default.terminal*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "default",
+    "terminal"
+   ]
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "default",
+    "terminal",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "alacritty",
+    "label": "Alacritty",
+    "requiresCommand": "alacritty"
+   },
+   {
+    "value": "foot",
+    "label": "Foot",
+    "requiresCommand": "foot"
+   },
+   {
+    "value": "ghostty",
+    "label": "Ghostty",
+    "requiresCommand": "ghostty"
+   },
+   {
+    "value": "kitty",
+    "label": "Kitty",
+    "requiresCommand": "kitty"
+   }
+  ],
+  "recovery": "auto-undo",
+  "scope": "per-user"
+ },
+ {
+  "id": "apps.default.editor",
+  "page": "apps",
+  "section": "Default apps",
+  "label": "Text editor",
+  "type": "choice",
+  "domain": "C14",
+  "integration": "native",
+  "description": "Opens config files and text from Omarchy. Only installed editors are listed.",
+  "keywords": [
+   "default editor",
+   "vscode",
+   "neovim"
+  ],
+  "sources": [
+   "omarchy default editor",
+   "setup.default.editor*"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "default",
+    "editor"
+   ],
+   "map": {
+    "zeditor": "zed",
+    "subl": "sublime_text"
+   }
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "default",
+    "editor",
+    "{value}"
+   ]
+  },
+  "choices": [
+   {
+    "value": "nvim",
+    "label": "Neovim",
+    "requiresCommand": "nvim"
+   },
+   {
+    "value": "code",
+    "label": "VS Code",
+    "requiresCommand": "code"
+   },
+   {
+    "value": "cursor",
+    "label": "Cursor",
+    "requiresCommand": "cursor"
+   },
+   {
+    "value": "zed",
+    "label": "Zed",
+    "requiresCommand": "zeditor"
+   },
+   {
+    "value": "sublime_text",
+    "label": "Sublime Text",
+    "requiresCommand": "subl"
+   },
+   {
+    "value": "helix",
+    "label": "Helix",
+    "requiresCommand": "helix"
+   },
+   {
+    "value": "vim",
+    "label": "Vim",
+    "requiresCommand": "vim"
+   },
+   {
+    "value": "emacs",
+    "label": "Emacs",
+    "requiresCommand": "emacs"
+   }
+  ],
+  "recovery": "auto-undo",
+  "scope": "per-user"
+ },
+ {
+  "id": "apps.default.agent",
+  "page": "apps",
+  "section": "Default apps",
+  "label": "Coding agent",
+  "type": "status",
+  "domain": "C20",
+  "integration": "native",
+  "description": "Choose one under AI agents below. Choosing one also starts it, and can install it first.",
+  "keywords": [
+   "ai",
+   "claude",
+   "codex"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "filetext",
+   "file": "~/.local/state/omarchy/defaults/agent",
+   "default": ""
+  },
+  "map": {
+   "": "Not set"
+  }
+ },
+ {
+  "id": "apps.default.dictation",
+  "page": "apps",
+  "section": "Default apps",
+  "label": "Dictation",
+  "type": "status",
+  "domain": "C06",
+  "integration": "native",
+  "description": "Choose one under Input & accessibility. Choosing one opens its installer.",
+  "keywords": [
+   "voice typing",
+   "speech to text"
+  ],
+  "sources": [
+   "omarchy default dictation"
+  ],
+  "read": {
+   "kind": "filetext",
+   "file": "~/.config/omarchy/defaults/dictation",
+   "default": ""
+  },
+  "map": {
+   "": "Not set"
+  }
+ },
+ {
+  "id": "accounts.sshd",
+  "page": "accounts",
+  "section": "Security status",
+  "label": "SSH server",
+  "type": "status",
+  "domain": "C11",
+  "integration": "native",
+  "description": "Whether other computers can log in over SSH.",
+  "keywords": [
+   "remote login",
+   "openssh"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "systemctl",
+    "is-active",
+    "sshd"
+   ],
+   "parse": "trim",
+   "allowFailure": true
+  },
+  "map": {
+   "active": "Running",
+   "inactive": "Off",
+   "unknown": "Not installed"
+  }
+ },
+ {
+  "id": "accounts.firewall",
+  "page": "accounts",
+  "section": "Security status",
+  "label": "Firewall",
+  "type": "status",
+  "domain": "C11",
+  "integration": "native",
+  "description": "Whether the UFW firewall service is running. Viewing its rules needs administrator access.",
+  "keywords": [
+   "ufw",
+   "ports"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "systemctl",
+    "is-active",
+    "ufw"
+   ],
+   "parse": "trim",
+   "allowFailure": true
+  },
+  "map": {
+   "active": "Running",
+   "inactive": "Off",
+   "unknown": "Not installed"
+  }
+ },
+ {
+  "id": "system.version",
+  "page": "system",
+  "section": "This computer",
+  "label": "Omarchy version",
+  "type": "status",
+  "domain": "C22",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "about",
+   "release"
+  ],
+  "sources": [
+   "omarchy version"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "version"
+   ]
+  }
+ },
+ {
+  "id": "system.channel",
+  "page": "system",
+  "section": "This computer",
+  "label": "Update channel",
+  "type": "status",
+  "domain": "C18",
+  "integration": "native",
+  "description": "Change it under Updates below.",
+  "keywords": [
+   "stable",
+   "rc",
+   "edge"
+  ],
+  "sources": [
+   "omarchy channel current",
+   "omarchy version channel"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "channel",
+    "current"
+   ]
+  }
+ },
+ {
+  "id": "system.kernel",
+  "page": "system",
+  "section": "This computer",
+  "label": "Default kernel",
+  "type": "status",
+  "domain": "C18",
+  "integration": "native",
+  "description": "The kernel Limine boots by default.",
+  "keywords": [
+   "linux",
+   "boot"
+  ],
+  "sources": [
+   "omarchy kernel"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "kernel",
+    "get"
+   ]
+  },
+  "requiresCommands": [
+   "limine"
+  ],
+  "softRequires": true
+ },
+ {
+  "id": "system.lastupgrade",
+  "page": "system",
+  "section": "This computer",
+  "label": "Packages last upgraded",
+  "type": "status",
+  "domain": "C18",
+  "integration": "native",
+  "description": "",
+  "keywords": [
+   "last update",
+   "pacman"
+  ],
+  "sources": [
+   "omarchy version pkgs"
+  ],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "version",
+    "pkgs"
+   ]
+  }
+ },
+ {
+  "id": "system.language",
+  "page": "system",
+  "section": "Language and time",
+  "label": "Language",
+  "type": "choice",
+  "domain": "C15",
+  "integration": "native",
+  "description": "The language of Omarchy and of apps opened from now on.",
+  "keywords": [
+   "locale",
+   "translate",
+   "region"
+  ],
+  "sources": [
+   "omarchy language",
+   "setup.language"
+  ],
+  "read": {
+   "kind": "filetext",
+   "file": "~/.config/omarchy/language",
+   "default": "en"
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "language",
+    "{value}"
+   ],
+   "timeout": 120000
+  },
+  "choicesFrom": {
+   "kind": "locales"
+  },
+  "recovery": "best-effort",
+  "restart": "Restarts the Omarchy shell. Apps already open keep their language until reopened.",
+  "effects": [
+   "Sets the session locale for new apps.",
+   "You may be asked to authenticate to generate the locale.",
+   "Chinese, Japanese, and Korean can add an input method and glyph preference."
+  ],
+  "scope": "per-user"
+ },
+ {
+  "id": "system.timezone",
+  "page": "system",
+  "section": "Language and time",
+  "label": "Time zone",
+  "type": "status",
+  "domain": "C15",
+  "integration": "native",
+  "description": "Change it with the time zone picker below.",
+  "keywords": [
+   "clock",
+   "tz",
+   "wrong time"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "timedatectl",
+    "show",
+    "-p",
+    "Timezone",
+    "--value"
+   ]
+  }
+ },
+ {
+  "id": "system.ntp",
+  "page": "system",
+  "section": "Language and time",
+  "label": "Automatic time sync",
+  "type": "status",
+  "domain": "C15",
+  "integration": "native",
+  "description": "Whether the clock is synchronized over the network.",
+  "keywords": [
+   "ntp",
+   "clock"
+  ],
+  "sources": [],
+  "read": {
+   "kind": "cmd",
+   "argv": [
+    "timedatectl",
+    "show",
+    "-p",
+    "NTPSynchronized",
+    "--value"
+   ]
+  },
+  "map": {
+   "yes": "Synchronized",
+   "no": "Not synchronized"
+  }
+ },
+ {
+  "id": "system.weather",
+  "page": "system",
+  "section": "Language and time",
+  "label": "Weather location",
+  "type": "text",
+  "domain": "C15",
+  "integration": "native",
+  "description": "Leave empty to detect it from your connection. Reading this setting never contacts a service.",
+  "keywords": [
+   "city",
+   "forecast"
+  ],
+  "sources": [
+   "omarchy weather location"
+  ],
+  "read": {
+   "kind": "json",
+   "file": "~/.local/state/omarchy/settings/weather.json",
+   "path": [
+    "name"
+   ],
+   "default": ""
+  },
+  "write": {
+   "kind": "cmd",
+   "argv": [
+    "omarchy",
+    "weather",
+    "location",
+    "--set",
+    "{value}"
+   ],
+   "clear": [
+    "omarchy",
+    "weather",
+    "location",
+    "--clear"
+   ]
+  },
+  "pattern": "^[^\\n]{0,80}$",
+  "recovery": "no-undo",
+  "scope": "per-user",
+  "files": [
+   "~/.local/state/omarchy/settings/weather.json"
+  ],
+  "placeholder": "Automatic"
+ }
+]

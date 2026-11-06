@@ -1,0 +1,37 @@
+#!/bin/bash
+# Synthetic Hyprland. Records eval and reload calls beside itself so tests can check them.
+args=("$@")
+[ "${args[0]}" = "--instance" ] && args=("${args[@]:2}")
+[ "${args[0]}" = "-j" ] && args=("${args[@]:1}")
+LOG="${HOME}/.sandbox-hyprctl.log"
+case "${args[0]}" in
+  version) echo '{"version":"0.56.2"}';;
+  monitors) echo '[{"id":0,"name":"eDP-1","description":"Example Panel 14 inch","make":"Example","model":"P14","width":2880,"height":1800,"refreshRate":120.0,"x":0,"y":0,"scale":1.5,"transform":0,"focused":true,"disabled":false,"vrr":false,"mirrorOf":"none","availableModes":["2880x1800@120.00Hz","2880x1800@60.00Hz","1920x1200@60.00Hz"]},{"id":1,"name":"DP-1","description":"Example 27 inch Display","make":"Example","model":"D27","width":2560,"height":1440,"refreshRate":60.0,"x":1920,"y":0,"scale":1,"transform":0,"focused":false,"disabled":false,"vrr":false,"mirrorOf":"none","availableModes":["2560x1440@60.00Hz","1920x1080@60.00Hz"]}]';;
+  devices) echo '{"mice":[{"name":"example-touchpad"}],"keyboards":[],"touch":[]}';;
+  binds) echo '[{"modmask":64,"key":"SPACE","description":"Launcher"},{"modmask":64,"key":"RETURN","description":"Terminal"},{"modmask":65,"key":"F","description":"File manager"}]';;
+  configerrors) echo '[""]';;
+  getoption)
+    case "${args[1]}" in
+      decoration:rounding) echo '{"int":0}';;
+      general:gaps_in) echo '{"css":"5 5 5 5"}';;
+      general:gaps_out) echo '{"css":"10 10 10 10"}';;
+      general:border_size) echo '{"int":2}';;
+      decoration:dim_inactive) echo '{"bool":false}';;
+      decoration:dim_strength) echo '{"float":0.500000}';;
+      input:repeat_rate) echo '{"int":40}';;
+      input:repeat_delay) echo '{"int":250}';;
+      input:numlock_by_default) echo '{"bool":true}';;
+      input:sensitivity) echo '{"float":0.000000}';;
+      input:accel_profile) echo '{"str":"[[EMPTY]]"}';;
+      input:natural_scroll) echo '{"bool":false}';;
+      input:follow_mouse) echo '{"int":1}';;
+      input:touchpad:natural_scroll) echo '{"bool":true}';;
+      input:touchpad:scroll_factor) echo '{"float":0.400000}';;
+      input:touchpad:tap-to-click) echo '{"bool":true}';;
+      input:touchpad:clickfinger_behavior) echo '{"bool":true}';;
+      input:touchpad:disable_while_typing) echo '{"bool":true}';;
+      input:touchpad:drag_3fg) echo '{"int":0}';;
+    esac;;
+  reload|eval) echo "${args[*]}" >>"$LOG"; echo ok;;
+esac
+exit 0

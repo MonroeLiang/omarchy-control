@@ -1,0 +1,48 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+// Shows the state that was last read back. Clicking asks for a change; the knob
+// only moves once the new value has been confirmed. State is also spelled out in
+// words, so it is never communicated by color alone.
+AbstractButton {
+    id: root
+    property bool on: false
+    property bool busy: false
+    property string label: ""
+
+    focusPolicy: Qt.StrongFocus
+    hoverEnabled: true
+    padding: 0
+    Accessible.role: Accessible.CheckBox
+    Accessible.name: label
+    Accessible.checked: on
+    opacity: enabled ? (busy ? 0.6 : 1) : 0.4
+
+    contentItem: RowLayout {
+        spacing: 8
+        AppText {
+            text: root.on ? qsTr("On") : qsTr("Off")
+            secondary: true
+        }
+        Rectangle {
+            id: track
+            implicitWidth: 44
+            implicitHeight: 24
+            radius: height / 2
+            color: root.on ? theme.accent : Qt.alpha(theme.foreground, 0.15)
+            border.width: root.visualFocus ? 2 : 0
+            border.color: root.on ? theme.foreground : theme.accent
+            Behavior on color { enabled: theme.animate; ColorAnimation { duration: 120 } }
+            Rectangle {
+                width: 18
+                height: 18
+                radius: 9
+                y: 3
+                x: root.on !== root.mirrored ? parent.width - width - 3 : 3
+                color: root.on ? theme.accentForeground : theme.foreground
+                Behavior on x { enabled: theme.animate; NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            }
+        }
+    }
+}

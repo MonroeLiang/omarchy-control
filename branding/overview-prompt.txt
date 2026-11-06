@@ -1,0 +1,45 @@
+Use case: ui-mockup.
+Asset type: high-fidelity proposed desktop application screenshot, landscape 16:10, at least 1600 pixels wide. One finished PNG concept for the Omarchy Control project.
+
+Primary request: Show what Omarchy Control will look like: a comprehensive native Linux control center that feels naturally distributed with the Omarchy desktop. It is a proposed C++/Qt Quick application. Render a crisp, realistic, implementable interface, not an illustration of a computer. The design combines a searchable settings directory, useful native controls, and links to existing specialist tools.
+
+Composition: straight-on pixel-perfect screen capture. The application occupies almost the entire canvas, with only a narrow dark desktop margin and a minimal Omarchy status bar across the top. A single rectangular application window has a fine amber active border. All corners are square or almost square. No perspective, laptop, hand, browser chrome, glossy mockup frame, marketing headline, or decorative chart.
+
+Theme: match the actual local Omarchy palette: background #1c1c1e, sidebar #161618, deepest surface #0e0e10, raised subtle surfaces #2c2c2e, primary text #f5f5f7, secondary text #98989d, divider #3a3a3c, amber accent #ff9f0a. Use amber sparingly for selected navigation, slider fill, and a few active indicators. Flat, understated, precisely aligned, practical. Typography is JetBrains Mono / clean monospace, legible and generously sized, modest heading hierarchy. Compact consistent monochrome line icons, no colorful emoji. Solid readable surfaces, thin dividers, restrained padding, no oversized rounded cards.
+
+Window structure:
+A quiet top toolbar with the application title "Omarchy Control" on the left and a long search box reading "Search settings, devices, and tools" with a small "Ctrl K" key hint on the right.
+A persistent approximately 280px left sidebar beneath the toolbar. Exact labels in this order, each with a small consistent line icon:
+"Overview" (selected, muted amber fill with an amber left rule)
+"Appearance"
+"Desktop"
+"Displays"
+"Input & accessibility"
+"Sound & devices"
+"Network & sharing"
+"Power & session"
+"Apps & defaults"
+"Accounts & security"
+"System & maintenance"
+"Advanced"
+At the bottom of the sidebar, small muted text "Omarchy 4.5" and "?  Shortcuts".
+
+Main area:
+Heading "Overview", secondary line "Settings and tools for this computer."
+Directly below, a thin single-line status band: "Omarchy 4.5" | "System up to date" | "Wayland session", with subtle icons and an unobtrusive "View system" action at the far right.
+
+A section header "Quick settings" above a tidy 2-column grid of four rectangular grouped settings panels, with aligned header, controls and footer rows:
+Top left: "Appearance", small amber square palette swatch, label "Current theme", value "Obsidian Circuit"; row "Text size" and a compact selection "14 px"; footer link "Customize appearance" with right arrow.
+Top right: "Network", Wi-Fi icon, "Wi-Fi" with an enabled amber toggle on the right; subline "Home network · Connected"; footer outlined action "Open network panel" with a small external-launch arrow.
+Bottom left: "Sound & display", row "Output volume" with a horizontal slider at 65 percent and value "65%"; row "Screen brightness" with slider at 72 percent and value "72%"; footer small links "Sound settings" and "Display settings".
+Bottom right: "Power & session", row "Power profile" with dropdown value "Balanced"; row "Lock after" with dropdown value "5 minutes"; row "Stay awake" with an off toggle.
+
+Below the grid, section "Tools & maintenance" as a compact two-column collection of four equal-height list rows with small line icons, short descriptions and right arrows, not giant cards:
+"Printer settings" / "Printers and print queues"
+"Disks & snapshots" / "Storage and recovery"
+"Updates" / "Packages and firmware"
+"Startup & services" / "What runs on your machine"
+
+At the very bottom a subdued footer: "Recent changes" on the left and "View history" on the right.
+Keep all application content visible without cropping or overflow. Hierarchy and whitespace should feel carefully designed and realistic. All labels must be accurately spelled, aligned, and readable. Use only the requested copy; do not insert explanatory engineering labels, random filler text, developer notes, promotional language, or watermarks.
+This is a design concept using fictional status values, not evidence of actual machine state.

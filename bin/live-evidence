@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""Records read-only proof from the machine this runs on into docs/live-evidence.json.
+
+It runs `omarchy-control doctor`, which reads every setting and resolves every
+route without launching anything or changing anything. A pass means "reads
+correctly here", which is all that is claimed: writes stay "implemented" until
+someone records a live check of the write itself.
+"""
+import json, os, subprocess, sys, time
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+doctor = json.loads(subprocess.run([ROOT + "/build/omarchy-control", "doctor", "--json"], capture_output=True, text=True).stdout)
+day = time.strftime("%Y-%m-%d")
+path = ROOT + "/docs/live-evidence.json"
+evidence = json.load(open(path)) if os.path.exists(path) else {}
+for row in doctor["reads"]:
+    prior = evidence.get(row["id"], {})
+    if row["status"] == "ok" and prior.get("status") != "verified":
+        evidence[row["id"]] = {"status": "implemented", "evidence": f"fixture-tests; live read ok {day} (Omarchy {doctor['omarchy']})"}
+json.dump(evidence, open(path, "w"), indent=1, sort_keys=True)
+open(path, "a").write("\n")
+print(f"Recorded {len(evidence)} live reads. No write was performed.")

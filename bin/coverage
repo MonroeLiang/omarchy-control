@@ -1,0 +1,11 @@
+#!/bin/sh
+# Regenerates docs/coverage-ledger.json from the catalog, the discovery inventory,
+# and recorded live evidence. Fails if any discovered entry has no destination.
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+"$ROOT/build/omarchy-control" coverage --json \
+  --inventory "$ROOT/docs/inventory-2026-11-05.json" \
+  --evidence "$ROOT/docs/live-evidence.json" >"$ROOT/docs/coverage-ledger.json"
+"$ROOT/build/omarchy-control" coverage --inventory "$ROOT/docs/inventory-2026-11-05.json" >/dev/null
+echo "Wrote $ROOT/docs/coverage-ledger.json"

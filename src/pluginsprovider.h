@@ -1,0 +1,57 @@
+#pragma once
+
+#include <QObject>
+#include <QVariantList>
+
+#include "changecoordinator.h"
+#include "commandrunner.h"
+
+// Shell plugins, bar widget placement, and dock pins, through Omarchy's own
+// commands so clones, selected implementations, and per-widget options survive.
+class PluginsProvider : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QVariantList plugins READ plugins NOTIFY changed)
+    Q_PROPERTY(QVariantMap barLayout READ barLayout NOTIFY changed)
+    Q_PROPERTY(QStringList dockPins READ dockPins NOTIFY changed)
+    Q_PROPERTY(QString status READ status NOTIFY changed)
+    Q_PROPERTY(QString activeBar READ activeBar NOTIFY changed)
+
+public:
+    PluginsProvider(CommandRunner *runner, ChangeCoordinator *coordinator, QObject *parent = nullptr);
+
+    QVariantList plugins() const { return m_plugins; }
+    QVariantMap barLayout() const { return m_layout; }
+    QStringList dockPins() const { return m_pins; }
+    QString status() const { return m_status; }
+    QString activeBar() const { return m_activeBar; }
+
+    Q_INVOKABLE void refresh();
+    Q_INVOKABLE void setEnabled(const QString &id, bool enabled);
+    Q_INVOKABLE void clonePlugin(const QString &id);
+    Q_INVOKABLE void removePlugin(const QString &id);
+    Q_INVOKABLE void moveWidget(const QString &id, const QString &section, int index, const QString &fromSection, int fromIndex);
+    Q_INVOKABLE void pin(const QString &desktopId);
+    Q_INVOKABLE void unpin(const QString &desktopId);
+
+    static bool isSafeId(const QString &id);
+    static QVariantList parsePlugins(const QByteArray &json);
+    static QVariantList scanManifests(const Env &env);
+    static QVariantMap parseLayout(const QByteArray &shellJson);
+
+signals:
+    void changed();
+    void message(const QString &text, bool isError);
+
+private:
+    void runChange(const QString &label, const QString &after, const QStringList &argv, std::function<void(ChangeCoordinator::Done)> verify, const QString &success);
+    void loadConfig();
+    void verifyMoved(const QString &id, const QString &section, int attempts, ChangeCoordinator::Done done);
+
+    CommandRunner *m_runner;
+    ChangeCoordinator *m_coordinator;
+    QVariantList m_plugins;
+    QVariantMap m_layout;
+    QStringList m_pins;
+    QString m_status = "loading";
+    QString m_activeBar;
+};

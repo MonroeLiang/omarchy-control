@@ -1,0 +1,410 @@
+{
+ "commands": [
+  {
+   "pattern": "omarchy dev *",
+   "reason": "Omarchy contributor workflows; documented exclusion from machine settings."
+  },
+  {
+   "pattern": "omarchy hw *",
+   "reason": "Hardware probes used for capability checks; never settings."
+  },
+  {
+   "pattern": "omarchy cmd *",
+   "reason": "Command-availability probes."
+  },
+  {
+   "pattern": "omarchy show *",
+   "reason": "Presentation helpers used inside terminal workflows."
+  },
+  {
+   "pattern": "omarchy file select",
+   "reason": "File-picker helper, not a setting."
+  },
+  {
+   "pattern": "omarchy menu",
+   "reason": "Menu control; individual destinations are catalogued."
+  },
+  {
+   "pattern": "omarchy menu clipboard",
+   "reason": "Destination reached through Clipboard History."
+  },
+  {
+   "pattern": "omarchy menu emoji",
+   "reason": "Destination reached through Emoji."
+  },
+  {
+   "pattern": "omarchy menu file",
+   "reason": "Picker helper for scripts."
+  },
+  {
+   "pattern": "omarchy menu input",
+   "reason": "Prompt helper for scripts."
+  },
+  {
+   "pattern": "omarchy menu select",
+   "reason": "Prompt helper for scripts."
+  },
+  {
+   "pattern": "omarchy menu images",
+   "reason": "Picker helper for scripts."
+  },
+  {
+   "pattern": "omarchy menu herdr keybindings",
+   "reason": "Reached through Learn: Herdr."
+  },
+  {
+   "pattern": "omarchy menu tmux keybindings",
+   "reason": "Reached through Learn: Tmux."
+  },
+  {
+   "pattern": "omarchy menu timezone",
+   "reason": "Reached through Choose time zone."
+  },
+  {
+   "pattern": "omarchy launch *",
+   "reason": "Launch infrastructure used by routes in this catalog."
+  },
+  {
+   "pattern": "omarchy osd",
+   "reason": "Internal on-screen-display event."
+  },
+  {
+   "pattern": "omarchy ascii",
+   "reason": "Rendering utility; branding owns the setting."
+  },
+  {
+   "pattern": "omarchy shell",
+   "reason": "Integration infrastructure used for panels and status."
+  },
+  {
+   "pattern": "omarchy sudo keepalive",
+   "reason": "Authentication plumbing."
+  },
+  {
+   "pattern": "omarchy notification battery",
+   "reason": "Event emission, not a setting."
+  },
+  {
+   "pattern": "omarchy notification dismiss",
+   "reason": "Event emission, not a setting."
+  },
+  {
+   "pattern": "omarchy notification send",
+   "reason": "Event emission, not a setting."
+  },
+  {
+   "pattern": "omarchy notification time",
+   "reason": "Event emission, not a setting."
+  },
+  {
+   "pattern": "omarchy weather icon",
+   "reason": "Bar rendering helper."
+  },
+  {
+   "pattern": "omarchy weather status",
+   "reason": "Bar rendering helper."
+  },
+  {
+   "pattern": "omarchy theme bg cache",
+   "reason": "Thumbnail cache internals."
+  },
+  {
+   "pattern": "omarchy theme dir",
+   "reason": "Path query used by scripts."
+  },
+  {
+   "pattern": "omarchy theme refresh",
+   "reason": "Regeneration internals; a theme change does this."
+  },
+  {
+   "pattern": "omarchy audio input mute",
+   "reason": "Media-key action; the Sound page sets mute directly."
+  },
+  {
+   "pattern": "omarchy audio output sink",
+   "reason": "Used by the Sound page to find the real volume sink."
+  },
+  {
+   "pattern": "omarchy audio output switch",
+   "reason": "Media-key action; the Sound page selects outputs directly."
+  },
+  {
+   "pattern": "omarchy audio output volume",
+   "reason": "Media-key action; the Sound page sets volume directly."
+  },
+  {
+   "pattern": "omarchy audio output set default",
+   "reason": "Used by the Sound page."
+  },
+  {
+   "pattern": "omarchy audio input set default",
+   "reason": "Used by the Sound page."
+  },
+  {
+   "pattern": "omarchy audio sink availability",
+   "reason": "Shell rendering helper."
+  },
+  {
+   "pattern": "omarchy audio source switch",
+   "reason": "Media-key action."
+  },
+  {
+   "pattern": "omarchy bluetooth device",
+   "reason": "Used by the Sound page."
+  },
+  {
+   "pattern": "omarchy bluetooth power",
+   "reason": "Used by the Sound page."
+  },
+  {
+   "pattern": "omarchy capture screenrecording with webcam",
+   "reason": "Reached through Screen recording."
+  },
+  {
+   "pattern": "omarchy power present",
+   "reason": "Capability probe."
+  },
+  {
+   "pattern": "omarchy powerprofiles init",
+   "reason": "Boot-time initialization owned by the session."
+  },
+  {
+   "pattern": "omarchy network password",
+   "reason": "Prints a secret; deliberately not surfaced."
+  },
+  {
+   "pattern": "omarchy network speedtest",
+   "reason": "Reached through Network Speed Test."
+  },
+  {
+   "pattern": "omarchy disk speedtest",
+   "reason": "Reached through Disk Speed Test."
+  },
+  {
+   "pattern": "omarchy plugin clone",
+   "reason": "Used by the Plugins block."
+  },
+  {
+   "pattern": "omarchy plugin disable",
+   "reason": "Used by the Plugins block."
+  },
+  {
+   "pattern": "omarchy plugin enable",
+   "reason": "Used by the Plugins block."
+  },
+  {
+   "pattern": "omarchy plugin list",
+   "reason": "Used by the Plugins block."
+  },
+  {
+   "pattern": "omarchy plugin remove",
+   "reason": "Used by the Plugins block."
+  },
+  {
+   "pattern": "omarchy dictation",
+   "reason": "Recording action belongs to its shortcut, not settings."
+  },
+  {
+   "pattern": "omarchy dictation superwhisper",
+   "reason": "Recording action belongs to its shortcut, not settings."
+  },
+  {
+   "pattern": "omarchy dictation voxtype",
+   "reason": "Recording action belongs to its shortcut, not settings."
+  },
+  {
+   "pattern": "omarchy migrate notify",
+   "reason": "Update internals."
+  },
+  {
+   "pattern": "omarchy update dev",
+   "reason": "Contributor workflow."
+  },
+  {
+   "pattern": "omarchy version",
+   "reason": "Shown as Omarchy version."
+  },
+  {
+   "pattern": "omarchy toggle",
+   "reason": "Generic flag helper; each flag has a typed setting."
+  },
+  {
+   "pattern": "omarchy toggle enabled",
+   "reason": "Flag query helper."
+  },
+  {
+   "pattern": "omarchy toggle fullscreen desktop",
+   "reason": "Session action reached by its Omarchy shortcut."
+  },
+  {
+   "pattern": "omarchy toggle hybrid gpu",
+   "reason": "Reached through Switch GPU mode."
+  },
+  {
+   "pattern": "omarchy hyprland focus app",
+   "reason": "Window action, not a setting."
+  },
+  {
+   "pattern": "omarchy hyprland monitor focused",
+   "reason": "Query used by scripts."
+  },
+  {
+   "pattern": "omarchy hyprland monitor focused apple",
+   "reason": "Query used by scripts."
+  },
+  {
+   "pattern": "omarchy hyprland monitor laptop",
+   "reason": "Query used by scripts."
+  },
+  {
+   "pattern": "omarchy hyprland monitor watch",
+   "reason": "Session service."
+  },
+  {
+   "pattern": "omarchy hyprland monitor internal",
+   "reason": "Reached through Laptop display on or off."
+  },
+  {
+   "pattern": "omarchy hyprland monitor internal mirror",
+   "reason": "Reached through Mirror the laptop display."
+  },
+  {
+   "pattern": "omarchy hyprland toggle",
+   "reason": "Generic flag helper; each flag has a typed setting."
+  },
+  {
+   "pattern": "omarchy hyprland toggle disabled",
+   "reason": "Flag query helper."
+  },
+  {
+   "pattern": "omarchy hyprland toggle enabled",
+   "reason": "Flag query helper."
+  },
+  {
+   "pattern": "omarchy hyprland window *",
+   "reason": "Window actions bound to shortcuts; persistent settings are catalogued separately."
+  },
+  {
+   "pattern": "omarchy hyprland workspace layout current",
+   "reason": "Query used by scripts."
+  },
+  {
+   "pattern": "omarchy hyprland workspace layout toggle",
+   "reason": "Workspace action bound to a shortcut."
+  },
+  {
+   "pattern": "omarchy branding about",
+   "reason": "Reached through Branding."
+  },
+  {
+   "pattern": "omarchy branding screensaver",
+   "reason": "Reached through Branding."
+  },
+  {
+   "pattern": "omarchy screensaver",
+   "reason": "The screensaver itself; reached through Screensaver."
+  },
+  {
+   "pattern": "omarchy pkg aur accessible",
+   "reason": "Capability probe."
+  },
+  {
+   "pattern": "omarchy pkg missing",
+   "reason": "Capability probe."
+  },
+  {
+   "pattern": "omarchy pkg present",
+   "reason": "Capability probe."
+  },
+  {
+   "pattern": "omarchy system lock",
+   "reason": "Reached through Lock."
+  },
+  {
+   "pattern": "omarchy system stats",
+   "reason": "Bar rendering helper."
+  },
+  {
+   "pattern": "omarchy system wake",
+   "reason": "Session internals."
+  },
+  {
+   "pattern": "omarchy system",
+   "reason": "Reached through Logout, Reboot, and Shutdown."
+  },
+  {
+   "pattern": "omarchy capture screenshot",
+   "reason": "Reached through Screenshot."
+  },
+  {
+   "pattern": "omarchy capture screenrecording",
+   "reason": "Reached through Screen recording."
+  },
+  {
+   "pattern": "omarchy capture text",
+   "reason": "Reached through Copy text from the screen."
+  },
+  {
+   "pattern": "omarchy capture qr",
+   "reason": "Reached through Read a QR code."
+  },
+  {
+   "pattern": "omarchy transcode",
+   "reason": "Reached through Transcode."
+  },
+  {
+   "pattern": "omarchy reminder",
+   "reason": "Reached through Reminders."
+  },
+  {
+   "pattern": "omarchy setup *",
+   "reason": "Each setup route is catalogued through its menu node."
+  },
+  {
+   "pattern": "omarchy install *",
+   "reason": "Install routes without a menu node are catalogued by hand; any other is a dependency of one."
+  },
+  {
+   "pattern": "omarchy remove *",
+   "reason": "Remove routes without a menu node are catalogued by hand; any other is a dependency of one."
+  },
+  {
+   "pattern": "omarchy refresh *",
+   "reason": "Each reset route is catalogued through its menu node or by hand."
+  },
+  {
+   "pattern": "omarchy restart *",
+   "reason": "Each restart route is catalogued through its menu node or by hand."
+  },
+  {
+   "pattern": "omarchy tui *",
+   "reason": "Reached through Install TUI and Remove TUI."
+  },
+  {
+   "pattern": "omarchy webapp *",
+   "reason": "Reached through Install Web App and Remove Web App."
+  },
+  {
+   "pattern": "omarchy plymouth *",
+   "reason": "Reached through Choose boot and unlock theme."
+  },
+  {
+   "pattern": "omarchy font *",
+   "reason": "Fonts are a typed setting; reached through Install Font."
+  },
+  {
+   "pattern": "omarchy brightness *",
+   "reason": "Used by the Screen brightness setting and backlight action."
+  }
+ ],
+ "menu": [
+  {
+   "pattern": "trigger.hardware.touchpad-haptics",
+   "reason": "Submenu; the levels are catalogued."
+  },
+  {
+   "pattern": "setup.default.agent",
+   "reason": "Submenu; the agents are catalogued."
+  }
+ ]
+}

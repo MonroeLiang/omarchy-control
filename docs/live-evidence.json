@@ -1,0 +1,306 @@
+{
+ "accounts.firewall": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "accounts.sshd": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "appearance.animations": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.background": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.border": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.corners": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.dim": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.dim_strength": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.font": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.fontcjk": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.gaps": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.gaps_in": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.gaps_out": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.plymouth": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "appearance.singlewindow": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.textsize": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.theme": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "appearance.transparency": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "apps.default.agent": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "apps.default.browser": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "apps.default.dictation": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "apps.default.editor": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "apps.default.terminal": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.bar.background": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.bar.position": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.bar.visible": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.clock.format": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.clock.vertical": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.crashcapture": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.dnd": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.dock.autohide": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.dock.position": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.layout": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "desktop.themesync": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "displays.brightness": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "displays.nightlight": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "displays.scale": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.accel": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.dictation.language": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "input.dictation.login": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "input.dictation.mode": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "input.dictation.paste": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "input.dictation.tone": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "input.follow_mouse": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.natural_mouse": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.numlock": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.repeat_delay": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.repeat_rate": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.sensitivity": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.touchpad": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.touchscreen": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "input.tp_click": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.tp_drag": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.tp_dwt": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.tp_natural": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.tp_scroll": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "input.tp_tap": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "network.band": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "network.dns": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "power.hibernation": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "power.idle.lock": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "power.idle.screensaver": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "power.profile": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "power.profile.ac": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "power.profile.battery": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "power.screensaver": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "power.stayawake": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "power.suspend": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ },
+ "system.channel": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "system.kernel": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "system.language": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "system.lastupgrade": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "system.ntp": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "system.timezone": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "system.version": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
+ "system.weather": {
+  "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
+  "status": "verified"
+ }
+}

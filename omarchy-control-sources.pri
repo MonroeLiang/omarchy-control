@@ -1,0 +1,59 @@
+# Everything except main(), shared with the test binary and screenshot harness.
+INCLUDEPATH += $$PWD/src
+
+HEADERS += \
+    $$PWD/src/env.h \
+    $$PWD/src/commandrunner.h \
+    $$PWD/src/fileops.h \
+    $$PWD/src/theme.h \
+    $$PWD/src/translator.h \
+    $$PWD/src/iconprovider.h \
+    $$PWD/src/catalog.h \
+    $$PWD/src/capabilities.h \
+    $$PWD/src/hypromodule.h \
+    $$PWD/src/changecoordinator.h \
+    $$PWD/src/settingsengine.h \
+    $$PWD/src/helperlauncher.h \
+    $$PWD/src/audioprovider.h \
+    $$PWD/src/bluetoothprovider.h \
+    $$PWD/src/networkprovider.h \
+    $$PWD/src/displayprovider.h \
+    $$PWD/src/servicesprovider.h \
+    $$PWD/src/shortcutsprovider.h \
+    $$PWD/src/pluginsprovider.h \
+    $$PWD/src/systemprovider.h \
+    $$PWD/src/windowrulesprovider.h \
+    $$PWD/src/compat.h \
+    $$PWD/src/appcore.h \
+    $$PWD/src/backend.h \
+    $$PWD/src/coverage.h \
+    $$PWD/src/cli.h \
+    $$PWD/src/gui.h
+
+SOURCES += \
+    $$PWD/src/env.cpp \
+    $$PWD/src/commandrunner.cpp \
+    $$PWD/src/fileops.cpp \
+    $$PWD/src/theme.cpp \
+    $$PWD/src/translator.cpp \
+    $$PWD/src/iconprovider.cpp \
+    $$PWD/src/catalog.cpp \
+    $$PWD/src/capabilities.cpp \
+    $$PWD/src/hypromodule.cpp \
+    $$PWD/src/changecoordinator.cpp \
+    $$PWD/src/settingsengine.cpp \
+    $$PWD/src/helperlauncher.cpp \
+    $$PWD/src/audioprovider.cpp \
+    $$PWD/src/bluetoothprovider.cpp \
+    $$PWD/src/networkprovider.cpp \
+    $$PWD/src/displayprovider.cpp \
+    $$PWD/src/servicesprovider.cpp \
+    $$PWD/src/shortcutsprovider.cpp \
+    $$PWD/src/pluginsprovider.cpp \
+    $$PWD/src/systemprovider.cpp \
+    $$PWD/src/windowrulesprovider.cpp \
+    $$PWD/src/compat.cpp \
+    $$PWD/src/backend.cpp \
+    $$PWD/src/coverage.cpp \
+    $$PWD/src/cli.cpp \
+    $$PWD/src/gui.cpp

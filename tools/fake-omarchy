@@ -1,0 +1,88 @@
+#!/bin/bash
+# Synthetic stand-ins for system tools. Values are fictional; state lives in the
+# sandbox, so it behaves like the real thing without touching anything real.
+name=$(basename "$0")
+T=$HOME/.local/state/omarchy/toggles
+kv() { local f="$HOME/.sandbox-$1"; [ -f "$f" ] && cat "$f" || echo "$2"; }
+setkv() { printf '%s\n' "$2" >"$HOME/.sandbox-$1"; }
+case "$name" in
+pactl)
+  case "$*" in
+    "-f json list sinks") echo '[{"index":1,"state":"RUNNING","name":"alsa_output.speakers","description":"Built-in Speakers","mute":false,"volume":{"front-left":{"value_percent":"65%"}},"properties":{"object.id":"42"}},{"index":2,"state":"SUSPENDED","name":"bluez_output.headphones","description":"Wireless Headphones","mute":false,"volume":{"front-left":{"value_percent":"40%"}},"properties":{"object.id":"43"}}]';;
+    "-f json list sources") echo '[{"index":3,"state":"IDLE","name":"alsa_input.mic","description":"Built-in Microphone","mute":false,"volume":{"mono":{"value_percent":"80%"}},"properties":{"object.id":"44"}},{"index":4,"name":"alsa_output.speakers.monitor","description":"Monitor of Speakers","mute":false,"volume":{},"properties":{"device.class":"monitor"}}]';;
+    "-f json list sink-inputs") echo '[{"index":9,"sink":42,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"application.name":"Music Player","media.name":"Example Track"}}]';;
+    get-default-sink) echo alsa_output.speakers;;
+    get-default-source) echo alsa_input.mic;;
+  esac;;
+nmcli)
+  case "$*" in
+    "-t -f WIFI,CONNECTIVITY general") echo "enabled:full";;
+    "-t -f WIFI general") echo enabled;;
+    "-t -f DEVICE,TYPE,STATE,CONNECTION device") printf 'wlan0:wifi:connected:Home network\n';;
+    "-t -f NAME,UUID,TYPE,ACTIVE connection show") printf 'Home network:11111111-1111-1111-1111-111111111111:802-11-wireless:yes\nCafe:22222222-2222-2222-2222-222222222222:802-11-wireless:no\n';;
+    "-t -f IN-USE,SSID,SIGNAL,SECURITY device wifi list --rescan no") printf '*:Home network:82:WPA2\n :Cafe:54:WPA2\n :Neighbor:31:WPA3\n :Airport Free:22:\n';;
+  esac;;
+bluetoothctl)
+  case "$1" in
+    devices) printf 'Device AA:BB:CC:DD:EE:01 Wireless Headphones\nDevice AA:BB:CC:DD:EE:02 Example Mouse\n';;
+    info) if [ "$2" = "AA:BB:CC:DD:EE:01" ]; then printf 'Name: Wireless Headphones\nConnected: yes\nPaired: yes\nIcon: audio-headphones\nBattery Percentage: 0x4b (75)\n'; else printf 'Name: Example Mouse\nConnected: no\nPaired: yes\nIcon: input-mouse\n'; fi;;
+  esac;;
+systemctl)
+  case "$*" in
+    *list-units*--user*|--user*list-units*) echo '[{"unit":"sync-client.service","load":"loaded","active":"active","sub":"running","description":"Sync client"},{"unit":"broken-helper.service","load":"loaded","active":"failed","sub":"failed","description":"Example helper"}]';;
+    *list-units*) echo '[{"unit":"NetworkManager.service","load":"loaded","active":"active","sub":"running","description":"Network Manager"},{"unit":"sshd.service","load":"loaded","active":"inactive","sub":"dead","description":"OpenSSH server"}]';;
+    *list-unit-files*) echo '[{"unit_file":"sync-client.service","state":"enabled"},{"unit_file":"broken-helper.service","state":"enabled"},{"unit_file":"NetworkManager.service","state":"enabled"},{"unit_file":"sshd.service","state":"disabled"}]';;
+    is-active\ sshd) echo inactive; exit 3;;
+    is-active\ ufw) echo active;;
+  esac;;
+timedatectl)
+  case "$*" in
+    *Timezone*) echo Europe/Amsterdam;;
+    *NTP*) echo yes;;
+  esac;;
+xdg-mime) case "$2" in text/plain) echo code.desktop;; application/pdf) echo org.gnome.Evince.desktop;; *) echo;; esac;;
+omarchy)
+  case "$*" in
+    version) echo 4.5.0-3;;
+    "version pkgs") echo "Monday 02 November 2026 at 09:14";;
+    "channel current") echo stable;;
+    "kernel get") echo linux;;
+    "theme current") kv theme "Obsidian Circuit";;
+    "theme list") printf 'Catppuccin\nEverforest\nObsidian Circuit\nTokyo Night\n';;
+    "theme set "*) setkv theme "${*:3}";;
+    "font current") echo "JetBrainsMono Nerd Font";;
+    "font list") printf 'CaskaydiaMono Nerd Font\nJetBrainsMono Nerd Font\n';;
+    "font cjk") echo default;;
+    "display text size "*) sed -i "s/base-size = .*/base-size = $5/" "$HOME/.config/omarchy/shell.toml";;
+    "hyprland corners") echo theme;;
+    "hyprland window transparency") echo transparent;;
+    "hyprland workspace layout default") echo dwindle;;
+    "hyprland monitor scaling") echo 1.25;;
+    "bar position") echo top;;
+    "bar background") echo opaque;;
+    "bar get omarchy.clock format") echo "ddd d MMM HH:mm";;
+    "bar get omarchy.clock verticalFormat") printf 'HH\n—\nmm\n';;
+    "dock position") echo bottom;;
+    "dock autohide") echo off;;
+    "shell shell ping") echo ok;;
+    "shell notifications isDnd") echo off;;
+    "shell -q "*) ;;
+    "plugin list --json") echo '[{"id":"omarchy.audio","name":"Audio","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":true,"firstParty":true,"clonedFrom":""},{"id":"omarchy.clock","name":"Clock","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":false,"firstParty":true,"clonedFrom":""},{"id":"omarchy.weather","name":"Weather","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":true,"firstParty":true,"clonedFrom":""},{"id":"local.notes","name":"Notes","kinds":["bar-widget"],"enabled":false,"active":false,"canDisable":true,"firstParty":false,"clonedFrom":""}]';;
+    "audio output sink") echo alsa_output.speakers;;
+    "bluetooth power is-on") exit 0;;
+    "brightness display"*) echo 72;;
+    "powerprofiles list --active-state") printf 'power-saver\t0\nbalanced\t1\nperformance\t0\n';;
+    "powerprofiles list") printf 'power-saver\nbalanced\nperformance\n';;
+    "powerprofiles set"*) ;;
+    "toggle idle status") if [ -f "$HOME/.local/state/omarchy/indicators/stay-awake" ]; then echo '{"enabled":true}'; else echo '{"enabled":false}'; fi;;
+    "toggle nightlight --status") echo '{"enabled":false,"temperature":6500}';;
+    "hibernation available") exit 1;;
+    "dns") echo DHCP;;
+    "network band") echo auto;;
+    "default browser") echo firefox;;
+    "default terminal") echo foot;;
+    "default editor") echo nvim;;
+    "plymouth current") echo "Obsidian Circuit";;
+  esac;;
+esac
+exit 0
