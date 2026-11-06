@@ -18,15 +18,15 @@ Slider {
         x: root.leftPadding
         y: root.topPadding + root.availableHeight / 2 - height / 2
         width: root.availableWidth
-        height: 4
-        radius: 2
-        color: Qt.alpha(theme.foreground, 0.15)
+        height: 5
+        radius: theme.rounded ? 2.5 : 0
+        color: Qt.alpha(theme.foreground, 0.17)
         Rectangle {
             readonly property real low: Math.min(root.origin, root.position)
             readonly property real high: Math.max(root.origin, root.position)
             width: (high - low) * parent.width
             height: parent.height
-            radius: 2
+            radius: parent.radius
             color: theme.accent
             x: root.mirrored ? parent.width * (1 - high) : parent.width * low
         }
@@ -37,7 +37,7 @@ Slider {
         y: root.topPadding + root.availableHeight / 2 - height / 2
         width: diameter
         height: diameter
-        radius: diameter / 2
+        radius: theme.rounded ? diameter / 2 : 0
         color: theme.foreground
         border.width: root.visualFocus ? 3 : 0
         border.color: theme.accent

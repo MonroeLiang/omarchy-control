@@ -71,7 +71,7 @@ Item {
             onPressedChanged: if (!pressed) root.volume(Math.round(value))
             Keys.onReleased: function (event) { if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) root.volume(Math.round(value)) }
         }
-        AppText { Layout.minimumWidth: 50; horizontalAlignment: Text.AlignRight; text: Math.round(slider.value).toLocaleString(Qt.locale(), "f", 0) + "%" }
+        AppText { Layout.minimumWidth: 50; horizontalAlignment: Text.AlignRight; mono: true; text: Math.round(slider.value).toLocaleString(Qt.locale(), "f", 0) + "%" }
     }
-    Rectangle { visible: !root.last; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 14; anchors.rightMargin: 14; height: 1; color: theme.divider; opacity: 0.6 }
+    Rectangle { visible: !root.last; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 14; anchors.rightMargin: 14; height: 1; color: theme.hairline }
 }

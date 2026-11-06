@@ -12,8 +12,8 @@ ApplicationWindow {
     minimumHeight: 460
     visible: true
     title: qsTr("Omarchy Control")
-    color: theme.window
-    font.family: "monospace"
+    color: theme.canvas
+    font.family: theme.uiFont
     font.pixelSize: theme.fontSize
 
     Material.theme: theme.dark ? Material.Dark : Material.Light
@@ -21,7 +21,7 @@ ApplicationWindow {
     Material.primary: theme.accent
     Material.background: theme.window
     Material.foreground: theme.foreground
-    Material.roundedScale: theme.radius
+    Material.roundedScale: theme.controlRadius
 
     property string currentPage: "overview"
     property string focusRequest: ""
@@ -248,7 +248,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.round(theme.fontSize * 3.6)
-                color: theme.sidebar
+                color: theme.canvas
                 RowLayout {
                     anchors.fill: parent
                     spacing: 0
@@ -264,8 +264,8 @@ ApplicationWindow {
                             AppText {
                                 visible: !win.narrow
                                 text: qsTr("Omarchy Control")
-                                font.bold: true
-                                scale_: 1.1
+                                font.weight: Font.DemiBold
+                                scale_: 1.15
                                 Layout.fillWidth: true
                             }
                         }
@@ -294,15 +294,15 @@ ApplicationWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: keyHint.implicitWidth + 14
                                 height: parent.height - 12
-                                radius: Math.min(4, theme.radius)
-                                color: theme.raised
+                                radius: theme.controlRadius
+                                color: Qt.alpha(theme.foreground, 0.09)
                                 visible: !searchField.activeFocus
-                                AppText { id: keyHint; anchors.centerIn: parent; text: "Ctrl K"; secondary: true; scale_: 0.88 }
+                                AppText { id: keyHint; anchors.centerIn: parent; text: "Ctrl K"; secondary: true; mono: true; scale_: 0.88 }
                             }
                         }
                     }
                 }
-                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: theme.divider }
+                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: theme.hairline }
             }
 
             RowLayout {
@@ -314,7 +314,7 @@ ApplicationWindow {
                 Rectangle {
                     Layout.fillHeight: true
                     Layout.preferredWidth: win.sidebarWidth
-                    color: theme.sidebar
+                    color: theme.rail
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 8
@@ -350,11 +350,30 @@ ApplicationWindow {
                                     ToolTip.visible: win.narrow && hovered
                                     ToolTip.text: qsTranslate("catalog", modelData.label)
                                     background: Rectangle {
-                                        radius: Math.min(4, theme.radius)
-                                        color: navButton.selected ? Qt.alpha(theme.accent, 0.16) : navButton.down ? Qt.alpha(theme.foreground, 0.1) : navButton.hovered ? Qt.alpha(theme.foreground, 0.05) : "transparent"
-                                        border.width: navButton.visualFocus ? 2 : 0
-                                        border.color: theme.accent
+                                        radius: theme.controlRadius
+                                        color: navButton.selected ? "transparent" : navButton.down ? Qt.alpha(theme.foreground, 0.1) : navButton.hovered ? Qt.alpha(theme.foreground, 0.05) : "transparent"
                                         Behavior on color { enabled: theme.animate; ColorAnimation { duration: 100 } }
+                                        // The accent, fading away from the reading edge.
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            visible: navButton.selected
+                                            radius: parent.radius
+                                            border.width: 1
+                                            border.color: Qt.alpha(theme.accent, 0.28)
+                                            gradient: Gradient {
+                                                orientation: Gradient.Horizontal
+                                                GradientStop { position: 0; color: Qt.alpha(theme.accent, navButton.mirrored ? 0.1 : 0.3) }
+                                                GradientStop { position: 1; color: Qt.alpha(theme.accent, navButton.mirrored ? 0.3 : 0.1) }
+                                            }
+                                        }
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            visible: navButton.visualFocus
+                                            radius: parent.radius
+                                            color: "transparent"
+                                            border.width: 2
+                                            border.color: theme.accent
+                                        }
                                     }
                                     contentItem: RowLayout {
                                         spacing: 12
@@ -362,7 +381,8 @@ ApplicationWindow {
                                         AppIcon {
                                             name: modelData.icon
                                             size: 18
-                                            tint: navButton.selected ? theme.accentText : theme.muted
+                                            tint: navButton.selected ? theme.accentText : theme.foreground
+                                            opacity: navButton.selected ? 1 : 0.8
                                         }
                                         AppText {
                                             visible: !win.narrow
@@ -382,6 +402,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 text: backend.omarchyVersion ? qsTr("Omarchy %1").arg(backend.omarchyVersion.split("-")[0]) : ""
                                 secondary: true
+                                mono: true
                                 scale_: 0.88
                             }
                             AppButton {
@@ -400,7 +421,7 @@ ApplicationWindow {
                         width: 1
                         height: parent.height
                         x: shell.LayoutMirroring.enabled ? 0 : parent.width - 1
-                        color: theme.divider
+                        color: theme.hairline
                     }
                 }
 
@@ -437,7 +458,7 @@ ApplicationWindow {
                     Rectangle {
                         anchors.fill: parent
                         visible: searchField.text.trim().length > 0
-                        color: theme.window
+                        color: theme.canvas
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: 20
@@ -470,7 +491,7 @@ ApplicationWindow {
                                     Accessible.name: qsTranslate("catalog", modelData.label)
                                     onClicked: win.openResult(modelData)
                                     background: Rectangle {
-                                        radius: Math.min(4, theme.radius)
+                                        radius: theme.controlRadius
                                         color: ListView.isCurrentItem || hit.ListView.isCurrentItem ? Qt.alpha(theme.accent, 0.18) : hit.hovered ? Qt.alpha(theme.foreground, 0.05) : "transparent"
                                     }
                                     contentItem: RowLayout {

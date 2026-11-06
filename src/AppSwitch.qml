@@ -26,6 +26,7 @@ AbstractButton {
         AppText {
             text: root.unknown ? "…" : root.on ? qsTr("On") : qsTr("Off")
             secondary: true
+            mono: true
             horizontalAlignment: Text.AlignRight
             Layout.minimumWidth: Math.round(theme.fontSize * 2)
         }
@@ -34,16 +35,17 @@ AbstractButton {
             opacity: root.enabled ? (root.busy ? 0.6 : 1) : 0.45
             implicitWidth: 44
             implicitHeight: 24
-            radius: height / 2
+            // Round only where the desktop is.
+            radius: theme.rounded ? height / 2 : 0
             color: root.on ? (root.hovered ? Qt.darker(theme.accent, 1.08) : theme.accent)
-                           : Qt.alpha(theme.foreground, root.hovered ? 0.24 : 0.15)
+                           : Qt.alpha(theme.foreground, root.hovered ? 0.26 : 0.17)
             border.width: root.visualFocus ? 2 : 0
             border.color: root.on ? theme.foreground : theme.accent
             Behavior on color { enabled: theme.animate; ColorAnimation { duration: 120 } }
             Rectangle {
                 width: 18
                 height: 18
-                radius: 9
+                radius: theme.rounded ? 9 : 0
                 y: 3
                 x: root.unknown ? 13 : root.on !== root.mirrored ? parent.width - width - 3 : 3
                 color: root.on ? theme.accentForeground : theme.foreground

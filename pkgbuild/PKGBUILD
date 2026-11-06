@@ -25,6 +25,7 @@ package() {
   cd "$startdir/.."
   install -Dm755 build/omarchy-control "$pkgdir/usr/bin/omarchy-control"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 src/fonts/Inter-LICENSE.txt "$pkgdir/usr/share/licenses/$pkgname/Inter-LICENSE.txt"
   install -Dm644 "$startdir/omarchy-control.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/omarchy-control.svg"
   install -Dm644 "$startdir/omarchy-control.desktop" "$pkgdir/usr/share/applications/omarchy-control.desktop"
 }

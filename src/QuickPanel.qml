@@ -1,62 +1,53 @@
 import QtQuick
 import QtQuick.Layouts
 
-// One card of Overview's quick settings: header, controls, and footer links that sit
-// on the same line as the card beside it.
-Rectangle {
+// One card of Overview's quick settings: a title, controls, and footer links.
+AppPanel {
     id: root
     property string title: ""
     property string icon: ""
-    default property alias content: controls.data
+    // The last card in a column takes up the slack, so both columns end level.
+    property bool stretch: false
+    default property alias body: controls.data
     property alias footer: footerRow.data
 
     Layout.fillWidth: true
-    Layout.fillHeight: true
+    Layout.fillHeight: stretch
     implicitHeight: header.height + controls.implicitHeight + footerArea.height + 1
-    radius: theme.radius
-    color: Qt.alpha(theme.raised, 0.25)
-    border.width: 1
-    border.color: theme.divider
 
-    Rectangle {
+    Item {
         id: header
-        width: parent.width
-        height: Math.round(theme.fontSize * 2.9)
-        color: Qt.alpha(theme.raised, 0.7)
-        radius: theme.radius
-        // Only the outer corners are rounded; the edge above the controls is square.
-        Rectangle {
-            anchors.bottom: parent.bottom
-            width: parent.width
-            height: Math.min(parent.radius, parent.height)
-            color: parent.color
-            visible: parent.radius > 0
-        }
+        parent: root
+        width: root.width
+        height: Math.round(theme.fontSize * 3.2)
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 14
-            anchors.rightMargin: 14
-            spacing: 10
-            AppIcon { name: root.icon; size: 18; tint: theme.muted }
-            AppText { text: root.title; font.bold: true; Layout.fillWidth: true }
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            spacing: 12
+            AppIcon { name: root.icon; size: 19 }
+            AppText { text: root.title; font.weight: Font.DemiBold; scale_: 1.15; Layout.fillWidth: true }
         }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: theme.hairline }
     }
     Column {
         id: controls
-        anchors.top: header.bottom
-        width: parent.width
+        parent: root
+        y: header.height
+        width: root.width
     }
     Item {
         id: footerArea
+        parent: root
         visible: footerRow.children.length > 0
-        anchors.bottom: parent.bottom
-        width: parent.width
-        height: visible ? footerRow.implicitHeight + 14 : 0
-        Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 14; anchors.rightMargin: 14; height: 1; color: theme.divider; opacity: 0.6 }
+        y: root.height - height
+        width: root.width
+        height: visible ? footerRow.implicitHeight + 16 : 0
+        Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 14; anchors.rightMargin: 14; height: 1; color: theme.hairline }
         Row {
             id: footerRow
             anchors.left: parent.left
-            anchors.leftMargin: 14
+            anchors.leftMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 20
         }

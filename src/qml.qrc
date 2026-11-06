@@ -39,6 +39,7 @@
         <file alias="SectionBlock.qml">SectionBlock.qml</file>
         <file alias="SettingRow.qml">SettingRow.qml</file>
         <file alias="ShortcutsOverlay.qml">ShortcutsOverlay.qml</file>
+        <file alias="ThemePreview.qml">ThemePreview.qml</file>
         <file alias="ToastBar.qml">ToastBar.qml</file>
         <file alias="icons/accounts.svg">icons/accounts.svg</file>
         <file alias="icons/advanced.svg">icons/advanced.svg</file>

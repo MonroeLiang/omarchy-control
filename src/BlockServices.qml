@@ -15,8 +15,8 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
-        AppText { text: qsTr("Services"); font.bold: true; scale_: 1.1 }
+        Layout.preferredHeight: Math.round(theme.fontSize * 2)
+        AppText { text: qsTr("Services"); font.weight: Font.DemiBold; scale_: 1.25 }
         AppText {
             Layout.fillWidth: true
             visible: root.services.failedCount > 0

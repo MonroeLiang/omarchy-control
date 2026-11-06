@@ -8,7 +8,6 @@ Rectangle {
     anchors.leftMargin: 14
     anchors.rightMargin: 14
     height: 1
-    color: theme.divider
-    opacity: 0.6
+    color: theme.hairline
     visible: !!parent.parent && parent.y + parent.height < parent.parent.height - 1
 }

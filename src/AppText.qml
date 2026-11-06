@@ -2,10 +2,13 @@ import QtQuick
 
 Text {
     property bool secondary: false
+    // Values, measurements, and identifiers: the desktop's own monospace font.
+    property bool mono: false
     property real scale_: 1
 
     color: secondary ? theme.muted : theme.foreground
-    font.family: "monospace"
+    font.family: mono ? "monospace" : theme.uiFont
+    // Arabic script reads small at Latin sizes.
     font.pixelSize: Math.round(theme.fontSize * scale_ * (Qt.application.layoutDirection === Qt.RightToLeft ? 1.1 : 1))
     wrapMode: Text.NoWrap
     elide: Text.ElideRight

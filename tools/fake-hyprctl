@@ -12,7 +12,7 @@ case "${args[0]}" in
   configerrors) echo '[""]';;
   getoption)
     case "${args[1]}" in
-      decoration:rounding) echo '{"int":0}';;
+      decoration:rounding) echo '{"int":10}';;
       general:gaps_in) echo '{"css":"5 5 5 5"}';;
       general:gaps_out) echo '{"css":"10 10 10 10"}';;
       general:border_size) echo '{"int":2}';;

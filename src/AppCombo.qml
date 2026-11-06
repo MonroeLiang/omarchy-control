@@ -10,7 +10,7 @@ ComboBox {
     font.family: "monospace"
     font.pixelSize: theme.fontSize
     Accessible.name: label
-    Material.roundedScale: theme.radius
+    Material.roundedScale: theme.controlRadius
     Material.foreground: theme.foreground
     Material.background: theme.raised
     Material.accent: theme.accent
@@ -19,13 +19,14 @@ ComboBox {
     opacity: enabled ? 1 : 0.55
 
     background: Rectangle {
-        radius: Math.min(4, theme.radius)
+        radius: theme.controlRadius
         color: root.down ? Qt.alpha(theme.foreground, 0.1) : root.hovered ? Qt.alpha(theme.foreground, 0.06) : "transparent"
         border.width: root.visualFocus ? 2 : 1
         border.color: root.visualFocus ? theme.accent : theme.divider
         Behavior on color { enabled: theme.animate; ColorAnimation { duration: 100 } }
     }
     contentItem: AppText {
+        mono: true
         leftPadding: root.mirrored ? 30 : 12
         rightPadding: root.mirrored ? 12 : 30
         verticalAlignment: Text.AlignVCenter
@@ -61,6 +62,7 @@ ComboBox {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
+                mono: true
                 text: root.textAt(option.index)
             }
             AppIcon {
@@ -90,10 +92,10 @@ ComboBox {
             ScrollBar.vertical: AppScrollBar {}
         }
         background: Rectangle {
-            radius: Math.min(4, theme.radius)
-            color: theme.window
+            radius: theme.controlRadius
+            color: theme.surfaceTop
             border.width: 1
-            border.color: theme.divider
+            border.color: theme.controlBorder
         }
     }
 }

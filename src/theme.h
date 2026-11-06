@@ -31,6 +31,18 @@ class Theme : public QObject {
     Q_PROPERTY(QString dangerText READ dangerText NOTIFY changed)
     Q_PROPERTY(QString warningText READ warningText NOTIFY changed)
     Q_PROPERTY(int rowHeight READ rowHeight NOTIFY changed)
+    Q_PROPERTY(QString canvas READ canvas NOTIFY changed)
+    Q_PROPERTY(QString rail READ rail NOTIFY changed)
+    Q_PROPERTY(QString surfaceTop READ surfaceTop NOTIFY changed)
+    Q_PROPERTY(QString surfaceBottom READ surfaceBottom NOTIFY changed)
+    Q_PROPERTY(QString hairline READ hairline NOTIFY changed)
+    Q_PROPERTY(QString controlBorder READ controlBorder NOTIFY changed)
+    Q_PROPERTY(QString goodText READ goodText NOTIFY changed)
+    Q_PROPERTY(int panelRadius READ panelRadius NOTIFY changed)
+    Q_PROPERTY(int controlRadius READ controlRadius NOTIFY changed)
+    Q_PROPERTY(bool rounded READ rounded NOTIFY changed)
+    Q_PROPERTY(QString uiFont READ uiFont CONSTANT)
+    Q_PROPERTY(QString wallpaper READ wallpaper NOTIFY changed)
     Q_PROPERTY(bool dark READ dark NOTIFY changed)
     Q_PROPERTY(int radius READ radius NOTIFY changed)
     Q_PROPERTY(int fontSize READ fontSize NOTIFY changed)
@@ -59,6 +71,23 @@ public:
     QString accentText() const { return onSurface(accent()); }
     QString dangerText() const { return onSurface(danger()); }
     QString warningText() const { return onSurface(warning()); }
+    QString goodText() const { return onSurface(good()); }
+    // The surfaces come from the theme and take a trace of its accent, so a warm theme
+    // reads warm and a cold one reads cold, with nothing hard-coded to either.
+    QString canvas() const { return mix(m_dark ? mix(window(), deep(), 0.55) : window(), accent(), 0.02); }
+    QString rail() const { return mix(m_dark ? deep() : sidebar(), accent(), 0.015); }
+    QString surfaceTop() const { return mix(canvas(), m_dark ? foreground() : QStringLiteral("#ffffff"), m_dark ? 0.055 : 0.55); }
+    QString surfaceBottom() const { return mix(canvas(), m_dark ? foreground() : QStringLiteral("#ffffff"), m_dark ? 0.025 : 0.4); }
+    QString hairline() const { return withAlpha(foreground(), m_dark ? 0.12 : 0.16); }
+    QString controlBorder() const { return withAlpha(foreground(), m_dark ? 0.24 : 0.32); }
+    // The desktop decides: square stays square everywhere, and rounding scales from
+    // whatever Hyprland uses for its windows.
+    bool rounded() const { return m_radius > 0; }
+    int panelRadius() const { return qMin(m_radius, 14); }
+    int controlRadius() const { return m_radius > 0 ? qBound(4, m_radius * 2 / 3, 8) : 0; }
+    QString uiFont() const { return m_uiFont; }
+    // The picture actually on the desktop, when it is a still image.
+    QString wallpaper() const { return m_wallpaper; }
     // The height every ordinary row shares, whatever is in it.
     int rowHeight() const { return qRound(m_fontSize * 3.65); }
     bool dark() const { return m_dark; }
@@ -73,9 +102,13 @@ public:
     // What a theme looks like before choosing it: its preview image, if it ships one,
     // and its colors.
     Q_INVOKABLE QVariantMap preview(const QString &themeName) const;
+    // The address of a picture cut to size with rounded corners. Takes a path or file URL.
+    Q_INVOKABLE QString thumbnail(const QString &picture, int radius) const;
 
     static QHash<QString, QString> readColors(const QString &path);
     static double contrast(const QString &a, const QString &b);
+    static QString mix(const QString &from, const QString &to, double amount);
+    static QString withAlpha(const QString &color, double alpha);
     static QString readable(const QString &color, const QString &foreground, const QStringList &surfaces, double ratio = 4.5);
 
 signals:
@@ -83,8 +116,7 @@ signals:
 
 private:
     QString color(const QString &key, const QString &fallback) const { return m_colors.value(key, fallback); }
-    QString onSurface(const QString &value) const { return readable(value, foreground(), {window(), panel()}); }
-    QString panel() const;
+    QString onSurface(const QString &value) const { return readable(value, foreground(), {canvas(), surfaceTop()}); }
     void reload();
 
     Env m_env;
@@ -94,6 +126,8 @@ private:
     int m_fontSize = 13;
     bool m_animate = true;
     QString m_name;
+    QString m_uiFont;
+    QString m_wallpaper;
     QFileSystemWatcher m_watcher;
     QTimer m_debounce;
     QProcess m_rounding;

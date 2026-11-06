@@ -32,7 +32,7 @@ ColumnLayout {
                 AppText {
                     Layout.fillWidth: true
                     text: "Omarchy Control"
-                    font.bold: true
+                    font.weight: Font.DemiBold
                     scale_: 1.35
                 }
                 AppText {
@@ -71,7 +71,7 @@ ColumnLayout {
                     height: Math.round(theme.fontSize * 2)
                     spacing: 12
                     AppText { Layout.fillWidth: true; text: modelData.label }
-                    AppText { text: modelData.value; secondary: true }
+                    AppText { text: modelData.value; secondary: true; mono: true }
                 }
             }
         }

@@ -99,9 +99,9 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: 240
         color: theme.deep
-        radius: theme.radius
+        radius: theme.panelRadius
         border.width: 1
-        border.color: theme.divider
+        border.color: theme.hairline
         readonly property real pad: 24
         // The map sits in the middle of its well, whatever shape the layout makes.
         readonly property real originX: (width - root.bounds.width * unit) / 2
@@ -122,7 +122,7 @@ ColumnLayout {
                 color: movable ? Qt.alpha(theme.accent, drag.active ? 0.3 : 0.16) : Qt.alpha(theme.foreground, 0.07)
                 border.width: activeFocus ? 3 : movable ? 2 : 1
                 border.color: movable ? theme.accent : theme.divider
-                radius: Math.min(4, theme.radius)
+                radius: theme.controlRadius
                 activeFocusOnTab: movable
                 Accessible.role: movable ? Accessible.Button : Accessible.Graphic
                 // The same move without a mouse: arrows nudge, Shift nudges further.
@@ -144,7 +144,7 @@ ColumnLayout {
                 Column {
                     anchors.centerIn: parent
                     width: parent.width - 8
-                    AppText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: modelData.output; font.bold: true }
+                    AppText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: modelData.output; font.weight: Font.DemiBold }
                     AppText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.logicalWidth(modelData) + "×" + root.logicalHeight(modelData); secondary: true; scale_: 0.88 }
                 }
                 DragHandler {
@@ -248,7 +248,7 @@ ColumnLayout {
         AppText {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            font.bold: true
+            font.weight: Font.DemiBold
             text: qsTr("Keep this layout? Restoring the previous one in %n second(s).", "", displays.previewSeconds)
         }
         AppButton { text: qsTr("Restore now"); onClicked: displays.revert() }

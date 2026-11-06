@@ -29,12 +29,12 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
+        Layout.preferredHeight: Math.round(theme.fontSize * 2)
         spacing: 8
         AppText {
             text: qsTranslate("catalog", root.title)
-            font.bold: true
-            scale_: 1.1
+            font.weight: Font.DemiBold
+            scale_: 1.25
             Layout.fillWidth: true
             Accessible.role: Accessible.Heading
             Accessible.name: text

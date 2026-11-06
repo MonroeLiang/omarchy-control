@@ -23,8 +23,8 @@ Rectangle {
     anchors.bottomMargin: 18
     width: Math.min(row.implicitWidth + 28, parent.width - 40)
     height: row.implicitHeight + 18
-    radius: theme.radius
-    color: theme.raised
+    radius: theme.panelRadius
+    color: theme.surfaceTop
     border.width: 1
     border.color: kind === "error" ? theme.danger : kind === "warning" ? theme.warning : theme.accent
     opacity: 0

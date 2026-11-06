@@ -52,7 +52,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         AppText { Layout.fillWidth: true; text: modelData.connection || modelData.device }
-                        AppText { Layout.fillWidth: true; secondary: true; scale_: 0.88; text: modelData.device + " · " + modelData.state }
+                        AppText { Layout.fillWidth: true; secondary: true; mono: true; scale_: 0.88; text: modelData.device + " · " + modelData.state }
                     }
                     AppButton {
                         visible: modelData.connected && (modelData.type === "wifi" || modelData.type === "ethernet")
@@ -67,9 +67,9 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         Layout.topMargin: 18
-        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
+        Layout.preferredHeight: Math.round(theme.fontSize * 2)
         visible: hasWifi
-        AppText { text: qsTr("Wi-Fi"); font.bold: true; scale_: 1.1; Layout.fillWidth: true }
+        AppText { text: qsTr("Wi-Fi"); font.weight: Font.DemiBold; scale_: 1.25; Layout.fillWidth: true }
         AppButton { style: "flat"; implicitHeight: Math.round(theme.fontSize * 1.75); text: net.busy ? qsTr("Scanning…") : qsTr("Scan"); enabled: !net.busy && net.wifiEnabled; onClicked: net.rescan() }
         AppSwitch { label: qsTr("Wi-Fi"); on: net.wifiEnabled; enabled: net.status === "ok"; onClicked: win.setWifi(!on) }
     }
@@ -91,7 +91,7 @@ ColumnLayout {
                     spacing: 10
                     AppIcon { name: "wifi"; tint: modelData.active ? theme.accentText : theme.muted }
                     AppText { Layout.fillWidth: true; text: modelData.ssid }
-                    AppText { secondary: true; scale_: 0.88; text: qsTr("%1%").arg(modelData.signal) + (modelData.secured ? " · " + qsTr("Secured") : " · " + qsTr("Open")) }
+                    AppText { secondary: true; mono: true; scale_: 0.88; text: qsTr("%1%").arg(modelData.signal) + (modelData.secured ? " · " + qsTr("Secured") : " · " + qsTr("Open")) }
                     AppButton {
                         visible: !modelData.active
                         enabled: !net.busy

@@ -23,45 +23,56 @@ ScrollView {
     }
 
     ColumnLayout {
-        width: Math.min(root.availableWidth - 8, theme.fontSize * 72)
+        width: Math.min(root.availableWidth - 8, theme.fontSize * 92)
         x: root.mirrored ? root.availableWidth - width : 0
-        spacing: 26
+        spacing: 24
 
         Item { Layout.preferredHeight: 2 }
-        PageHeading {
-            Layout.fillWidth: true
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-            title: qsTr("Overview")
-            subtitle: qsTr("Settings and tools for this computer.")
-        }
-
-        // Status band: only things this app has actually established, said once.
-        AppPanel {
+        // The heading says where you are, and beside it, how this computer is doing:
+        // only what this app has actually established, said once.
+        GridLayout {
+            id: top
             readonly property var only: root.problems.length === 1 ? root.problems[0] : null
-            id: status
             Layout.fillWidth: true
             Layout.leftMargin: 20
             Layout.rightMargin: 20
+            columns: root.availableWidth > theme.fontSize * 58 ? 2 : 1
+            columnSpacing: 20
+            rowSpacing: 10
+            PageHeading {
+                Layout.fillWidth: true
+                title: qsTr("Overview")
+                subtitle: qsTr("Settings and tools for this computer.")
+            }
             RowLayout {
-                width: parent.width
-                height: theme.rowHeight
                 spacing: 12
-                Item { Layout.preferredWidth: 2 }
-                AppIcon { name: root.problems.length ? "warning" : "checkcircle"; tint: root.problems.length ? theme.warningText : theme.muted }
+                Rectangle {
+                    implicitWidth: 22
+                    implicitHeight: 22
+                    radius: theme.rounded ? 11 : 0
+                    color: root.problems.length ? theme.warningText : theme.goodText
+                    AppIcon {
+                        anchors.centerIn: parent
+                        name: root.problems.length ? "warning" : "check"
+                        size: 14
+                        tint: theme.dark ? theme.canvas : "#ffffff"
+                    }
+                }
                 AppText {
-                    Layout.fillWidth: true
-                    text: status.only ? status.only.text
+                    // Long messages wrap in the narrow layout rather than pushing the link away.
+                    Layout.maximumWidth: theme.fontSize * 34
+                    wrapMode: Text.Wrap
+                    text: top.only ? top.only.text
                         : root.problems.length ? qsTr("%n problem(s) to look at", "", root.problems.length)
                         : qsTr("No problems found")
                 }
+                Rectangle { implicitWidth: 1; implicitHeight: 26; Layout.leftMargin: 6; Layout.rightMargin: 6; color: theme.hairline }
                 AppButton {
                     style: "link"
-                    text: status.only ? qsTr("Open") : qsTr("View system")
+                    text: top.only ? qsTr("Open") : qsTr("View system")
                     iconName: "arrow"
-                    onClicked: win.go(status.only ? status.only.page : "system", "")
+                    onClicked: win.go(top.only ? top.only.page : "system", "")
                 }
-                Item { Layout.preferredWidth: 4 }
             }
         }
 
@@ -101,141 +112,169 @@ ScrollView {
             Layout.rightMargin: 20
             // Scales with text size, so large text gets one wide column rather than clipped labels.
             columns: root.availableWidth > theme.fontSize * 58 ? 2 : 1
-            columnSpacing: 12
-            rowSpacing: 12
+            columnSpacing: 14
+            rowSpacing: 14
 
-            QuickPanel {
-                title: qsTr("Appearance")
-                icon: "appearance"
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("appearance.theme") }
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("appearance.textsize"); last: true }
-                footer: [
-                    AppButton { style: "link"; text: qsTr("Customize appearance"); iconName: "arrow"; onClicked: win.go("appearance", "") }
-                ]
-            }
-            QuickPanel {
-                title: qsTr("Network & Bluetooth")
-                icon: "wifi"
-                Item {
-                    width: parent.width
-                    height: Math.max(wifiColumn.implicitHeight + 18, theme.rowHeight)
-                    RowLayout {
-                        id: wifiRow
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        ColumnLayout {
-                            id: wifiColumn
-                            Layout.fillWidth: true
-                            spacing: 2
-                            AppText { text: qsTr("Wi-Fi"); Layout.fillWidth: true }
-                            AppText {
+            // Two independent stacks, so a tall card never leaves a hole beside a short one.
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 100
+                Layout.alignment: Qt.AlignTop
+                spacing: 14
+                QuickPanel {
+                    title: qsTr("Appearance")
+                    icon: "appearance"
+                    Item {
+                        width: parent.width
+                        height: preview.implicitHeight + 24
+                        ThemePreview {
+                            id: preview
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            radius: theme.controlRadius
+                        }
+                    }
+                    SettingRow { width: parent.width; compact: true; entry: backend.entry("appearance.theme") }
+                    SettingRow { width: parent.width; compact: true; entry: backend.entry("appearance.textsize"); last: true }
+                    footer: [
+                        AppButton { style: "link"; text: qsTr("Customize appearance"); iconName: "arrow"; onClicked: win.go("appearance", "") }
+                    ]
+                }
+                QuickPanel {
+                    title: qsTr("Network & Bluetooth")
+                    icon: "wifi"
+                    stretch: true
+                    Item {
+                        width: parent.width
+                        height: Math.max(wifiColumn.implicitHeight + 18, theme.rowHeight)
+                        RowLayout {
+                            id: wifiRow
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            ColumnLayout {
+                                id: wifiColumn
                                 Layout.fillWidth: true
-                                secondary: true
-                                scale_: 0.88
-                                // A Latin network name must not flip the line in a right-to-left language.
-                                text: (root.mirrored ? "\u200F" : "") + (backend.network.status !== "ok" ? qsTr("NetworkManager is not responding")
-                                    : !backend.network.wifiEnabled ? qsTr("Off")
-                                    : root.connectedWifi ? qsTr("%1 · Connected").arg(root.connectedWifi.connection)
-                                    : qsTr("Not connected"))
+                                spacing: 2
+                                AppText { text: qsTr("Wi-Fi"); Layout.fillWidth: true }
+                                AppText {
+                                    Layout.fillWidth: true
+                                    secondary: true
+                                    scale_: 0.88
+                                    // A Latin network name must not flip the line in a right-to-left language.
+                                    text: (root.mirrored ? "\u200F" : "") + (backend.network.status !== "ok" ? qsTr("NetworkManager is not responding")
+                                        : !backend.network.wifiEnabled ? qsTr("Off")
+                                        : root.connectedWifi ? qsTr("%1 · Connected").arg(root.connectedWifi.connection)
+                                        : qsTr("Not connected"))
+                                }
+                            }
+                            AppSwitch {
+                                label: qsTr("Wi-Fi")
+                                on: backend.network.wifiEnabled
+                                enabled: backend.network.status === "ok"
+                                onClicked: win.setWifi(!on)
                             }
                         }
-                        AppSwitch {
-                            label: qsTr("Wi-Fi")
-                            on: backend.network.wifiEnabled
-                            enabled: backend.network.status === "ok"
-                            onClicked: win.setWifi(!on)
-                        }
+                        RowDivider {}
                     }
-                    RowDivider {}
-                }
-                Item {
-                    readonly property var bt: backend.bluetooth
-                    readonly property bool adapter: !!backend.capabilities.bluetooth
-                    width: parent.width
-                    height: Math.max(btColumn.implicitHeight + 18, theme.rowHeight)
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        ColumnLayout {
-                            id: btColumn
-                            Layout.fillWidth: true
-                            spacing: 2
-                            AppText { text: qsTr("Bluetooth"); Layout.fillWidth: true }
-                            AppText {
+                    Item {
+                        readonly property var bt: backend.bluetooth
+                        readonly property bool adapter: !!backend.capabilities.bluetooth
+                        width: parent.width
+                        height: Math.max(btColumn.implicitHeight + 18, theme.rowHeight)
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            ColumnLayout {
+                                id: btColumn
                                 Layout.fillWidth: true
-                                visible: !parent.parent.parent.adapter
-                                secondary: true
-                                scale_: 0.88
-                                text: qsTr("No Bluetooth adapter detected.")
+                                spacing: 2
+                                AppText { text: qsTr("Bluetooth"); Layout.fillWidth: true }
+                                AppText {
+                                    Layout.fillWidth: true
+                                    visible: !parent.parent.parent.adapter
+                                    secondary: true
+                                    scale_: 0.88
+                                    text: qsTr("No Bluetooth adapter detected.")
+                                }
+                            }
+                            AppSwitch {
+                                label: qsTr("Bluetooth")
+                                on: parent.parent.bt.powered
+                                busy: parent.parent.bt.busy
+                                enabled: parent.parent.adapter && !parent.parent.bt.busy && parent.parent.bt.status === "ok"
+                                onClicked: parent.parent.bt.setPowered(!on)
                             }
                         }
-                        AppSwitch {
-                            label: qsTr("Bluetooth")
-                            on: parent.parent.bt.powered
-                            busy: parent.parent.bt.busy
-                            enabled: parent.parent.adapter && !parent.parent.bt.busy && parent.parent.bt.status === "ok"
-                            onClicked: parent.parent.bt.setPowered(!on)
-                        }
                     }
+                    footer: [
+                        AppButton { style: "link"; text: qsTr("Open network panel"); iconName: "external"; onClicked: win.activate(backend.entry("panel.network")) }
+                    ]
                 }
-                footer: [
-                    AppButton { style: "link"; text: qsTr("Open network panel"); iconName: "external"; onClicked: win.activate(backend.entry("panel.network")) }
-                ]
             }
-            QuickPanel {
-                title: qsTr("Sound & display")
-                icon: "sound"
-                Item {
-                    width: parent.width
-                    height: theme.rowHeight + 1
-                    Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 14; anchors.rightMargin: 14; height: 1; color: theme.divider; opacity: 0.6 }
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.bottomMargin: 1
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        spacing: 10
-                        AppText { text: qsTr("Output volume"); Layout.fillWidth: true }
-                        AppSlider {
-                            id: volume
-                            label: qsTr("Output volume")
-                            Layout.preferredWidth: 150
-                            from: 0
-                            to: 100
-                            stepSize: 1
-                            enabled: backend.audio.defaultOutputVolume >= 0
-                            value: Math.min(100, Math.max(0, backend.audio.defaultOutputVolume))
-                            onPressedChanged: if (!pressed) win.setDefaultVolume(Math.round(value))
-                            Keys.onReleased: function (event) {
-                                if (event.key === Qt.Key_Left || event.key === Qt.Key_Right)
-                                    win.setDefaultVolume(Math.round(value))
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 100
+                Layout.alignment: Qt.AlignTop
+                spacing: 14
+                QuickPanel {
+                    title: qsTr("Sound & display")
+                    icon: "sound"
+                    stretch: true
+                    Item {
+                        width: parent.width
+                        height: theme.rowHeight + 1
+                        Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 14; anchors.rightMargin: 14; height: 1; color: theme.hairline }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.bottomMargin: 1
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            spacing: 10
+                            AppText { text: qsTr("Output volume"); Layout.fillWidth: true }
+                            AppSlider {
+                                id: volume
+                                label: qsTr("Output volume")
+                                Layout.preferredWidth: 150
+                                from: 0
+                                to: 100
+                                stepSize: 1
+                                enabled: backend.audio.defaultOutputVolume >= 0
+                                value: Math.min(100, Math.max(0, backend.audio.defaultOutputVolume))
+                                onPressedChanged: if (!pressed) win.setDefaultVolume(Math.round(value))
+                                Keys.onReleased: function (event) {
+                                    if (event.key === Qt.Key_Left || event.key === Qt.Key_Right)
+                                        win.setDefaultVolume(Math.round(value))
+                                }
+                            }
+                            AppText {
+                                Layout.minimumWidth: 50
+                                horizontalAlignment: Text.AlignRight
+                                text: backend.audio.defaultOutputVolume >= 0 ? Math.round(volume.value).toLocaleString(Qt.locale(), "f", 0) + "%" : "—"
                             }
                         }
-                        AppText {
-                            Layout.minimumWidth: 50
-                            horizontalAlignment: Text.AlignRight
-                            text: backend.audio.defaultOutputVolume >= 0 ? Math.round(volume.value).toLocaleString(Qt.locale(), "f", 0) + "%" : "—"
-                        }
                     }
+                    SettingRow { width: parent.width; compact: true; entry: backend.entry("displays.brightness") }
+                    SettingRow { width: parent.width; compact: true; entry: backend.entry("displays.nightlight"); last: true }
+                    footer: [
+                        AppButton { style: "link"; text: qsTr("Sound settings"); iconName: "arrow"; onClicked: win.go("sound", "") },
+                        AppButton { style: "link"; text: qsTr("Display settings"); iconName: "arrow"; onClicked: win.go("displays", "") }
+                    ]
                 }
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("displays.brightness") }
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("displays.nightlight"); last: true }
-                footer: [
-                    AppButton { style: "link"; text: qsTr("Sound settings"); iconName: "arrow"; onClicked: win.go("sound", "") },
-                    AppButton { style: "link"; text: qsTr("Display settings"); iconName: "arrow"; onClicked: win.go("displays", "") }
-                ]
-            }
-            QuickPanel {
-                title: qsTr("Power & session")
-                icon: "power"
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("power.profile") }
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("power.idle.lock") }
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("power.stayawake"); last: true }
-                footer: [
-                    AppButton { style: "link"; text: qsTr("Power settings"); iconName: "arrow"; onClicked: win.go("power", "") }
-                ]
+                QuickPanel {
+                    title: qsTr("Power & session")
+                    icon: "power"
+                    stretch: true
+                    SettingRow { width: parent.width; compact: true; entry: backend.entry("power.profile") }
+                    SettingRow { width: parent.width; compact: true; entry: backend.entry("power.idle.lock") }
+                    SettingRow { width: parent.width; compact: true; entry: backend.entry("power.stayawake"); last: true }
+                    footer: [
+                        AppButton { style: "link"; text: qsTr("Power settings"); iconName: "arrow"; onClicked: win.go("power", "") }
+                    ]
+                }
             }
         }
         }
@@ -300,7 +339,7 @@ ScrollView {
                             anchors.leftMargin: 14
                             anchors.rightMargin: 14
                             height: 1
-                            color: theme.divider
+                            color: theme.hairline
                             opacity: 0.6
                         }
                     }

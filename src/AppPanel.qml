@@ -1,14 +1,18 @@
 import QtQuick
 
-// A grouped surface: a thin border, no shadow, and square unless the desktop rounds.
+// A grouped surface: a faint vertical light and a hairline edge, no shadow. Its corners
+// are the desktop's.
 Rectangle {
     default property alias content: inner.data
     property int padding: 0
     implicitHeight: inner.implicitHeight + padding * 2
-    radius: theme.radius
-    color: Qt.alpha(theme.raised, 0.35)
+    radius: theme.panelRadius
     border.width: 1
-    border.color: theme.divider
+    border.color: theme.hairline
+    gradient: Gradient {
+        GradientStop { position: 0; color: theme.surfaceTop }
+        GradientStop { position: 1; color: theme.surfaceBottom }
+    }
     Column {
         id: inner
         anchors.left: parent.left

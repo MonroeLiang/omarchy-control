@@ -5,11 +5,11 @@ RowLayout {
     property string title: ""
     default property alias actions: tail.data
     spacing: 8
-    Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
+    Layout.preferredHeight: Math.round(theme.fontSize * 2)
     AppText {
         text: parent.title
-        font.bold: true
-        scale_: 1.1
+        font.weight: Font.DemiBold
+        scale_: 1.25
         Layout.fillWidth: true
     }
     Row {

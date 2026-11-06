@@ -8,8 +8,8 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
-        AppText { text: qsTr("Bluetooth"); font.bold: true; scale_: 1.1; Layout.fillWidth: true }
+        Layout.preferredHeight: Math.round(theme.fontSize * 2)
+        AppText { text: qsTr("Bluetooth"); font.weight: Font.DemiBold; scale_: 1.25; Layout.fillWidth: true }
         AppSwitch { visible: adapter; label: qsTr("Bluetooth"); on: bt.powered; busy: bt.busy; enabled: !bt.busy && bt.status === "ok"; onClicked: bt.setPowered(!on) }
     }
     AppText { visible: !adapter; text: qsTr("No Bluetooth adapter detected."); secondary: true }

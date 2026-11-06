@@ -38,13 +38,15 @@ Item {
             pinButton.forceActiveFocus(Qt.TabFocusReason)
     }
 
-    implicitHeight: Math.max(body.implicitHeight + 18, theme.rowHeight) + (last ? 0 : 1)
+    implicitHeight: Math.max(body.implicitHeight + 18, root.compact ? Math.round(theme.fontSize * 3.2) : theme.rowHeight) + (last ? 0 : 1)
     width: parent ? parent.width : 400
 
+    // Inset, so it never pokes past the corners of a rounded panel.
     Rectangle {
         anchors.fill: parent
-        anchors.bottomMargin: root.last ? 0 : 1
-        color: root.highlighted ? Qt.alpha(theme.accent, 0.14) : hover.hovered ? Qt.alpha(theme.foreground, 0.03) : "transparent"
+        anchors.margins: 3
+        radius: theme.controlRadius
+        color: root.highlighted ? Qt.alpha(theme.accent, 0.14) : hover.hovered ? Qt.alpha(theme.foreground, 0.04) : "transparent"
         Behavior on color { enabled: theme.animate; ColorAnimation { duration: 200 } }
     }
     HoverHandler { id: hover }
@@ -56,8 +58,7 @@ Item {
         anchors.leftMargin: 14
         anchors.rightMargin: 14
         height: 1
-        color: theme.divider
-        opacity: 0.6
+        color: theme.hairline
     }
 
     ColumnLayout {
@@ -370,6 +371,7 @@ Item {
             AppText {
                 Layout.minimumWidth: 60
                 horizontalAlignment: Text.AlignHCenter
+                mono: true
                 text: parent.pending.toLocaleString(Qt.locale(), "f", 0) + root.unitSuffix
             }
             AppButton {
@@ -405,6 +407,7 @@ Item {
             AppText {
                 Layout.minimumWidth: 50
                 horizontalAlignment: Text.AlignRight
+                mono: true
                 text: slider.value.toLocaleString(Qt.locale(), "f", root.kind === "float" ? 2 : 0) + root.unitSuffix
             }
         }
@@ -426,6 +429,7 @@ Item {
         AppText {
             text: root.status === "unknown" ? qsTr("Unknown") : (root.st.display || "")
             secondary: true
+            mono: true
             horizontalAlignment: Text.AlignRight
             Layout.maximumWidth: root.width * 0.5
         }

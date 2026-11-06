@@ -50,8 +50,8 @@ Popup {
     padding: 20
     Overlay.modal: Rectangle { color: Qt.alpha(theme.deep, 0.6) }
     background: Rectangle {
-        radius: theme.radius
-        color: theme.window
+        radius: theme.panelRadius
+        color: theme.surfaceTop
         border.width: 1
         border.color: root.danger ? theme.dangerText : theme.divider
     }
@@ -68,7 +68,7 @@ Popup {
         Accessible.role: Accessible.Dialog
         Accessible.name: root.heading
         spacing: 10
-        AppText { Layout.fillWidth: true; text: root.heading; font.bold: true; scale_: 1.1; wrapMode: Text.Wrap; Accessible.role: Accessible.Heading }
+        AppText { Layout.fillWidth: true; text: root.heading; font.weight: Font.DemiBold; scale_: 1.1; wrapMode: Text.Wrap; Accessible.role: Accessible.Heading }
         AppText { Layout.fillWidth: true; text: root.body; wrapMode: Text.Wrap; visible: text.length > 0 }
         Repeater {
             model: root.effects

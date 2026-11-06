@@ -37,17 +37,28 @@ sandbox_theme everforest dark "#a7c080" "#475258" "#2d353b" "#232a2e" "#d3c6aa"
 sandbox_theme obsidian-circuit dark "#ff9f0a" "#3a3a3c" "#1c1c1e" "#161618" "#f5f5f7"
 sandbox_theme tokyo-night dark "#7aa2f7" "#414868" "#1a1b26" "#16161e" "#c0caf5"
 python3 - "$H/.local/state/omarchy/current/theme/backgrounds" <<'PY'
-import struct, sys, zlib
-def png(path, top, bottom, w=320, h=200):
+import math, struct, sys, zlib
+def png(path, ink, seed, w=720, h=405):
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
-    rows = b"".join(b"\0" + bytes(int(a + (b - a) * ((y + x / 3) / (h + w / 3))) for a, b in zip(top, bottom) for x in [0]) * w for y in range(h))
+    rows = bytearray()
+    for y in range(h):
+        rows.append(0)
+        for x in range(w):
+            u, v = x / w, y / h
+            wave = 0.0
+            for i in range(4):
+                edge = 0.3 + i * 0.17 + 0.14 * math.sin(u * 5.2 + seed + i * 1.4) + 0.06 * math.sin(u * 13 + i)
+                wave += max(0.0, 1 - abs(v - edge) * (10 + i * 5)) ** 2 * (0.8 - i * 0.12)
+            wave = min(1.0, wave)
+            for c in ink:
+                rows.append(int(12 + (c - 12) * wave))
     with open(path, "wb") as f:
-        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(bytes(rows))) + chunk(b"IEND", b""))
 out = sys.argv[1]
-png(out + "/1-circuit.png", (28, 28, 30), (120, 72, 16))
-png(out + "/2-ember.png", (58, 22, 14), (214, 120, 30))
-png(out + "/3-dusk.png", (20, 24, 54), (140, 60, 110))
+png(out + "/1-circuit.png", (230, 145, 40), 0.4)
+png(out + "/2-ember.png", (214, 84, 40), 2.1)
+png(out + "/3-dusk.png", (150, 90, 190), 4.2)
 PY
 ln -sf "$H/.local/state/omarchy/current/theme/backgrounds/1-circuit.png" "$H/.local/state/omarchy/current/background"
 printf 'balanced\n' >"$H/.local/state/omarchy/powerprofiles/ac"

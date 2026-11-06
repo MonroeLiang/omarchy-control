@@ -62,8 +62,8 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         Layout.topMargin: 18
-        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
-        AppText { text: qsTr("Installed apps"); font.bold: true; scale_: 1.1; Layout.fillWidth: true }
+        Layout.preferredHeight: Math.round(theme.fontSize * 2)
+        AppText { text: qsTr("Installed apps"); font.weight: Font.DemiBold; scale_: 1.25; Layout.fillWidth: true }
         AppButton {
             style: "flat"
             implicitHeight: Math.round(theme.fontSize * 1.75)

@@ -2693,6 +2693,55 @@ private slots:
         QVERIFY(theme.preview("../../etc").isEmpty());
         QVERIFY(theme.preview(".hidden").isEmpty());
     }
+    void picturesAreCutToTheDesktopsCorners() {
+        Sandbox s;
+        fakeDesktop(s);
+        const QString path = s.dir.path() + "/a picture %.png";
+        QImage source(800, 200, QImage::Format_RGB32);
+        source.fill(Qt::red);
+        QVERIFY(source.save(path));
+        Theme theme(s.env);
+        IconProvider provider;
+        const auto request = [&](int radius) {
+            const QString id = theme.thumbnail(path, radius).mid(QString("image://icons/").size());
+            QSize size;
+            const QImage image = provider.requestImage(id, &size, QSize(160, 100));
+            return std::make_pair(image, size);
+        };
+        const auto [rounded, roundedSize] = request(12);
+        QCOMPARE(roundedSize, QSize(160, 100));
+        QCOMPARE(rounded.size(), QSize(160, 100));
+        QCOMPARE(qAlpha(rounded.pixel(0, 0)), 0);
+        QCOMPARE(qAlpha(rounded.pixel(80, 50)), 255);
+        // A square desktop gets square pictures, with no corner cut at all.
+        const auto [square, squareSize] = request(0);
+        Q_UNUSED(squareSize);
+        QCOMPARE(qAlpha(square.pixel(0, 0)), 255);
+        // A file URL means the same picture, and a missing one is simply empty.
+        QCOMPARE(theme.thumbnail(QUrl::fromLocalFile(path).toString(), 0), theme.thumbnail(path, 0));
+        QVERIFY(theme.thumbnail("", 4).isEmpty());
+        QSize size;
+        const QImage missing = provider.requestImage("thumb/4/" + QString::fromUtf8(QUrl::toPercentEncoding("/no/such.png")), &size, QSize(32, 32));
+        QCOMPARE(qAlpha(missing.pixel(16, 16)), 0);
+    }
+    void cornersFollowTheDesktop() {
+        Sandbox s;
+        fakeDesktop(s);
+        Theme theme(s.env);
+        QVERIFY(theme.radius() >= 0);
+        s.command("hyprctl", "echo '{\"int\":0}'");
+        theme.refreshRounding();
+        QTRY_COMPARE(theme.radius(), 0);
+        QCOMPARE(theme.panelRadius(), 0);
+        QCOMPARE(theme.controlRadius(), 0);
+        QVERIFY(!theme.rounded());
+        s.command("hyprctl", "echo '{\"int\":10}'");
+        theme.refreshRounding();
+        QTRY_COMPARE(theme.radius(), 10);
+        QCOMPARE(theme.panelRadius(), 10);
+        QVERIFY(theme.controlRadius() > 0 && theme.controlRadius() <= 10);
+        QVERIFY(theme.rounded());
+    }
     void overviewReadsEverySettingItShows() {
         // A row Overview draws but never reads sits on its loading state forever.
         Catalog catalog;

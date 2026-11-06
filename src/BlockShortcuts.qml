@@ -15,7 +15,7 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        AppText { text: qsTr("Keyboard shortcuts"); font.bold: true; scale_: 1.1; Layout.fillWidth: true }
+        AppText { text: qsTr("Keyboard shortcuts"); font.weight: Font.DemiBold; scale_: 1.25; Layout.fillWidth: true }
         AppButton {
             style: "flat"
             text: root.expanded ? qsTr("Hide") : qsTr("Show %n", "", root.shortcuts.binds.length)

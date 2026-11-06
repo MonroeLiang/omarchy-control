@@ -184,7 +184,7 @@ Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wa
 ```sh
 bin/build                  # build/omarchy-control
 bin/install                # Build the Arch package from this checkout and install it
-bin/test                   # 265 tests; never touches the real desktop
+bin/test                   # 267 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
 tools/installer-check.sh   # install.sh against real release files in a disposable root
@@ -208,6 +208,6 @@ Project documents: [plan](docs/PLAN.md), [coverage](docs/COVERAGE.md), [P0 findi
 
 ## License
 
-[MIT](LICENSE). Theme watching and the translator follow Omacut and Monologue (MIT, David Heinemeier Hansson).
+[MIT](LICENSE). Theme watching and the translator follow Omacut and Monologue (MIT, David Heinemeier Hansson). The interface uses [Inter](https://rsms.me/inter/) ([OFL](src/fonts/Inter-LICENSE.txt)).
 
 Omarchy Control is an independent project and is not an official part of Omarchy.

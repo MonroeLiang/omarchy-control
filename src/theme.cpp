@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFontDatabase>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
@@ -20,6 +21,11 @@ Theme::Theme(const Env &env, QObject *parent) : QObject(parent), m_env(env) {
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_debounce.start(); });
     connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, [this] { m_debounce.start(); });
     connect(&m_debounce, &QTimer::timeout, this, &Theme::reload);
+
+    // Inter for the interface; numbers and values stay in the desktop's own monospace.
+    const int font = QFontDatabase::addApplicationFont(":/fonts/InterVariable.ttf");
+    const QStringList families = font >= 0 ? QFontDatabase::applicationFontFamilies(font) : QStringList();
+    m_uiFont = families.isEmpty() ? QStringLiteral("sans-serif") : families.first();
 
     m_rounding.setProcessEnvironment(env.process);
     m_roundingTimeout.setSingleShot(true);
@@ -83,11 +89,17 @@ QString Theme::accentForeground() const {
     return relativeLuminance(QColor(accent())) > .179 ? "black" : "white";
 }
 
-// What AppPanel actually paints: the raised color at 35% over the window.
-QString Theme::panel() const {
-    const QColor top(raised()), under(window());
-    const auto blend = [](float a, float b) { return a * .35f + b * .65f; };
-    return QColor::fromRgbF(blend(top.redF(), under.redF()), blend(top.greenF(), under.greenF()), blend(top.blueF(), under.blueF())).name();
+QString Theme::mix(const QString &from, const QString &to, double amount) {
+    const QColor a(from), b(to);
+    return QColor::fromRgbF(a.redF() + (b.redF() - a.redF()) * amount,
+                            a.greenF() + (b.greenF() - a.greenF()) * amount,
+                            a.blueF() + (b.blueF() - a.blueF()) * amount).name();
+}
+
+QString Theme::withAlpha(const QString &color, double alpha) {
+    QColor c(color);
+    c.setAlphaF(alpha);
+    return c.name(QColor::HexArgb);
 }
 
 double Theme::contrast(const QString &a, const QString &b) {
@@ -127,6 +139,13 @@ QString Theme::readable(const QString &color, const QString &foreground, const Q
             break;
     }
     return candidate;
+}
+
+QString Theme::thumbnail(const QString &picture, int radius) const {
+    if (picture.isEmpty())
+        return {};
+    const QString path = picture.startsWith(QLatin1String("file:")) ? QUrl(picture).toLocalFile() : picture;
+    return "image://icons/thumb/" + QString::number(radius) + "/" + QString::fromUtf8(QUrl::toPercentEncoding(path));
 }
 
 QVariantMap Theme::preview(const QString &themeName) const {
@@ -198,8 +217,13 @@ void Theme::reload() {
     FileOps::readFile(current + "/theme.name", &nameBytes);
     const QString name = QString::fromUtf8(nameBytes).trimmed();
 
+    const QString backgroundFile = QFileInfo(current + "/background").canonicalFilePath();
+    static const QRegularExpression still("\\.(png|jpe?g|webp)$", QRegularExpression::CaseInsensitiveOption);
+    const QString wallpaper = still.match(backgroundFile).hasMatch() ? QUrl::fromLocalFile(backgroundFile).toString() : QString();
+
     const bool different = colors != m_colors || dark != m_dark || (ok ? fontSize : 13) != m_fontSize ||
-                           animate != m_animate || name != m_name;
+                           animate != m_animate || name != m_name || wallpaper != m_wallpaper;
+    m_wallpaper = wallpaper;
     m_colors = colors;
     m_dark = dark;
     m_fontSize = ok ? fontSize : 13;

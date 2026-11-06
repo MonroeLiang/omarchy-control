@@ -7,8 +7,9 @@ ColumnLayout {
     spacing: 4
     AppText {
         text: title
-        font.bold: true
-        scale_: 1.75
+        font.weight: Font.Bold
+        font.letterSpacing: -0.3
+        scale_: 2
         Layout.fillWidth: true
         Accessible.role: Accessible.Heading
     }

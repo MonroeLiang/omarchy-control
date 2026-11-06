@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 
 // Choosing a look by looking at it. Each tile is a real choice from the catalog: the
 // picture comes from `source`, and anything without one draws its own colors.
@@ -60,15 +61,16 @@ Column {
                     id: frame
                     width: tile.width
                     height: Math.round(tile.width * 10 / 16)
-                    radius: theme.radius
+                    radius: theme.panelRadius
                     color: tile.look.background || theme.deep
-                    clip: true
 
                     // Drawn underneath, so a theme without a picture still shows itself
                     // and a slow one is never a blank box.
                     Rectangle {
                         width: parent.width
                         height: Math.round(parent.height * 0.14)
+                        topLeftRadius: frame.radius
+                        topRightRadius: frame.radius
                         color: tile.look.surface || theme.raised
                         Rectangle {
                             anchors.left: parent.left
@@ -85,7 +87,7 @@ Column {
                         y: parent.height * 0.28
                         width: parent.width * 0.8
                         height: parent.height * 0.6
-                        radius: Math.min(3, theme.radius)
+                        radius: theme.controlRadius
                         color: tile.look.surface || theme.raised
                         border.width: 1
                         border.color: tile.look.line || theme.divider
@@ -110,19 +112,18 @@ Column {
                             anchors.margins: 7
                             width: parent.width * 0.26
                             height: Math.max(5, parent.height * 0.14)
-                            radius: Math.min(2, theme.radius)
+                            radius: theme.controlRadius
                             color: tile.look.accent || theme.muted
                         }
                     }
                     Image {
                         anchors.fill: parent
                         visible: status === Image.Ready
-                        source: tile.look.image || ""
+                        source: theme.thumbnail(tile.look.image || "", frame.radius * Screen.devicePixelRatio)
                         asynchronous: true
                         cache: true
-                        fillMode: Image.PreserveAspectCrop
-                        sourceSize.width: 480
-                        smooth: true
+                        sourceSize.width: Math.round(frame.width * Screen.devicePixelRatio)
+                        sourceSize.height: Math.round(frame.height * Screen.devicePixelRatio)
                     }
                     Rectangle {
                         anchors.fill: parent

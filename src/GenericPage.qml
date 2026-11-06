@@ -63,8 +63,8 @@ ScrollView {
     ColumnLayout {
         id: column
         // A line stays readable from label to control, however wide the window gets.
-        width: Math.min(root.availableWidth - 8, theme.fontSize * 72)
-        spacing: 26
+        width: Math.min(root.availableWidth - 8, theme.fontSize * 92)
+        spacing: 28
         x: root.mirrored ? root.availableWidth - width : 0
 
         Item { Layout.preferredHeight: 2 }

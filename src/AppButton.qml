@@ -28,11 +28,12 @@ AbstractButton {
                                 : theme.foreground
 
     background: Rectangle {
-        radius: Math.min(4, theme.radius)
+        radius: theme.controlRadius
         color: root.style === "primary" ? (root.down ? Qt.darker(theme.accent, 1.2) : root.hovered ? Qt.darker(theme.accent, 1.08) : theme.accent)
              : root.style === "link" ? "transparent"
              : root.down ? Qt.alpha(theme.foreground, 0.14)
              : root.hovered ? Qt.alpha(theme.foreground, 0.08)
+             : root.style === "outline" ? Qt.alpha(theme.foreground, 0.03)
              : "transparent"
         border.width: root.visualFocus ? 2 : (root.style === "outline" || root.style === "danger" ? 1 : 0)
         border.color: root.visualFocus ? theme.accent
@@ -57,6 +58,7 @@ AbstractButton {
                 visible: root.text.length > 0
                 text: root.text
                 color: root.tint
+                font.weight: root.style === "primary" || root.style === "link" ? Font.Medium : Font.Normal
                 font.underline: root.style === "link" && (root.hovered || root.visualFocus)
             }
             AppIcon {
