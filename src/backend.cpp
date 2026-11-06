@@ -21,7 +21,8 @@ Backend::Backend(const Env &env, QObject *parent)
       m_shortcuts(&m_core->runner, &m_core->coordinator),
       m_plugins(&m_core->runner, &m_core->coordinator),
       m_system(&m_core->catalog, &m_core->runner, &m_core->capabilities, &m_core->coordinator),
-      m_windowRules(&m_core->runner, &m_core->coordinator) {
+      m_windowRules(&m_core->runner, &m_core->coordinator),
+      m_updates(&m_core->runner) {
     loadPreferences();
     connect(&m_core->capabilities, &Capabilities::changed, this, &Backend::capabilitiesChanged);
     connect(&m_core->capabilities, &Capabilities::changed, this, &Backend::problemsChanged);
@@ -38,6 +39,7 @@ Backend::Backend(const Env &env, QObject *parent)
     connect(&m_shortcuts, &ShortcutsProvider::message, this, relay);
     connect(&m_plugins, &PluginsProvider::message, this, relay);
     connect(&m_system, &SystemProvider::message, this, relay);
+    connect(&m_updates, &UpdateProvider::message, this, relay);
     connect(&m_windowRules, &WindowRulesProvider::message, this, relay);
 
     m_watchDebounce.setSingleShot(true);
@@ -249,6 +251,9 @@ void Backend::pageShown(const QString &page) {
     }
     if (page == QLatin1String("sound"))
         m_bluetooth.refresh();
+    // Also runs on returning to the window, which is how a finished update gets noticed.
+    if (page == QLatin1String("about"))
+        m_updates.refreshInstalled();
     if (page == QLatin1String("network"))
         m_network.refresh();
     if (page == QLatin1String("displays") || page == QLatin1String("overview"))

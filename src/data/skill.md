@@ -17,6 +17,7 @@ omarchy-control apply power.idle.lock 600
 omarchy-control history                  # What changed, with transaction ids
 omarchy-control undo <transaction>       # Refuses if something edited it since
 omarchy-control doctor                   # Compatibility and read checks
+omarchy-control update check             # Is a newer version of this app out?
 ```
 
 Add `--json` for machine-readable output. Commands exit 0 or 1, with errors on

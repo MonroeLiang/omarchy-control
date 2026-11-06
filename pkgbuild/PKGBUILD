@@ -3,14 +3,16 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc='One searchable place to understand this computer, change its settings, and reach the right tool'
 arch=('x86_64' 'aarch64')
+url='https://github.com/last-refuge/omarchy-control'
 license=('MIT')
-depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-wayland' 'hicolor-icon-theme')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-wayland' 'hicolor-icon-theme' 'curl')
 optdepends=('omarchy: the desktop this manages'
             'hyprland: window, input, and display settings'
             'networkmanager: network settings'
             'pipewire-pulse: sound settings'
             'bluez-utils: Bluetooth settings')
 makedepends=('gcc' 'make')
+options=('!debug')
 source=()
 sha256sums=()
 

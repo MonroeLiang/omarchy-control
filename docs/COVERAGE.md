@@ -10,10 +10,10 @@ Generated from the catalog by `bin/coverage` into the [ledger](coverage-ledger.j
 | --- | --- |
 | Native typed settings and pages | 97 |
 | Omarchy panels | 23 |
-| Guided setup routes | 334 |
-| Specialist apps | 15 |
+| Guided setup routes | 335 |
+| Specialist apps and links | 19 |
 | Advanced config files | 22 |
-| **Total destinations** | **491** |
+| **Total destinations** | **496** |
 
 | Inventory | Routed | Excluded with a reason | Unclassified |
 | --- | --- | --- | --- |

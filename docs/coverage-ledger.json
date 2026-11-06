@@ -1,7 +1,7 @@
 {
     "claimedCommands": 301,
     "claimedMenu": 356,
-    "entries": 491,
+    "entries": 496,
     "excludedCommands": 132,
     "excludedMenu": 0,
     "exclusions": {
@@ -11744,14 +11744,133 @@
             "supported_versions": "omarchy 4.5.x",
             "validation_evidence": "route-reviewed",
             "write_or_launch_method": "page"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.update",
+            "implementation_status": "implemented",
+            "integration_mode": "omarchy-wizard",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Update Omarchy Control",
+                "check for updates",
+                "new version",
+                "upgrade this app",
+                "about this app",
+                "version"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "page"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.website",
+            "implementation_status": "implemented",
+            "integration_mode": "external-helper",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Project website",
+                "github",
+                "source code",
+                "homepage",
+                "documentation"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "url"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.releases",
+            "implementation_status": "implemented",
+            "integration_mode": "external-helper",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Release notes",
+                "changelog",
+                "what is new",
+                "releases"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "url"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.issues",
+            "implementation_status": "implemented",
+            "integration_mode": "external-helper",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Report a problem",
+                "bug",
+                "issue",
+                "feedback",
+                "support"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "url"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.license",
+            "implementation_status": "implemented",
+            "integration_mode": "external-helper",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "License",
+                "mit",
+                "copyright",
+                "legal"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "url"
         }
     ],
     "modes": {
         "advanced-config": 22,
-        "external-helper": 15,
+        "external-helper": 19,
         "native": 97,
         "omarchy-panel": 23,
-        "omarchy-wizard": 334
+        "omarchy-wizard": 335
     },
     "unclassifiedCommands": [
     ],

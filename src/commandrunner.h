@@ -58,6 +58,11 @@ public:
     // whether the helper then changed anything.
     bool launchDetached(const QStringList &argv, QString *error = nullptr);
 
+    // Runs in this terminal and waits with no time limit, for a prompt only a person
+    // can answer, such as sudo's. Only the headless CLI may use this. Returns the exit
+    // code, or -1 with *error set if it never started.
+    int runAttached(const QStringList &argv, QString *error = nullptr);
+
     void cancelReads();
     int activeCount() const { return m_active.size(); }
 

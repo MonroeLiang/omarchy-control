@@ -23,6 +23,7 @@ HEADERS += \
     $$PWD/src/pluginsprovider.h \
     $$PWD/src/systemprovider.h \
     $$PWD/src/windowrulesprovider.h \
+    $$PWD/src/updater.h \
     $$PWD/src/compat.h \
     $$PWD/src/appcore.h \
     $$PWD/src/backend.h \
@@ -52,6 +53,7 @@ SOURCES += \
     $$PWD/src/pluginsprovider.cpp \
     $$PWD/src/systemprovider.cpp \
     $$PWD/src/windowrulesprovider.cpp \
+    $$PWD/src/updater.cpp \
     $$PWD/src/compat.cpp \
     $$PWD/src/backend.cpp \
     $$PWD/src/coverage.cpp \

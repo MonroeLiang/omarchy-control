@@ -48,7 +48,9 @@ ScrollView {
         // The highlight marks where search landed, then gets out of the way.
         running: root.focusId.length > 0
         interval: 2600
-        onTriggered: root.focusId = ""
+        // Clear the source: assigning focusId here would cut its binding, and later
+        // search results on this page would no longer land.
+        onTriggered: win.focusRequest = ""
     }
 
     ColumnLayout {

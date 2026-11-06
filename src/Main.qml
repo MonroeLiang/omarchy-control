@@ -38,6 +38,15 @@ ApplicationWindow {
         }
         focusRequest = focus || ""
         searchField.text = ""
+        // Also covers clicking the tab already open, which changes no page.
+        if (!focusRequest.length)
+            scrollPageToTop()
+    }
+    function scrollPageToTop() {
+        if (!pageLoader.item)
+            return
+        pageLoader.item.contentItem.cancelFlick()
+        pageLoader.item.contentItem.contentY = 0
     }
     // Opening a result only navigates, even for an action: it lands on the row, and
     // running it stays one deliberate step further.
@@ -117,7 +126,11 @@ ApplicationWindow {
         return value.toLocaleString(Qt.locale(), "f", unit > 2 ? 1 : 0) + " " + units[unit]
     }
 
-    onCurrentPageChanged: backend.pageShown(currentPage)
+    // Pages share one scrolling view, so a new page would otherwise keep the last offset.
+    onCurrentPageChanged: {
+        backend.pageShown(currentPage)
+        scrollPageToTop()
+    }
     onActiveChanged: if (active) { backend.windowActivated(); theme.refreshRounding() }
     Component.onCompleted: {
         if (initialPage.length)
@@ -279,6 +292,7 @@ ApplicationWindow {
                             keyNavigationEnabled: true
                             delegate: AbstractButton {
                                 id: navButton
+                                objectName: "nav_" + modelData.id
                                 width: navigation.width
                                 height: Math.round(theme.fontSize * 2.9)
                                 hoverEnabled: true
@@ -354,6 +368,7 @@ ApplicationWindow {
 
                     Loader {
                         id: pageLoader
+                        objectName: "pageLoader"
                         anchors.fill: parent
                         anchors.topMargin: 10
                         sourceComponent: win.currentPage === "overview" ? overviewComponent : pageComponent

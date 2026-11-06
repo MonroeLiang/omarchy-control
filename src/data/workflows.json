@@ -9370,5 +9370,110 @@
    "page": "advanced",
    "focus": "block.coverage"
   }
+ },
+ {
+  "id": "app.update",
+  "page": "system",
+  "section": "Updates",
+  "label": "Update Omarchy Control",
+  "type": "action",
+  "domain": "C18",
+  "integration": "omarchy-wizard",
+  "description": "Check for a newer version of this app and install it.",
+  "keywords": [
+   "check for updates",
+   "new version",
+   "upgrade this app",
+   "about this app",
+   "version"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "page",
+   "page": "about",
+   "focus": "block.about"
+  }
+ },
+ {
+  "id": "app.website",
+  "page": "about",
+  "section": "Project",
+  "label": "Project website",
+  "type": "action",
+  "domain": "C18",
+  "integration": "external-helper",
+  "description": "Source code and documentation on GitHub.",
+  "keywords": [
+   "github",
+   "source code",
+   "homepage",
+   "documentation"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "url",
+   "url": "https://github.com/last-refuge/omarchy-control"
+  }
+ },
+ {
+  "id": "app.releases",
+  "page": "about",
+  "section": "Project",
+  "label": "Release notes",
+  "type": "action",
+  "domain": "C18",
+  "integration": "external-helper",
+  "description": "What changed in each version.",
+  "keywords": [
+   "changelog",
+   "what is new",
+   "releases"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "url",
+   "url": "https://github.com/last-refuge/omarchy-control/releases"
+  }
+ },
+ {
+  "id": "app.issues",
+  "page": "about",
+  "section": "Project",
+  "label": "Report a problem",
+  "type": "action",
+  "domain": "C18",
+  "integration": "external-helper",
+  "description": "Open an issue on GitHub.",
+  "keywords": [
+   "bug",
+   "issue",
+   "feedback",
+   "support"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "url",
+   "url": "https://github.com/last-refuge/omarchy-control/issues/new"
+  }
+ },
+ {
+  "id": "app.license",
+  "page": "about",
+  "section": "Project",
+  "label": "License",
+  "type": "action",
+  "domain": "C18",
+  "integration": "external-helper",
+  "description": "The MIT License, in full.",
+  "keywords": [
+   "mit",
+   "copyright",
+   "legal"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "url",
+   "url": "https://github.com/last-refuge/omarchy-control/blob/main/LICENSE"
+  }
  }
 ]

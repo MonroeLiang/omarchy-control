@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
     qputenv("QT_FORCE_STDERR_LOGGING", "1");
     QGuiApplication app(argc, argv);
     app.setApplicationName("omarchy-control");
+    app.setApplicationVersion(APP_VERSION);
     const QStringList args = app.arguments();
     const QString root = args.value(1), output = args.value(2);
     const QStringList pages = args.mid(3);

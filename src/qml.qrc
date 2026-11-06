@@ -9,6 +9,7 @@
         <file alias="AppSwitch.qml">AppSwitch.qml</file>
         <file alias="AppText.qml">AppText.qml</file>
         <file alias="AudioDeviceRow.qml">AudioDeviceRow.qml</file>
+        <file alias="BlockAbout.qml">BlockAbout.qml</file>
         <file alias="BlockApps.qml">BlockApps.qml</file>
         <file alias="BlockAudio.qml">BlockAudio.qml</file>
         <file alias="BlockBar.qml">BlockBar.qml</file>

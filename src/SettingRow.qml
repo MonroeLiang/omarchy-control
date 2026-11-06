@@ -20,6 +20,9 @@ Item {
     readonly property string kind: entry.type || "status"
     readonly property bool editable: !!entry.editable && !unavailable && status !== "custom" && !busy
     property bool showDetails: false
+    readonly property bool pinned: backend.pins.indexOf(entryId) >= 0
+    readonly property bool hasDetails: (entry.details || []).length > 0
+    readonly property bool actionsRevealed: hover.hovered || pinButton.activeFocus || detailsButton.activeFocus
 
     implicitHeight: body.implicitHeight + 18 + (last ? 0 : 1)
     width: parent ? parent.width : 400
@@ -84,6 +87,7 @@ Item {
             // Control
             Loader {
                 id: control
+                objectName: "settingControl"
                 Layout.alignment: Qt.AlignVCenter
                 active: root.kind !== "action" && !root.unavailable
                 sourceComponent: {
@@ -113,31 +117,45 @@ Item {
                 enabled: !root.busy
                 onClicked: backend.resetValue(root.entryId)
             }
+            // These two always hold their space and only fade, so hovering a row moves
+            // nothing and controls line up down the page. Staying in the layout also
+            // keeps them reachable by Tab. A tap has no hover to reveal them, hence the
+            // opacity check: a touch must not change something it cannot see.
             AppButton {
-                visible: !root.compact && (hover.hovered || activeFocus || backend.pins.indexOf(root.entryId) >= 0)
+                id: pinButton
+                objectName: "pinButton"
+                visible: !root.compact
                 style: "flat"
                 text: ""
                 implicitWidth: 28
+                implicitHeight: 28
                 iconName: "pin"
-                opacity: backend.pins.indexOf(root.entryId) >= 0 ? 1 : 0.5
-                Accessible.name: backend.pins.indexOf(root.entryId) >= 0 ? qsTr("Unpin from Overview") : qsTr("Pin to Overview")
+                opacity: root.pinned ? 1 : root.actionsRevealed ? 0.5 : 0
+                Behavior on opacity { enabled: theme.animate; NumberAnimation { duration: 120 } }
+                Accessible.name: root.pinned ? qsTr("Unpin from Overview") : qsTr("Pin to Overview")
                 ToolTip.visible: hovered
                 ToolTip.text: Accessible.name
                 ToolTip.delay: 500
-                onClicked: backend.togglePin(root.entryId)
+                onClicked: if (opacity > 0) backend.togglePin(root.entryId)
             }
             AppButton {
-                visible: !root.compact && (root.entry.details || []).length > 0 && (hover.hovered || activeFocus || root.showDetails)
+                id: detailsButton
+                objectName: "detailsButton"
+                visible: !root.compact
+                enabled: root.hasDetails
                 style: "flat"
                 text: ""
                 implicitWidth: 28
+                implicitHeight: 28
                 iconName: "info"
-                opacity: 0.6
+                opacity: root.hasDetails && (root.actionsRevealed || root.showDetails) ? 0.6 : 0
+                Behavior on opacity { enabled: theme.animate; NumberAnimation { duration: 120 } }
                 Accessible.name: qsTr("Technical details")
-                ToolTip.visible: hovered
+                Accessible.ignored: !root.hasDetails
+                ToolTip.visible: hovered && root.hasDetails
                 ToolTip.text: Accessible.name
                 ToolTip.delay: 500
-                onClicked: root.showDetails = !root.showDetails
+                onClicked: if (opacity > 0) root.showDetails = !root.showDetails
             }
         }
 

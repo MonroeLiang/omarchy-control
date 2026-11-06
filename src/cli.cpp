@@ -18,6 +18,7 @@
 #include "hypromodule.h"
 #include "pluginsprovider.h"
 #include "shortcutsprovider.h"
+#include "updater.h"
 #include "windowrulesprovider.h"
 
 namespace {
@@ -64,7 +65,9 @@ const char Usage[] =
     "  display preview <out> <x> <y> [--keep|--revert]   Move a display under the safety timer\n"
     "  integrate menu [--remove]             Add this app to the Omarchy menu\n"
     "  selftest display                      Prove display recovery on this machine\n"
-    "  skill install                         Install the agent skill\n";
+    "  skill install                         Install the agent skill\n"
+    "  update [check] [--json]               Check GitHub for a newer version\n"
+    "  update install [--yes]                Download, verify, and install it with pacman\n";
 
 bool popFlag(QStringList &args, const QString &flag) {
     return args.removeAll(flag) > 0;
@@ -122,6 +125,54 @@ QVariantList choicesBlocking(AppCore &core, const QString &id) {
     if (!done)
         loop.exec();
     return result;
+}
+
+int cmdUpdate(const Env &env, const QStringList &args, bool yes, bool json) {
+    const QString action = args.value(1, QStringLiteral("check"));
+    if (action != QLatin1String("check") && action != QLatin1String("install")) {
+        err() << Usage;
+        return 1;
+    }
+    CommandRunner runner(env);
+    const Updater::Check check = Updater::fetchBlocking(runner);
+    if (check.outcome == Updater::Check::Failed) {
+        err() << check.error << "\n";
+        return 1;
+    }
+    const QString current = Updater::currentVersion();
+    const QString latest = check.release.version;
+    const bool available = check.outcome == Updater::Check::Found && Updater::isNewer(latest, current);
+    if (action == QLatin1String("check") && json) {
+        printJson(QJsonObject{{"current", current}, {"latest", latest}, {"updateAvailable", available}, {"url", check.release.pageUrl}, {"notes", check.release.notes}});
+        return 0;
+    }
+    if (check.outcome == Updater::Check::NoReleases) {
+        out() << "No releases have been published yet.\n";
+        out().flush();
+        return 0;
+    }
+    if (!available) {
+        out() << "Omarchy Control " << current << " is up to date.\n";
+        out().flush();
+        return 0;
+    }
+    if (action == QLatin1String("check")) {
+        out() << "Version " << latest << " is available. You have " << current << ".\nRun: omarchy-control update install\n";
+        out().flush();
+        return 0;
+    }
+    QString error;
+    const bool installed = Updater::install(runner, check.release, yes, &error, [](const QString &line) {
+        out() << line << "\n";
+        out().flush();
+    });
+    if (!installed) {
+        err() << error << "\n";
+        return 1;
+    }
+    out() << "Updated to " << latest << ". Restart Omarchy Control to use it.\n";
+    out().flush();
+    return 0;
 }
 
 int cmdCatalog(AppCore &core, bool json) {
@@ -675,6 +726,8 @@ int run(const Env &env, const QStringList &arguments) {
     }
     if (command == QLatin1String("display-watchdog"))
         return DisplayProvider::runWatchdog(env, args.value(1));
+    if (command == QLatin1String("update"))
+        return cmdUpdate(env, args, yes, json);
 
     AppCore core(env);
     if (command == QLatin1String("catalog"))

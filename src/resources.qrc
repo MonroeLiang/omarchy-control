@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file alias="omarchy-control.svg">../pkgbuild/omarchy-control.svg</file>
         <file alias="data/pages.json">data/pages.json</file>
         <file alias="data/settings.json">data/settings.json</file>
         <file alias="data/workflows.json">data/workflows.json</file>

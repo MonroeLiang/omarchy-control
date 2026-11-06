@@ -192,6 +192,30 @@ CommandResult CommandRunner::runBlocking(const QStringList &argv, const CommandO
     return result;
 }
 
+int CommandRunner::runAttached(const QStringList &argv, QString *error) {
+    const QString executable = argv.isEmpty() ? QString() : m_env.findExecutable(argv.first());
+    if (executable.isEmpty()) {
+        if (error)
+            *error = tr("%1 is not installed.").arg(argv.value(0));
+        return -1;
+    }
+    QProcess process;
+    process.setProgram(executable);
+    process.setArguments(argv.mid(1));
+    process.setProcessEnvironment(m_env.process);
+    process.setWorkingDirectory(m_env.home);
+    process.setProcessChannelMode(QProcess::ForwardedChannels);
+    process.setInputChannelMode(QProcess::ForwardedInputChannel);
+    process.start();
+    if (!process.waitForStarted()) {
+        if (error)
+            *error = tr("%1 could not be started.").arg(argv.first());
+        return -1;
+    }
+    process.waitForFinished(-1);
+    return process.exitStatus() == QProcess::NormalExit ? process.exitCode() : 1;
+}
+
 bool CommandRunner::launchDetached(const QStringList &argv, QString *error) {
     if (argv.isEmpty())
         return false;

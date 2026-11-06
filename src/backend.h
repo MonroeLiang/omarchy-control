@@ -17,6 +17,7 @@
 #include "servicesprovider.h"
 #include "shortcutsprovider.h"
 #include "systemprovider.h"
+#include "updater.h"
 #include "windowrulesprovider.h"
 
 // QQmlPropertyMap must be subclassed to construct it without the deprecated path.
@@ -47,6 +48,7 @@ class Backend : public QObject {
     Q_PROPERTY(PluginsProvider *plugins READ plugins CONSTANT)
     Q_PROPERTY(SystemProvider *system READ system CONSTANT)
     Q_PROPERTY(WindowRulesProvider *windowRules READ windowRules CONSTANT)
+    Q_PROPERTY(UpdateProvider *updates READ updates CONSTANT)
     Q_PROPERTY(QVariantList compatChanges READ compatChanges NOTIFY problemsChanged)
 
 public:
@@ -71,6 +73,7 @@ public:
     PluginsProvider *plugins() { return &m_plugins; }
     SystemProvider *system() { return &m_system; }
     WindowRulesProvider *windowRules() { return &m_windowRules; }
+    UpdateProvider *updates() { return &m_updates; }
     QVariantList compatChanges() const;
     Q_INVOKABLE void acceptCompat();
 
@@ -127,6 +130,7 @@ private:
     PluginsProvider m_plugins;
     SystemProvider m_system;
     WindowRulesProvider m_windowRules;
+    UpdateProvider m_updates;
     StateMap m_states;
     QHash<QString, QVariantList> m_choices;
     QStringList m_pins;

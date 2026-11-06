@@ -1,5 +1,8 @@
 // Every test runs against a temporary root with fake commands first on PATH. No
 // test can reach the real desktop: the sandbox Env is the only way in.
+#include <functional>
+
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -51,6 +54,7 @@
 #include "systemprovider.h"
 #include "theme.h"
 #include "translator.h"
+#include "updater.h"
 
 namespace {
 
@@ -1035,7 +1039,7 @@ private slots:
         QSet<QString> pages;
         for (const auto &page : catalog.pages())
             pages << page.id;
-        QCOMPARE(catalog.pages().size(), 12);
+        QCOMPARE(catalog.pages().size(), 13);
         static const QSet<QString> types{"toggle", "choice", "int", "float", "slider", "text", "status", "action"};
         static const QSet<QString> modes{"native", "omarchy-panel", "omarchy-wizard", "external-helper", "advanced-config"};
         static const QSet<QString> recoveries{"auto-undo", "best-effort", "no-undo"};
@@ -2455,7 +2459,7 @@ private slots:
             QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, page), Q_ARG(QVariant, QString()));
             QTest::qWait(200);
             QSet<QQuickItem *> visited;
-            for (int i = 0; i < 80; ++i) {
+            for (int i = 0; i < 400; ++i) {
                 QTest::keyClick(window, Qt::Key_Tab);
                 QQuickItem *item = window->activeFocusItem();
                 if (!item || visited.contains(item))
@@ -2470,6 +2474,419 @@ private slots:
             QVERIFY2(visited.size() >= 2, qPrintable(page));
         }
         QVERIFY2(unnamed.isEmpty(), qPrintable(unnamed.join('\n')));
+    }
+    void hoveringASettingRowMovesNothing() {
+        Sandbox s;
+        fakeDesktop(s);
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window, 3000));
+        QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "appearance"), Q_ARG(QVariant, QString()));
+        QTest::qWait(400);
+
+        // Every full row in view, found by walking the real scene.
+        QList<QQuickItem *> rows;
+        std::function<void(QQuickItem *)> walk = [&](QQuickItem *item) {
+            if (!item->isVisible())
+                return;
+            if (!item->property("entryId").toString().isEmpty() && !item->property("compact").toBool()) {
+                const QRectF box = item->mapRectToScene(item->boundingRect());
+                if (box.top() >= 60 && box.bottom() <= window->height())
+                    rows << item;
+                return;
+            }
+            for (QQuickItem *child : item->childItems())
+                walk(child);
+        };
+        walk(window->contentItem());
+        QVERIFY2(rows.size() >= 3, qPrintable(QString::number(rows.size())));
+
+        const auto named = [](QQuickItem *row, const QString &name) {
+            QQuickItem *found = nullptr;
+            std::function<void(QQuickItem *)> search = [&](QQuickItem *item) {
+                if (item->objectName() == name)
+                    found = item;
+                for (QQuickItem *child : item->childItems())
+                    if (!found)
+                        search(child);
+            };
+            search(row);
+            return found;
+        };
+        const auto layoutOf = [&](QQuickItem *row) {
+            QList<QRectF> boxes{row->mapRectToScene(row->boundingRect())};
+            for (const QString &name : {QStringLiteral("settingControl"), QStringLiteral("pinButton"), QStringLiteral("detailsButton")})
+                boxes << named(row, name)->mapRectToScene(named(row, name)->boundingRect());
+            return boxes;
+        };
+
+        // Controls line up down the page, whether or not a row has details.
+        QSet<int> pinEdges;
+        for (QQuickItem *row : rows)
+            pinEdges << qRound(layoutOf(row).at(2).right());
+        QCOMPARE(pinEdges.size(), 1);
+
+        QTest::mouseMove(window, QPoint(1, 1));
+        QTest::qWait(250);
+        QQuickItem *firstPin = named(rows.first(), "pinButton");
+        QCOMPARE(firstPin->opacity(), 0.0);
+        const QString firstId = rows.first()->property("entryId").toString();
+
+        // At rest a tap on the hidden button changes nothing.
+        QMetaObject::invokeMethod(firstPin, "clicked");
+        QVERIFY(!backend.pins().contains(firstId));
+
+        QList<QList<QRectF>> before;
+        for (QQuickItem *row : rows)
+            before << layoutOf(row);
+        for (int i = 0; i < rows.size(); ++i) {
+            const QPointF center = rows[i]->mapToScene(QPointF(40, rows[i]->height() / 2));
+            QTest::mouseMove(window, center.toPoint());
+            // The button showing is what proves the hover reached the row.
+            QTRY_VERIFY2(named(rows[i], "pinButton")->opacity() > 0.4, qPrintable(rows[i]->property("entryId").toString()));
+            QTest::qWait(250);
+            for (int j = 0; j < rows.size(); ++j)
+                QCOMPARE(layoutOf(rows[j]), before[j]);
+        }
+    }
+    void aTabAlwaysOpensAtTheTopAndSearchStillLandsOnItsRow() {
+        Sandbox s;
+        fakeDesktop(s);
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        // Short enough that every page scrolls and the first tabs are still on screen.
+        window->resize(1000, 400);
+        window->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window, 3000));
+        QTest::qWait(200);
+
+        const auto find = [&](const QString &name) {
+            QQuickItem *found = nullptr;
+            std::function<void(QQuickItem *)> search = [&](QQuickItem *item) {
+                if (item->objectName() == name)
+                    found = item;
+                for (QQuickItem *child : item->childItems())
+                    if (!found)
+                        search(child);
+            };
+            search(window->contentItem());
+            return found;
+        };
+        const auto view = [&] {
+            return find("pageLoader")->property("item").value<QObject *>()->property("contentItem").value<QObject *>();
+        };
+        const auto offset = [&] { return view()->property("contentY").toReal(); };
+        const auto scrollDown = [&] {
+            view()->setProperty("contentY", 120);
+            QCOMPARE(offset(), 120.0);
+        };
+        const auto clickTab = [&](const QString &page) {
+            QQuickItem *tab = find("nav_" + page);
+            QVERIFY2(tab, qPrintable(page));
+            QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, tab->mapToScene(QPointF(tab->width() / 2, tab->height() / 2)).toPoint());
+            QTRY_COMPARE(window->property("currentPage").toString(), page);
+            QTest::qWait(100);
+        };
+
+        clickTab("appearance");
+        QCOMPARE(offset(), 0.0);
+        scrollDown();
+        // A different tab, sharing the same scrolling view.
+        clickTab("desktop");
+        QCOMPARE(offset(), 0.0);
+        scrollDown();
+        // The tab already open.
+        clickTab("desktop");
+        QCOMPARE(offset(), 0.0);
+        scrollDown();
+        QMetaObject::invokeMethod(window, "back");
+        QTRY_COMPARE(window->property("currentPage").toString(), QString("appearance"));
+        QCOMPARE(offset(), 0.0);
+        // Overview has its own view.
+        clickTab("overview");
+        scrollDown();
+        clickTab("overview");
+        QCOMPARE(offset(), 0.0);
+
+        // A search result lands on its row, and keeps doing so after the highlight clears.
+        const QString far = "appearance.plymouth";
+        QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "appearance"), Q_ARG(QVariant, far));
+        QTRY_VERIFY(offset() > 0);
+        QTRY_VERIFY_WITH_TIMEOUT(window->property("focusRequest").toString().isEmpty(), 4000);
+        QTest::qWait(200);
+        QVERIFY(offset() > 0);
+        clickTab("appearance");
+        QCOMPARE(offset(), 0.0);
+        QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "appearance"), Q_ARG(QVariant, far));
+        QTRY_VERIFY(offset() > 0);
+    }
+
+    // ---- Updates --------------------------------------------------------------
+    static QByteArray releaseJson(const QString &version) {
+        const QByteArray v = version.toUtf8();
+        const QByteArray base = "https://github.com/last-refuge/omarchy-control/releases/download/v" + v + "/";
+        return "{\"tag_name\":\"v" + v + "\",\"body\":\"Better things\",\"html_url\":\"https://github.com/last-refuge/omarchy-control/releases/tag/v" + v + "\",\"assets\":["
+               "{\"name\":\"SHA256SUMS\",\"browser_download_url\":\"" + base + "SHA256SUMS\"},"
+               "{\"name\":\"omarchy-control-" + v + "-1-x86_64.pkg.tar.zst\",\"browser_download_url\":\"" + base + "omarchy-control-" + v + "-1-x86_64.pkg.tar.zst\"}]}";
+    }
+    // A fake curl that answers the API, then serves the two release files.
+    static void fakeGitHub(const Sandbox &s, const QString &version, const QByteArray &packageBytes, const QByteArray &listedBytes) {
+        const QByteArray name = "omarchy-control-" + version.toUtf8() + "-1-x86_64.pkg.tar.zst";
+        const QByteArray sum = QCryptographicHash::hash(listedBytes, QCryptographicHash::Sha256).toHex();
+        writeFile(s.dir.path() + "/api.json", releaseJson(version));
+        writeFile(s.dir.path() + "/package", packageBytes);
+        s.command("curl", "for last; do :; done\n"
+                          "while [ $# -gt 0 ]; do [ \"$1\" = -o ] && dest=$2; shift; done\n"
+                          "case \"$last\" in\n"
+                          "  *releases/latest) cat '" + s.dir.path().toUtf8() + "/api.json'; printf '\\n200';;\n"
+                          "  *SHA256SUMS) printf '%s  %s\\n' " + sum + " " + name + ";;\n"
+                          "  *.pkg.tar.zst) cp '" + s.dir.path().toUtf8() + "/package' \"$dest\";;\n"
+                          "esac\n");
+    }
+    void versionsCompareAsNumbers() {
+        QVERIFY(Updater::isNewer("0.2.0", "0.1.0"));
+        QVERIFY(Updater::isNewer("0.10.0", "0.9.0"));
+        QVERIFY(Updater::isNewer("1.0.0", "0.99.99"));
+        QVERIFY(!Updater::isNewer("0.1.0", "0.1.0"));
+        QVERIFY(!Updater::isNewer("0.1.0", "0.2.0"));
+        // A tag this cannot read never counts as an update.
+        QVERIFY(!Updater::isNewer("1.0.0-beta", "0.1.0"));
+        QVERIFY(!Updater::isNewer("latest", "0.1.0"));
+        QVERIFY(!Updater::isNewer("", "0.1.0"));
+        QCOMPARE(Updater::versionFromPacman("omarchy-control 0.2.0-1\n"), QString("0.2.0"));
+        QCOMPARE(Updater::versionFromPacman("error: package 'omarchy-control' was not found\n"), QString());
+    }
+    void releaseNotesReadAsPlainText() {
+        QCOMPARE(Updater::plainNotes("## What's Changed\n* Fix a jump by @someone in https://github.com/x/y/pull/1\n- Add About\n\n\n**Full Changelog**: https://github.com/x/y/compare/a...b\n"),
+                 QString("What's Changed\n• Fix a jump\n• Add About"));
+        QCOMPARE(Updater::plainNotes(""), QString());
+    }
+    void checksumsMatchTheExactFile() {
+        const QByteArray a(64, 'a'), b(64, 'b');
+        const QByteArray sums = a + "  one.pkg.tar.zst\n" + b + " *two.pkg.tar.zst\nnot a checksum line\n";
+        QCOMPARE(Updater::checksumFor(sums, "one.pkg.tar.zst"), QString::fromLatin1(a));
+        QCOMPARE(Updater::checksumFor(sums, "two.pkg.tar.zst"), QString::fromLatin1(b));
+        QCOMPARE(Updater::checksumFor(sums, "pkg.tar.zst"), QString());
+    }
+    void releaseResponsesAreReadCarefully() {
+        const auto respond = [](const QByteArray &body, int status) {
+            CommandResult result;
+            result.exitCode = 0;
+            result.out = body + "\n" + QByteArray::number(status);
+            return result;
+        };
+        Updater::Check found = Updater::interpret(respond(releaseJson("0.2.0"), 200), "x86_64");
+        QCOMPARE(found.outcome, Updater::Check::Found);
+        QCOMPARE(found.release.version, QString("0.2.0"));
+        QCOMPARE(found.release.packageName, QString("omarchy-control-0.2.0-1-x86_64.pkg.tar.zst"));
+        QCOMPARE(found.release.notes, QString("Better things"));
+        QVERIFY(found.release.installable());
+
+        // No package for this architecture: known about, but not installable.
+        QVERIFY(!Updater::interpret(respond(releaseJson("0.2.0"), 200), "aarch64").release.installable());
+
+        // A response cannot point the download anywhere else.
+        QByteArray elsewhere = releaseJson("0.2.0");
+        elsewhere.replace("https://github.com/last-refuge/omarchy-control/releases/download/", "https://evil.example/");
+        QVERIFY(!Updater::interpret(respond(elsewhere, 200), "x86_64").release.installable());
+        // Nor name a different file, even from the right place.
+        QByteArray renamed = releaseJson("0.2.0");
+        renamed.replace("\"name\":\"omarchy-control-0.2.0-1-x86_64.pkg.tar.zst\"", "\"name\":\"../../evil.pkg.tar.zst\"");
+        QVERIFY(!Updater::interpret(respond(renamed, 200), "x86_64").release.installable());
+
+        QCOMPARE(Updater::interpret(respond("{\"message\":\"Not Found\"}", 404), "x86_64").outcome, Updater::Check::NoReleases);
+        QVERIFY(Updater::interpret(respond("{}", 403), "x86_64").error.contains("limiting"));
+        QCOMPARE(Updater::interpret(respond("{}", 500), "x86_64").outcome, Updater::Check::Failed);
+        QCOMPARE(Updater::interpret(respond("not json", 200), "x86_64").outcome, Updater::Check::Failed);
+        CommandResult offline;
+        offline.exitCode = 6;
+        QVERIFY(Updater::interpret(offline, "x86_64").error.contains("connection"));
+    }
+    void updateCheckNeverInstalls() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        fakeGitHub(s, "0.2.0", "bytes", "bytes");
+        s.command("sudo", "exit 0");
+        QCOMPARE(Cli::run(s.env, {"update"}), 0);
+        QCOMPARE(Cli::run(s.env, {"update", "check", "--json"}), 0);
+        QVERIFY(s.calls().filter("sudo").isEmpty());
+        QCOMPARE(s.calls().filter("curl").size(), 2);
+        QCOMPARE(Cli::run(s.env, {"update", "nonsense"}), 1);
+    }
+    void updateInstallHandsAVerifiedPackageToPacman() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        fakeGitHub(s, "0.2.0", "real package", "real package");
+        // Copies what it was given, because the download is cleaned up afterwards.
+        s.command("sudo", "for last; do :; done\ncp \"$last\" '" + s.dir.path().toUtf8() + "/installed'\n");
+        QCOMPARE(Cli::run(s.env, {"update", "install"}), 0);
+        const QStringList sudo = s.calls().filter(QRegularExpression("^sudo "));
+        QCOMPARE(sudo.size(), 1);
+        QVERIFY2(sudo.first().startsWith("sudo pacman -U " + s.env.appCacheDir + "/updates/omarchy-control-0.2.0-1-x86_64.pkg.tar.zst"), qPrintable(sudo.first()));
+        QVERIFY(!sudo.first().contains("--noconfirm"));
+        QCOMPARE(readAll(s.dir.path() + "/installed"), QByteArray("real package"));
+        QVERIFY(!QFile::exists(s.env.appCacheDir + "/updates"));
+    }
+    void updateInstallRefusesATamperedPackage() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        fakeGitHub(s, "0.2.0", "tampered", "real package");
+        s.command("sudo", "exit 0");
+        QCOMPARE(Cli::run(s.env, {"update", "install"}), 1);
+        QVERIFY(s.calls().filter(QRegularExpression("^sudo ")).isEmpty());
+        QVERIFY(!QFile::exists(s.env.appCacheDir + "/updates"));
+    }
+    void updateInstallLeavesTheCurrentVersionAlone() {
+        QCoreApplication::setApplicationVersion("0.2.0");
+        Sandbox s;
+        fakeGitHub(s, "0.2.0", "bytes", "bytes");
+        s.command("sudo", "exit 0");
+        QCOMPARE(Cli::run(s.env, {"update", "install"}), 0);
+        QVERIFY(s.calls().filter(QRegularExpression("^sudo ")).isEmpty());
+        QVERIFY(s.calls().filter(".pkg.tar.zst").isEmpty());
+        QCoreApplication::setApplicationVersion("0.1.0");
+    }
+    void updateInstallWaitsForPacman() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        fakeGitHub(s, "0.2.0", "bytes", "bytes");
+        s.command("sudo", "exit 0");
+        writeFile(s.env.sys("/var/lib/pacman/db.lck"), "");
+        QCOMPARE(Cli::run(s.env, {"update", "install"}), 1);
+        QVERIFY(s.calls().filter(QRegularExpression("^sudo ")).isEmpty());
+        QVERIFY(s.calls().filter(".pkg.tar.zst").isEmpty());
+    }
+    void aFailedPacmanIsReportedAsAFailedUpdate() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        fakeGitHub(s, "0.2.0", "bytes", "bytes");
+        s.command("sudo", "exit 1");
+        QCOMPARE(Cli::run(s.env, {"update", "install"}), 1);
+        QCOMPARE(s.calls().filter(QRegularExpression("^sudo ")).size(), 1);
+    }
+    void theAboutPageChecksInstallsAndRestarts() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        fakeDesktop(s);
+        fakeGitHub(s, "0.2.0", "bytes", "bytes");
+        s.command("omarchy-control", "exit 0");
+        s.command("omarchy-launch-floating-terminal-with-presentation", "exit 0");
+        s.command("bash", "exit 0");
+        s.command("pacman", "echo 'omarchy-control 0.1.0-1'");
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window, 3000));
+
+        // About is the last tab, at the bottom of the list.
+        QCOMPARE(backend.pages().last().toMap().value("id").toString(), QString("about"));
+
+        QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "about"), Q_ARG(QVariant, QString()));
+        QTest::qWait(300);
+        const auto find = [&](const QString &name) {
+            QQuickItem *found = nullptr;
+            std::function<void(QQuickItem *)> search = [&](QQuickItem *item) {
+                if (item->objectName() == name)
+                    found = item;
+                for (QQuickItem *child : item->childItems())
+                    if (!found)
+                        search(child);
+            };
+            search(window->contentItem());
+            return found;
+        };
+        const auto click = [&](const QString &name) {
+            QQuickItem *button = find(name);
+            QVERIFY2(button && button->isVisible(), qPrintable(name));
+            QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, button->mapToScene(QPointF(button->width() / 2, button->height() / 2)).toPoint());
+        };
+        QVERIFY(find("aboutVersion")->property("text").toString().contains("0.1.0"));
+        // Opening the page asks nothing of the network.
+        QVERIFY(s.calls().filter("curl").isEmpty());
+        QVERIFY(!find("installUpdate")->isVisible());
+
+        click("checkUpdates");
+        QTRY_COMPARE(backend.updates()->state(), QString("available"));
+        QCOMPARE(backend.updates()->latestVersion(), QString("0.2.0"));
+        QTRY_VERIFY(find("updateStatus")->property("text").toString().contains("0.2.0"));
+        QTest::qWait(100);
+
+        // Installing opens the terminal route and goes no further on its own.
+        click("installUpdate");
+        QTRY_VERIFY(backend.updates()->installStarted());
+        QTRY_VERIFY(!s.calls().filter("omarchy-launch-floating-terminal-with-presentation omarchy-control update install").isEmpty());
+        QVERIFY(s.calls().filter(QRegularExpression("^sudo ")).isEmpty());
+        QCOMPARE(backend.updates()->state(), QString("available"));
+
+        // Coming back with the same version still installed changes nothing.
+        backend.windowActivated();
+        QTest::qWait(300);
+        QCOMPARE(backend.updates()->state(), QString("available"));
+
+        // The window notices the finished update when it gets focus back.
+        s.command("pacman", "echo 'omarchy-control 0.2.0-1'");
+        backend.windowActivated();
+        QTRY_COMPARE(backend.updates()->state(), QString("restart"));
+        QTRY_VERIFY(find("restartApp")->isVisible());
+        QVERIFY(!find("checkUpdates")->isVisible());
+        QTest::qWait(100);
+        QSignalSpy quit(&engine, &QQmlEngine::quit);
+        click("restartApp");
+        QTRY_COMPARE(quit.size(), 1);
+        QTRY_VERIFY(!s.calls().filter("omarchy-control open --page about").isEmpty());
+    }
+    void aCheckReportsWhenThereIsNothingToFind() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        s.command("curl", "printf '{}\\n404'");
+        CommandRunner runner(s.env);
+        UpdateProvider updates(&runner);
+        updates.check();
+        QTRY_COMPARE(updates.state(), QString("none"));
+        s.command("curl", "exit 6");
+        updates.check();
+        QTRY_COMPARE(updates.state(), QString("error"));
+        QVERIFY(updates.error().contains("connection"));
+        s.command("curl", "printf '{\"tag_name\":\"v0.1.0\"}\\n200'");
+        updates.check();
+        QTRY_COMPARE(updates.state(), QString("current"));
     }
 
     // ---- Command line ---------------------------------------------------------

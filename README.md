@@ -1,60 +1,147 @@
+<div align="center">
+
+<img src="pkgbuild/omarchy-control.svg" width="104" alt="Omarchy Control icon">
+
 # Omarchy Control
 
-![Omarchy Control, on its Overview page](docs/screens/overview.png)
+**One searchable place to understand your Omarchy computer, change its settings, and reach the right tool.**
 
-One searchable place to understand this computer, change its settings, and reach the right specialist tool. It follows the active Omarchy theme and language, reuses Omarchy's own commands, and verifies each change by reading the value back.
+[![Latest release](https://img.shields.io/github/v/release/last-refuge/omarchy-control?style=flat-square&label=release&color=ff9f0a&labelColor=1c1c1e)](https://github.com/last-refuge/omarchy-control/releases/latest)
+[![Omarchy 4.5](https://img.shields.io/badge/Omarchy-4.5-ff9f0a?style=flat-square&labelColor=1c1c1e)](https://omarchy.org)
+[![Qt 6](https://img.shields.io/badge/Qt-6-ff9f0a?style=flat-square&labelColor=1c1c1e)](https://www.qt.io)
+[![MIT License](https://img.shields.io/badge/license-MIT-ff9f0a?style=flat-square&labelColor=1c1c1e)](LICENSE)
 
-The screenshot uses a synthetic machine with fictional values.
+[Install](#install) · [Features](#features) · [Safety](#how-changes-stay-safe) · [Shortcuts](#keyboard-shortcuts) · [Command line](#command-line) · [Development](#development)
 
-## Status
+<br>
 
-Version 0.1.0, built against Omarchy 4.5 and Hyprland 0.56. 50 of 64 writable settings, display recovery, and the real window are verified against real Hyprland, the real shell, and real Omarchy scripts in an isolated nested session. Every setting reads correctly on real hardware. It has not yet changed anything on a real desktop session. [What has and has not been verified](docs/LIVE-CHECKS.md) has the details and a checklist for a first run.
+<img src="docs/screens/overview.png" alt="The Omarchy Control Overview page, with quick settings for appearance, network, sound, and power" width="860">
+
+</div>
+
+<br>
+
+Omarchy Control is a native app that puts your settings behind one search box. It follows your Omarchy theme and language, reuses Omarchy's own commands, and confirms each change by reading the value back. Anything that can be undone has an undo.
 
 ## Install
 
 ```sh
-bin/install       # Builds the Arch package and installs it (asks for sudo)
+curl -fsSL https://raw.githubusercontent.com/last-refuge/omarchy-control/main/install.sh | bash
+```
+
+This downloads the prebuilt package from [GitHub Releases](https://github.com/last-refuge/omarchy-control/releases), checks it against the release's checksums, and installs it with `pacman`, which shows you the change and asks before going ahead. Nothing is compiled, and nothing in your configuration changes.
+
+Then find it in your app launcher, or run:
+
+```sh
 omarchy-control open
 omarchy-control integrate menu   # Optional: adds it to the Omarchy menu
 ```
 
-Nothing in your configuration changes on install. The first change to a Hyprland setting asks before adding one marked line to `hyprland.lua`.
+The first change to a Hyprland setting asks before adding one marked line to `hyprland.lua`.
 
-## What it does
+<details>
+<summary><b>Update, uninstall, and other install options</b></summary>
 
-- **Typed settings** with live values: theme, fonts, text size, windows, bar, dock, idle timers, power profiles, default apps, input, DNS, language.
-- **Device pages**: sound routing and volume, Bluetooth, Wi-Fi, display arrangement.
-- **Administration**: services, startup apps, storage, plugins, shortcuts, window rules, file associations, typed Superwhisper settings, and guided firewall routes.
-- **Every other Omarchy workflow** by name, handing off to the right panel, wizard, app, or config file.
+<br>
 
-Coverage is [reported by route](docs/COVERAGE.md): 97 native settings and pages, 23 Omarchy panels, 334 guided routes, 15 specialist apps, and 22 config files. Every public Omarchy command and menu row in the 4.5 inventory has a destination or a recorded reason for exclusion.
+**Update:** open **About** and choose **Check for updates**, or use the command line. The app only contacts GitHub when you ask it to.
+
+```sh
+omarchy-control update            # Is a newer version out?
+omarchy-control update install    # Download, verify, and install it
+```
+
+**Uninstall:**
+
+```sh
+omarchy-control integrate menu --remove   # If you added it to the menu
+sudo pacman -R omarchy-control
+```
+
+**Install a specific version, or without a terminal:**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/last-refuge/omarchy-control/main/install.sh | bash -s -- --version 0.1.0
+curl -fsSL https://raw.githubusercontent.com/last-refuge/omarchy-control/main/install.sh | bash -s -- --yes
+```
+
+**Prefer to read it first?** The installer is [one short script](install.sh).
+
+Packages are built for x86_64 by [a public workflow](.github/workflows/release.yml). The checksums protect against a corrupted download. They are published in the same release as the package, so they don't protect against a compromised GitHub account.
+
+</details>
+
+## Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/screens/appearance.png" alt="The Appearance page"><br><br>
+<b>Typed settings with live values</b><br>
+Theme, fonts, text size, windows, bar, dock, idle timers, power profiles, default apps, input, DNS, and language.
+</td>
+<td width="50%" valign="top">
+<img src="docs/screens/sound.png" alt="The Sound and devices page"><br><br>
+<b>Your devices</b><br>
+Sound routing and volume, Bluetooth, and Wi-Fi, with each app's audio output in one list.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/screens/displays.png" alt="The Displays page"><br><br>
+<b>Display arrangement with a safety timer</b><br>
+If a new layout leaves you without a usable screen, the previous one comes back on its own.
+</td>
+<td width="50%" valign="top">
+<img src="docs/screens/about.png" alt="The About page"><br><br>
+<b>Updates when you ask</b><br>
+Check for a new version and install it from the About page, where <code>pacman</code> and <code>sudo</code> handle the rest in a terminal.
+</td>
+</tr>
+</table>
+
+It also covers services, startup apps, storage, plugins, shortcuts, window rules, file associations, typed Superwhisper settings, and guided firewall routes. Every other Omarchy workflow is one search away, handing off to the right panel, wizard, app, or config file.
+
+The window follows your theme and language live, works by keyboard alone, and mirrors for right-to-left languages. Screenshots use a synthetic machine with fictional values.
+
+### Coverage
+
+| 97 | 23 | 335 | 19 | 22 |
+| :---: | :---: | :---: | :---: | :---: |
+| native settings and pages | Omarchy panels | guided routes | specialist apps | config files |
+
+Every public Omarchy command and menu row in the 4.5 inventory has a destination or a recorded reason for exclusion, [reported by route](docs/COVERAGE.md).
 
 ## How changes stay safe
 
-- Values cross into commands as one argument, never through a shell.
-- Every change is journaled and backed up first, or it does not start. It is then applied and verified by reading it back. A failed check restores the previous file, unless someone has edited that file since.
-- Undo refuses if anything has edited the value since, and is only offered when the old value can really be set again.
-- After a crash, nothing is overwritten. The app reports what happened and where the backup is.
-- Hyprland overrides live in one owned file, `~/.config/hypr/omarchy-control.lua`. A hand edit to it is detected and never overwritten.
-- Display changes run under a separate watchdog process that restores the previous layout unless you keep the new one. Arranging displays stays locked until `omarchy-control selftest display` has passed on your machine: it moves one display a few pixels, confirms Hyprland took the change, and confirms the watchdog puts it back.
-- Wi-Fi switches run under a NetworkManager checkpoint where polkit allows one.
-- If Omarchy later changes a command behind a setting, that setting keeps reading but pauses writing until you review it, because each adapter encodes what a specific script does. `omarchy-control compat` shows what changed.
-- Package work waits for pacman, and a restore keeps a copy of whatever it replaces.
-- Passwords are never collected. Joining a secured network goes to Omarchy's panel.
+- **Backed up first.** Every change is journaled and backed up or it does not start. It is then applied and verified by reading it back. A failed check restores the previous file, unless someone has edited that file since.
+- **Undo you can trust.** Undo refuses if anything has edited the value since, and is only offered when the old value can really be set again.
+- **Crashes lose nothing.** After a crash, nothing is overwritten. The app reports what happened and where the backup is.
+- **No shell injection.** Values cross into commands as one argument, never through a shell.
+- **Your config stays yours.** Hyprland overrides live in one owned file, `~/.config/hypr/omarchy-control.lua`. A hand edit to it is detected and never overwritten.
+- **Display changes can't strand you.** They run under a separate watchdog process that restores the previous layout unless you keep the new one. Arranging displays stays locked until `omarchy-control selftest display` has passed on your computer.
+- **Wi-Fi switches can roll back.** They run under a NetworkManager checkpoint where polkit allows one.
+- **Omarchy can change underneath it.** If a command behind a setting changes, that setting keeps reading but pauses writing until you review it. `omarchy-control compat` shows what changed.
+- **Packages wait their turn.** Package work waits for pacman, and a restore keeps a copy of whatever it replaces.
+- **Passwords are never collected.** Joining a secured network goes to Omarchy's panel, and installing an update leaves the password prompt to `sudo`.
 
-## Shortcuts
+> [!NOTE]
+> **Version 0.1.0, built against Omarchy 4.5 and Hyprland 0.56.** 50 of 64 writable settings, display recovery, and the real window are verified against real Hyprland, the real shell, and real Omarchy scripts in an isolated nested session, and every setting reads correctly on real hardware. The checklist of changes on a real desktop session is still open. [What has and has not been verified](docs/LIVE-CHECKS.md) has the details.
+
+## Keyboard shortcuts
 
 | Key | Action |
-| --- | --- |
-| Ctrl+K, Ctrl+F | Search |
-| Tab, Shift+Tab | Move between controls |
-| Space | Activate the focused control |
-| Alt+Left | Go back |
-| Ctrl+Z | Undo the last change that can be undone |
-| Ctrl+Shift+Z | Redo |
-| Esc | Close a dialog, this list, or search |
-| ? | Show shortcuts |
-| Q, Ctrl+Q | Quit |
+| :--- | :--- |
+| <kbd>Ctrl</kbd> <kbd>K</kbd> or <kbd>Ctrl</kbd> <kbd>F</kbd> | Search |
+| <kbd>Tab</kbd> or <kbd>Shift</kbd> <kbd>Tab</kbd> | Move between controls |
+| <kbd>Space</kbd> | Activate the focused control |
+| <kbd>Alt</kbd> <kbd>Left</kbd> | Go back |
+| <kbd>Ctrl</kbd> <kbd>Z</kbd> | Undo the last change that can be undone |
+| <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> | Redo |
+| <kbd>Esc</kbd> | Close a dialog, this list, or search |
+| <kbd>?</kbd> | Show shortcuts |
+| <kbd>Q</kbd> or <kbd>Ctrl</kbd> <kbd>Q</kbd> | Quit |
 
 Single-letter keys switch off while you are typing.
 
@@ -69,6 +156,14 @@ omarchy-control plan power.idle.lock 600
 omarchy-control apply power.idle.lock 600
 omarchy-control history
 omarchy-control undo <transaction>
+```
+
+<details>
+<summary><b>More commands</b></summary>
+
+<br>
+
+```sh
 omarchy-control doctor
 omarchy-control coverage --live
 omarchy-control compat
@@ -76,16 +171,23 @@ omarchy-control shortcut add "SUPER + ALT + Y" "My tool" my-tool
 omarchy-control rule add firefox float
 omarchy-control display preview DP-1 1920 0 --keep
 omarchy-control launch panel.network
+omarchy-control update check
 omarchy-control skill install
 ```
 
+</details>
+
 ## Development
+
+Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wayland`.
 
 ```sh
 bin/build                  # build/omarchy-control
-bin/test                   # 244 tests; never touches the real desktop
+bin/install                # Build the Arch package from this checkout and install it
+bin/test                   # 258 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
+tools/installer-check.sh   # install.sh against real release files in a disposable root
 tools/gen-compat.py        # Re-pin commands after reviewing a changed script
 bin/coverage               # Regenerates docs/coverage-ledger.json
 tools/i18n-report.py       # Translation coverage per language
@@ -93,8 +195,19 @@ tools/i18n-report.py       # Translation coverage per language
 
 Tests run in a temporary root with fake commands. `tools/make-sandbox.sh` builds a synthetic machine, and `tools/screens` screenshots the real QML against it.
 
+**Releasing:** pushing a version tag tests the code, builds the package, and publishes it.
+
+```sh
+tools/set-version.sh 0.2.0
+git commit -am "Release 0.2.0"
+git tag v0.2.0
+git push origin main v0.2.0
+```
+
 Project documents: [plan](docs/PLAN.md), [coverage](docs/COVERAGE.md), [P0 findings](docs/P0-FINDINGS.md), [live checks](docs/LIVE-CHECKS.md).
 
 ## License
 
-MIT. Theme watching and the translator follow Omacut and Monologue (MIT, David Heinemeier Hansson).
+[MIT](LICENSE). Theme watching and the translator follow Omacut and Monologue (MIT, David Heinemeier Hansson).
+
+Omarchy Control is an independent project and is not an official part of Omarchy.

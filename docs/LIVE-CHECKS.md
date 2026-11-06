@@ -6,11 +6,14 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 
 | Check | Evidence |
 | --- | --- |
-| 244 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
+| 258 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
 | 82 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
 | Package install, upgrade, and removal | `tools/package-check.sh`, the real package in a disposable pacman root, with real `pacman` under `fakeroot` |
 | All 76 typed settings read correctly on real hardware | `omarchy-control doctor` on Omarchy 4.5.0-3; recorded in `live-evidence.json` |
 | 389 of 390 routes resolve to an installed executable | Same run. `omarchy-notes` is not installed on that machine, and the row says so. None were launched |
+| Curl installer | `tools/installer-check.sh` runs `install.sh` against real release files in a local mirror, installing the real package into a disposable pacman root. It refuses a tampered package or missing checksums before pacman runs, and a truncated download runs nothing |
+| Release build | The steps in `.github/workflows/release.yml` ran in a clean `archlinux:base-devel` container: tests, package check, package build, checksums, installer check. The workflow itself has not run on GitHub |
+| In-app updates | Fixture-tested with fake `curl` and `sudo`, including a real click through Check, Install, and Restart on the About page. No real release has been checked or installed yet |
 | Coverage against the 4.5 inventory | 433 of 433 public commands and all 356 actionable menu rows have a destination or recorded reason |
 | Accessibility tree | Every control reachable by Tab, on every page, reports a name through Qt's accessibility layer. No screen reader has actually spoken it |
 | Layouts | Real QML on every page: dark and light, sharp and rounded, Arabic and German at the largest text size, 620px wide, and this machine's live data (read-only, config files confirmed untouched) |
@@ -38,12 +41,13 @@ These need your real session or hardware. Jason decided on November 6, 2026 to r
 - **Other helper routes,** especially installers and removals, which were deliberately not run. Their routes resolve.
 - **Display hardware:** arranging real monitors, modes, rotation, hotplug. The recovery mechanism is proven, on one virtual output.
 - **The installed package on this machine,** in the real launcher with the real icon.
+- **A real release:** the curl installer against GitHub, and updating from one published version to the next through About. See the first release steps below.
 - **A screen reader speaking,** though the accessibility tree is checked.
 - **Hardware not on the audit machine:** desktops, other GPUs.
 
 ## Languages
 
-Danish, German, and Arabic are 100% translated: 426 interface and 983 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
+Danish, German, and Arabic are 100% translated: 456 interface and 994 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
 
 ## First live run
 
@@ -71,5 +75,11 @@ omarchy-control open
    ```
    This moves your first display 8 pixels for three seconds, so windows may shift very slightly, and then it should move back on its own. It is already proven on nested Hyprland; this proves it on your hardware, and unlocks the Arrangement editor. Then preview a harmless layout change on the Displays page, and let it time out without pressing Keep.
 6. **Wi-Fi switch:** with a second saved network nearby, connect and let the timer run out without pressing Keep. The previous connection should return.
+
+## First release
+
+1. Push `main`, then tag and push `v0.1.0`. The release workflow builds and publishes the package.
+2. Remove the locally built package with `sudo pacman -R omarchy-control`, because pacman skips an identical version. Then run the curl line from the README.
+3. To prove the update path, publish `v0.1.1` with `tools/set-version.sh 0.1.1`, then use About, Check for updates, Install update, and Restart now on `0.1.0`.
 
 To record a passing write as verified, add it to `docs/live-evidence.json` with `"status": "verified"` and what you did, then run `bin/coverage`. `tools/nested-check.py --record` does this for the nested checks.
