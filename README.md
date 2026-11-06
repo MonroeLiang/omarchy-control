@@ -127,7 +127,7 @@ Every public Omarchy command and menu row in the 4.5 inventory has a destination
 - **Passwords are never collected.** Joining a secured network goes to Omarchy's panel, and installing an update leaves the password prompt to `sudo`.
 
 > [!NOTE]
-> **Version 0.1.1, built against Omarchy 4.5 and Hyprland 0.56.** 50 of 64 writable settings, display recovery, and the real window are verified against real Hyprland, the real shell, and real Omarchy scripts in an isolated nested session, and every setting reads correctly on real hardware. The checklist of changes on a real desktop session is still open. [What has and has not been verified](docs/LIVE-CHECKS.md) has the details.
+> **Version 0.1.2, built against Omarchy 4.5 and Hyprland 0.56.** 50 of 64 writable settings, display recovery, and the real window are verified against real Hyprland, the real shell, and real Omarchy scripts in an isolated nested session, and every setting reads correctly on real hardware. The checklist of changes on a real desktop session is still open. [What has and has not been verified](docs/LIVE-CHECKS.md) has the details.
 
 ## Keyboard shortcuts
 

@@ -82,6 +82,6 @@ This passed on November 6, 2026, and only needs a machine on the older version. 
 
 1. Remove the local package with `sudo pacman -R omarchy-control`.
 2. Install the older release with the curl line from the README, adding `| bash -s -- --version 0.1.0` in place of `| bash`.
-3. Open About, then use Check for updates, Install update, and Restart now. About should then say 0.1.1.
+3. Open About, then use Check for updates, Install update, and Restart now. About should then show the latest version.
 
 To record a passing write as verified, add it to `docs/live-evidence.json` with `"status": "verified"` and what you did, then run `bin/coverage`. `tools/nested-check.py --record` does this for the nested checks.
