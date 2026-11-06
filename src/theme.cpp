@@ -4,6 +4,7 @@
 #include <QUrl>
 
 #include <QColor>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -145,7 +146,10 @@ QString Theme::thumbnail(const QString &picture, int radius) const {
     if (picture.isEmpty())
         return {};
     const QString path = picture.startsWith(QLatin1String("file:")) ? QUrl(picture).toLocalFile() : picture;
-    return "image://icons/thumb/" + QString::number(radius) + "/" + QString::fromUtf8(QUrl::toPercentEncoding(path));
+    // Two themes can use the same filename in the same swapped folder, and images are
+    // cached by address, so the address carries the file's age as well as its name.
+    const qint64 version = QFileInfo(path).lastModified().toMSecsSinceEpoch();
+    return "image://icons/thumb/" + QString::number(radius) + "/" + QString::number(version) + "/" + QString::fromUtf8(QUrl::toPercentEncoding(path));
 }
 
 QVariantMap Theme::preview(const QString &themeName) const {
@@ -219,7 +223,10 @@ void Theme::reload() {
 
     const QString backgroundFile = QFileInfo(current + "/background").canonicalFilePath();
     static const QRegularExpression still("\\.(png|jpe?g|webp)$", QRegularExpression::CaseInsensitiveOption);
-    const QString wallpaper = still.match(backgroundFile).hasMatch() ? QUrl::fromLocalFile(backgroundFile).toString() : QString();
+    // The fragment changes with the file, so a same-named wallpaper still counts as new.
+    const QString wallpaper = still.match(backgroundFile).hasMatch()
+                                  ? QUrl::fromLocalFile(backgroundFile).toString() + "#" + QString::number(QFileInfo(backgroundFile).lastModified().toMSecsSinceEpoch())
+                                  : QString();
 
     const bool different = colors != m_colors || dark != m_dark || (ok ? fontSize : 13) != m_fontSize ||
                            animate != m_animate || name != m_name || wallpaper != m_wallpaper;

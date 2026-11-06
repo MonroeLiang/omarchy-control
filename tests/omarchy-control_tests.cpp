@@ -3,6 +3,7 @@
 #include <functional>
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -2721,8 +2722,75 @@ private slots:
         QCOMPARE(theme.thumbnail(QUrl::fromLocalFile(path).toString(), 0), theme.thumbnail(path, 0));
         QVERIFY(theme.thumbnail("", 4).isEmpty());
         QSize size;
-        const QImage missing = provider.requestImage("thumb/4/" + QString::fromUtf8(QUrl::toPercentEncoding("/no/such.png")), &size, QSize(32, 32));
+        const QImage missing = provider.requestImage("thumb/4/0/" + QString::fromUtf8(QUrl::toPercentEncoding("/no/such.png")), &size, QSize(32, 32));
         QCOMPARE(qAlpha(missing.pixel(16, 16)), 0);
+    }
+    void aThemesBackgroundsFollowTheTheme() {
+        Sandbox s;
+        fakeDesktop(s);
+        const QString current = s.env.stateHome + "/omarchy/current";
+        const QString state = s.dir.path() + "/picked";
+        const auto swapTo = [&](const QString &name, const QStringList &pictures) {
+            // What Omarchy does: the theme's folder is replaced outright.
+            QDir(current + "/theme").removeRecursively();
+            for (const auto &picture : pictures)
+                writeFile(current + "/theme/backgrounds/" + picture, "x");
+            QFile::remove(current + "/background");
+            QFile::link(current + "/theme/backgrounds/" + pictures.first(), current + "/background");
+            writeFile(current + "/theme.name", name.toUtf8());
+            writeFile(state, name.toUtf8());
+        };
+        swapTo("One", {"one-a.png", "one-b.png"});
+        s.omarchy("state='" + state.toUtf8() + "'\ncurrent='" + current.toUtf8() + "'\ncase \"$*\" in\n"
+                  "  'theme list') printf 'One\\nTwo\\n';;\n"
+                  "  'theme current') cat \"$state\";;\n"
+                  "  'theme set Two') rm -rf \"$current/theme\"; mkdir -p \"$current/theme/backgrounds\"; : > \"$current/theme/backgrounds/two-a.png\"; : > \"$current/theme/backgrounds/two-b.png\"; : > \"$current/theme/backgrounds/two-c.png\"; ln -sf \"$current/theme/backgrounds/two-b.png\" \"$current/background\"; printf Two > \"$current/theme.name\"; printf Two > \"$state\";;\n"
+                  "  version) echo 4.5.0-3;;\nesac\n");
+        Backend backend(s.env);
+        backend.pageShown("appearance");
+        const auto background = [&] { return backend.states()->value(Backend::stateKey("appearance.background")).toMap(); };
+        const auto labels = [&] {
+            QStringList names;
+            for (const auto &choice : background().value("choices").toList())
+                names << choice.toMap().value("label").toString();
+            return names;
+        };
+        QTRY_COMPARE(labels(), QStringList({"one-a", "one-b"}));
+        QVERIFY(background().value("value").toString().endsWith("/one-a.png"));
+
+        // Changed in this window.
+        backend.commit("appearance.theme", "Two");
+        QTRY_COMPARE_WITH_TIMEOUT(labels(), QStringList({"two-a", "two-b", "two-c"}), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(background().value("value").toString().endsWith("/two-b.png"), 5000);
+
+        // Changed from outside it, such as from the Omarchy menu.
+        swapTo("One", {"one-a.png", "one-b.png"});
+        QTRY_COMPARE_WITH_TIMEOUT(labels(), QStringList({"one-a", "one-b"}), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(background().value("value").toString().endsWith("/one-a.png"), 5000);
+    }
+    void aSameNamedPictureFromAnotherThemeIsNotTheCachedOne() {
+        Sandbox s;
+        fakeDesktop(s);
+        const QString current = s.env.stateHome + "/omarchy/current";
+        const QString picture = current + "/theme/backgrounds/1-main.png";
+        writeFile(picture, "first");
+        QFile::remove(current + "/background");
+        QFile::link(picture, current + "/background");
+        QFile first(picture);
+        QVERIFY(first.open(QIODevice::ReadWrite));
+        QVERIFY(first.setFileTime(QDateTime::fromSecsSinceEpoch(1700000000), QFileDevice::FileModificationTime));
+        first.close();
+        Theme theme(s.env);
+        const QString before = theme.thumbnail(picture, 8);
+        QTRY_VERIFY(!theme.wallpaper().isEmpty());
+        const QString wallpaperBefore = theme.wallpaper();
+        // Same path, new theme: Omarchy replaces the folder outright.
+        QVERIFY(QDir(current + "/theme").removeRecursively());
+        writeFile(picture, "second");
+        QVERIFY(theme.thumbnail(picture, 8) != before);
+        QTRY_VERIFY_WITH_TIMEOUT(theme.wallpaper() != wallpaperBefore, 3000);
+        // Still the same file underneath.
+        QCOMPARE(QUrl(theme.wallpaper()).toLocalFile(), QFileInfo(picture).canonicalFilePath());
     }
     void cornersFollowTheDesktop() {
         Sandbox s;
@@ -3064,6 +3132,17 @@ private slots:
 
         // About is the last tab, at the bottom of the list.
         QCOMPARE(backend.pages().last().toMap().value("id").toString(), QString("about"));
+
+        // Every wider gap in the list has a line in it, so grouping never reads as a mistake.
+        int separators = 0;
+        std::function<void(QQuickItem *)> count = [&](QQuickItem *item) {
+            if (item->objectName() == "navSeparator" && item->isVisible())
+                ++separators;
+            for (QQuickItem *child : item->childItems())
+                count(child);
+        };
+        count(window->contentItem());
+        QCOMPARE(separators, 3);
 
         QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "about"), Q_ARG(QVariant, QString()));
         QTest::qWait(300);

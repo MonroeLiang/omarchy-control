@@ -76,7 +76,11 @@ void Backend::watchFiles() {
     const auto paths = m_watcher.files() + m_watcher.directories();
     if (!paths.isEmpty())
         m_watcher.removePaths(paths);
-    const QStringList candidates{env.configHome + "/omarchy", env.configHome + "/hypr", env.stateHome + "/omarchy/toggles",
+    // The current theme's folders are swapped wholesale on a theme change, however it was
+    // made, and everything that comes from a theme, like its backgrounds, follows from that.
+    const QStringList candidates{env.stateHome + "/omarchy/current", env.stateHome + "/omarchy/current/theme",
+                                 env.stateHome + "/omarchy/current/theme/backgrounds",
+                                 env.configHome + "/omarchy", env.configHome + "/hypr", env.stateHome + "/omarchy/toggles",
                                  env.stateHome + "/omarchy/toggles/hypr", env.stateHome + "/omarchy/indicators",
                                  env.stateHome + "/omarchy/powerprofiles", env.stateHome + "/omarchy/defaults", env.configHome + "/autostart"};
     for (const auto &path : candidates)

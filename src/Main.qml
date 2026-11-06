@@ -331,9 +331,19 @@ ApplicationWindow {
                             delegate: Item {
                                 // Thirteen items read as four groups: home, this desktop, the
                                 // machine behind it, and this app.
-                                readonly property int gap: ["appearance", "apps", "about"].indexOf(modelData.id) >= 0 ? 12 : 0
+                                readonly property int gap: ["appearance", "apps", "about"].indexOf(modelData.id) >= 0 ? 15 : 0
                                 width: navigation.width
                                 height: navButton.height + gap
+                                // The line is what says these are groups, not uneven spacing.
+                                Rectangle {
+                                    visible: parent.gap > 0
+                                    objectName: "navSeparator"
+                                    x: 10
+                                    y: Math.round((parent.gap - 1) / 2)
+                                    width: parent.width - 20
+                                    height: 1
+                                    color: theme.hairline
+                                }
                                 AbstractButton {
                                     id: navButton
                                     objectName: "nav_" + modelData.id

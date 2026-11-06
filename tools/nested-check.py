@@ -192,6 +192,30 @@ try:
         }[sid]], env=app_env, capture_output=True, text=True)
         return next((c for c in result.stdout.splitlines() if c and c != current), None)
 
+    # A theme's backgrounds come with it. The window refreshes them by watching the folder
+    # Omarchy swaps, so this proves the real script really does swap it, and that the
+    # background the app then accepts belongs to the new theme, not the old one.
+    current = H + "/.local/state/omarchy/current"
+    def backgrounds():
+        folder = current + "/theme/backgrounds"
+        return sorted(f for f in os.listdir(folder) if os.path.isfile(folder + "/" + f)) if os.path.isdir(folder) else []
+    theme_before, list_before = get("appearance.theme"), backgrounds()
+    folder_before = os.stat(current).st_mtime_ns
+    target = next(name for name in ("Tokyo Night", "Catppuccin") if name != theme_before)
+    switched = json.loads(app("apply", "appearance.theme", target, "--yes").stdout or "{}")
+    list_after = backgrounds()
+    check("a real theme change swaps the folder the window watches", os.stat(current).st_mtime_ns != folder_before)
+    check("a real theme change brings its own backgrounds", switched.get("phase") == "committed" and list_after and list_after != list_before, f"{list_before} -> {list_after}")
+    if list_after:
+        offered = json.loads(app("plan", "appearance.background", current + "/theme/backgrounds/" + list_after[-1]).stdout or "{}")
+        check("the app accepts a background from the new theme", offered.get("ok") is True, str(offered)[:160])
+    stale = next((f for f in list_before if f not in list_after), None)
+    if stale:
+        refused = json.loads(app("plan", "appearance.background", current + "/theme/backgrounds/" + stale).stdout or "{}")
+        check("the app refuses a background the old theme had", refused.get("ok") is not True, str(refused)[:160])
+    if switched.get("id"):
+        app("undo", switched["id"])
+
     for sid, value in settings:
         before = get(sid)
         if value is None:

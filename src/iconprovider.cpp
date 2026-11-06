@@ -14,7 +14,8 @@ IconProvider::IconProvider() : QQuickImageProvider(QQuickImageProvider::Image) {
 // wallpaper never has to be decoded at full size for a small tile.
 static QImage thumbnail(const QString &id, const QSize &target) {
     const int radius = id.section('/', 1, 1).toInt();
-    const QString path = QUrl::fromPercentEncoding(id.section('/', 2).toUtf8());
+    // Section 2 is the file's age, there only to tell one picture's address from another.
+    const QString path = QUrl::fromPercentEncoding(id.section('/', 3).toUtf8());
     QImage result(target, QImage::Format_ARGB32_Premultiplied);
     result.fill(Qt::transparent);
     QImageReader reader(path);
