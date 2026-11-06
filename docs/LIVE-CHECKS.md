@@ -13,7 +13,8 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 | 389 of 390 routes resolve to an installed executable | Same run. `omarchy-notes` is not installed on that machine, and the row says so. None were launched |
 | Curl installer | `tools/installer-check.sh` runs `install.sh` against real release files in a local mirror, installing the real package into a disposable pacman root. It refuses a tampered package or missing checksums before pacman runs, and a truncated download runs nothing |
 | Release build | The steps in `.github/workflows/release.yml` ran in a clean `archlinux:base-devel` container: tests, package check, package build, checksums, installer check. The workflow then published v0.1.0 on GitHub |
-| In-app updates | Fixture-tested with fake `curl` and `sudo`, including a real click through Check, Install, and Restart on the About page. No update from one real release to the next has been run yet |
+| In-app updates | Fixture-tested with fake `curl` and `sudo`, including a real click through Check, Install, and Restart on the About page. See the real run below |
+| Real install and update | On November 6, 2026, Jason installed v0.1.0 with the curl installer from GitHub, then updated to v0.1.1 through About: Check for updates, Install update with his password at `sudo`, and Restart now. He confirmed it all worked. The same paths also passed from the command line against GitHub, in a disposable pacman root |
 | Coverage against the 4.5 inventory | 433 of 433 public commands and all 356 actionable menu rows have a destination or recorded reason |
 | Accessibility tree | Every control reachable by Tab, on every page, reports a name through Qt's accessibility layer, and Tab scrolls to keep focus on screen. No screen reader has actually spoken it |
 | Layouts | Real QML on every page: dark and light, sharp and rounded, Arabic and German at the largest text size, 620px wide, and this machine's live data (read-only, config files confirmed untouched) |
@@ -41,7 +42,6 @@ These need your real session or hardware. Jason decided on November 6, 2026 to r
 - **Other helper routes,** especially installers and removals, which were deliberately not run. Their routes resolve.
 - **Display hardware:** arranging real monitors, modes, rotation, hotplug. The recovery mechanism is proven, on one virtual output.
 - **The installed package on this machine,** in the real launcher with the real icon.
-- **A real release:** the curl installer against GitHub, and updating from one published version to the next through About. See the first release steps below.
 - **A screen reader speaking,** though the accessibility tree is checked.
 - **Hardware not on the audit machine:** desktops, other GPUs.
 
@@ -76,9 +76,9 @@ omarchy-control open
    This moves your first display 8 pixels for three seconds, so windows may shift very slightly, and then it should move back on its own. It is already proven on nested Hyprland; this proves it on your hardware, and unlocks the Arrangement editor. Then preview a harmless layout change on the Displays page, and let it time out without pressing Keep.
 6. **Wi-Fi switch:** with a second saved network nearby, connect and let the timer run out without pressing Keep. The previous connection should return.
 
-## Proving a real update
+## Repeating the update check
 
-The releases exist, so this only needs a machine on the older version. `pacman` skips an identical version, so a locally built package has to go first.
+This passed on November 6, 2026, and only needs a machine on the older version. `pacman` skips an identical version, so a locally built package has to go first.
 
 1. Remove the local package with `sudo pacman -R omarchy-control`.
 2. Install the older release with the curl line from the README, adding `| bash -s -- --version 0.1.0` in place of `| bash`.
