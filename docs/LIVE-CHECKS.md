@@ -12,8 +12,8 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 | All 76 typed settings read correctly on real hardware | `omarchy-control doctor` on Omarchy 4.5.0-3; recorded in `live-evidence.json` |
 | 389 of 390 routes resolve to an installed executable | Same run. `omarchy-notes` is not installed on that machine, and the row says so. None were launched |
 | Curl installer | `tools/installer-check.sh` runs `install.sh` against real release files in a local mirror, installing the real package into a disposable pacman root. It refuses a tampered package or missing checksums before pacman runs, and a truncated download runs nothing |
-| Release build | The steps in `.github/workflows/release.yml` ran in a clean `archlinux:base-devel` container: tests, package check, package build, checksums, installer check. The workflow itself has not run on GitHub |
-| In-app updates | Fixture-tested with fake `curl` and `sudo`, including a real click through Check, Install, and Restart on the About page. No real release has been checked or installed yet |
+| Release build | The steps in `.github/workflows/release.yml` ran in a clean `archlinux:base-devel` container: tests, package check, package build, checksums, installer check. The workflow then published v0.1.0 on GitHub |
+| In-app updates | Fixture-tested with fake `curl` and `sudo`, including a real click through Check, Install, and Restart on the About page. No update from one real release to the next has been run yet |
 | Coverage against the 4.5 inventory | 433 of 433 public commands and all 356 actionable menu rows have a destination or recorded reason |
 | Accessibility tree | Every control reachable by Tab, on every page, reports a name through Qt's accessibility layer, and Tab scrolls to keep focus on screen. No screen reader has actually spoken it |
 | Layouts | Real QML on every page: dark and light, sharp and rounded, Arabic and German at the largest text size, 620px wide, and this machine's live data (read-only, config files confirmed untouched) |
@@ -76,10 +76,12 @@ omarchy-control open
    This moves your first display 8 pixels for three seconds, so windows may shift very slightly, and then it should move back on its own. It is already proven on nested Hyprland; this proves it on your hardware, and unlocks the Arrangement editor. Then preview a harmless layout change on the Displays page, and let it time out without pressing Keep.
 6. **Wi-Fi switch:** with a second saved network nearby, connect and let the timer run out without pressing Keep. The previous connection should return.
 
-## First release
+## Proving a real update
 
-1. Push `main`, then tag and push `v0.1.0`. The release workflow builds and publishes the package.
-2. Remove the locally built package with `sudo pacman -R omarchy-control`, because pacman skips an identical version. Then run the curl line from the README.
-3. To prove the update path, publish `v0.1.1` with `tools/set-version.sh 0.1.1`, then use About, Check for updates, Install update, and Restart now on `0.1.0`.
+The releases exist, so this only needs a machine on the older version. `pacman` skips an identical version, so a locally built package has to go first.
+
+1. Remove the local package with `sudo pacman -R omarchy-control`.
+2. Install the older release with the curl line from the README, adding `| bash -s -- --version 0.1.0` in place of `| bash`.
+3. Open About, then use Check for updates, Install update, and Restart now. About should then say 0.1.1.
 
 To record a passing write as verified, add it to `docs/live-evidence.json` with `"status": "verified"` and what you did, then run `bin/coverage`. `tools/nested-check.py --record` does this for the nested checks.
