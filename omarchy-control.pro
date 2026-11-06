@@ -4,7 +4,7 @@ CONFIG += c++17 release
 TARGET = omarchy-control
 TEMPLATE = app
 
-VERSION = 0.1.2
+VERSION = 0.1.3
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 include(omarchy-control-sources.pri)
