@@ -5,7 +5,7 @@ import QtQuick.Layouts
 // and a custom bar's identity survive a move.
 ColumnLayout {
     id: root
-    spacing: 10
+    spacing: 8
     readonly property var plugins: backend.plugins
     readonly property var sections: [
         { id: "left", label: qsTr("Left") }, { id: "centerBegin", label: qsTr("Before center") },
@@ -17,7 +17,12 @@ ColumnLayout {
         for (var i = 0; i < list.length; ++i)
             if (list[i].id === id)
                 return list[i].name
-        return id
+        return friendly(id)
+    }
+    // "omarchy.menu" and "org.gnome.Nautilus" are identifiers, not names.
+    function friendly(id) {
+        var name = id.split(".").pop().replace(/[-_]/g, " ")
+        return name.charAt(0).toUpperCase() + name.slice(1)
     }
 
     BlockHeading { Layout.fillWidth: true; title: qsTr("Bar layout") }
@@ -38,17 +43,20 @@ ColumnLayout {
                 readonly property var widgets: root.plugins.barLayout[modelData.id] || []
                 width: parent ? parent.width : 400
                 height: flow.implicitHeight + 18
+                RowDivider {}
                 RowLayout {
                     anchors.fill: parent
+                    anchors.topMargin: 9
+                    anchors.bottomMargin: 9
                     anchors.leftMargin: 14
                     anchors.rightMargin: 14
                     spacing: 12
-                    AppText { text: modelData.label; secondary: true; Layout.preferredWidth: 130; Layout.alignment: Qt.AlignTop; Layout.topMargin: 8 }
+                    AppText { text: modelData.label; secondary: true; Layout.preferredWidth: 130; Layout.alignment: Qt.AlignTop; Layout.preferredHeight: Math.round(theme.fontSize * 2.2) + 2; verticalAlignment: Text.AlignVCenter }
                     Flow {
                         id: flow
                         Layout.fillWidth: true
                         spacing: 6
-                        AppText { visible: sectionRow.widgets.length === 0; text: qsTr("Empty"); secondary: true; height: 30 }
+                        AppText { visible: sectionRow.widgets.length === 0; text: qsTr("Empty"); secondary: true; height: Math.round(theme.fontSize * 2.2) + 2; verticalAlignment: Text.AlignVCenter }
                         Repeater {
                             model: sectionRow.widgets
                             delegate: AppCombo {
@@ -75,7 +83,7 @@ ColumnLayout {
         }
     }
 
-    BlockHeading { Layout.fillWidth: true; title: qsTr("Pinned dock apps") }
+    BlockHeading { Layout.fillWidth: true; Layout.topMargin: 18; title: qsTr("Pinned dock apps") }
     AppText { visible: plugins.dockPins.length === 0; secondary: true; text: qsTr("Nothing is pinned.") }
     Flow {
         Layout.fillWidth: true
@@ -83,9 +91,9 @@ ColumnLayout {
         Repeater {
             model: root.plugins.dockPins
             delegate: AppButton {
-                text: modelData
+                text: root.friendly(modelData)
                 iconName: "close"
-                Accessible.name: qsTr("Unpin %1").arg(modelData)
+                Accessible.name: qsTr("Unpin %1").arg(root.friendly(modelData))
                 onClicked: root.plugins.unpin(modelData)
             }
         }

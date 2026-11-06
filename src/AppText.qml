@@ -6,7 +6,7 @@ Text {
 
     color: secondary ? theme.muted : theme.foreground
     font.family: "monospace"
-    font.pixelSize: Math.round(theme.fontSize * scale_)
+    font.pixelSize: Math.round(theme.fontSize * scale_ * (Qt.application.layoutDirection === Qt.RightToLeft ? 1.1 : 1))
     wrapMode: Text.NoWrap
     elide: Text.ElideRight
     textFormat: Text.PlainText

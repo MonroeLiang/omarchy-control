@@ -1508,7 +1508,8 @@
   "requiresCaps": [
    "hyprland"
   ],
-  "scope": "runtime"
+  "scope": "runtime",
+  "quick": true
  },
  {
   "id": "input.repeat_rate",

@@ -84,56 +84,60 @@ ColumnLayout {
         AppPanel {
             Layout.fillWidth: true
             padding: 14
-            ColumnLayout {
+            RowLayout {
                 width: parent.width
-                spacing: 10
-                AppText {
+                spacing: 16
+                ColumnLayout {
                     Layout.fillWidth: true
-                    objectName: "updateStatus"
-                    wrapMode: Text.Wrap
-                    color: root.updateState === "error" ? theme.danger : theme.foreground
-                    text: {
-                        switch (root.updateState) {
-                        case "checking": return qsTr("Checking for updates…")
-                        case "current": return qsTr("You have the latest version.")
-                        case "none": return qsTr("No releases have been published yet.")
-                        case "error": return root.updates.error
-                        case "available": return qsTr("Version %1 is available. You have %2.").arg(root.updates.latestVersion).arg(root.updates.currentVersion)
-                        case "restart": return qsTr("Version %1 is installed. Restart to start using it.").arg(root.updates.latestVersion)
-                        default: return qsTr("Updates are only checked when you ask.")
+                    spacing: 8
+                    AppText {
+                        Layout.fillWidth: true
+                        objectName: "updateStatus"
+                        wrapMode: Text.Wrap
+                        color: root.updateState === "error" ? theme.dangerText : theme.foreground
+                        text: {
+                            switch (root.updateState) {
+                            case "checking": return qsTr("Checking for updates…")
+                            case "current": return qsTr("You have the latest version.")
+                            case "none": return qsTr("No releases have been published yet.")
+                            case "error": return root.updates.error
+                            case "available": return qsTr("Version %1 is available. You have %2.").arg(root.updates.latestVersion).arg(root.updates.currentVersion)
+                            case "restart": return qsTr("Version %1 is installed. Restart to start using it.").arg(root.updates.latestVersion)
+                            default: return qsTr("Updates are only checked when you ask.")
+                            }
                         }
                     }
+                    AppText {
+                        Layout.fillWidth: true
+                        visible: root.updateState === "available" && root.updates.notes.length > 0
+                        text: root.updates.notes
+                        textFormat: Text.PlainText
+                        secondary: true
+                        scale_: 0.88
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 10
+                        elide: Text.ElideRight
+                    }
+                    AppText {
+                        Layout.fillWidth: true
+                        visible: root.updateState === "available" && !root.updates.canInstall
+                        text: qsTr("This release has no package for this computer.")
+                        secondary: true
+                        wrapMode: Text.Wrap
+                    }
+                    AppText {
+                        Layout.fillWidth: true
+                        visible: root.updateState === "available" && root.updates.canInstall
+                        text: root.updates.installStarted
+                              ? qsTr("Finish in the terminal that opened, then come back to this window.")
+                              : qsTr("Installing opens a terminal, where pacman shows the change and asks for your password.")
+                        secondary: true
+                        scale_: 0.88
+                        wrapMode: Text.Wrap
+                    }
                 }
-                AppText {
-                    Layout.fillWidth: true
-                    visible: root.updateState === "available" && root.updates.notes.length > 0
-                    text: root.updates.notes
-                    textFormat: Text.PlainText
-                    secondary: true
-                    scale_: 0.88
-                    wrapMode: Text.Wrap
-                    maximumLineCount: 10
-                    elide: Text.ElideRight
-                }
-                AppText {
-                    Layout.fillWidth: true
-                    visible: root.updateState === "available" && !root.updates.canInstall
-                    text: qsTr("This release has no package for this computer.")
-                    secondary: true
-                    wrapMode: Text.Wrap
-                }
-                AppText {
-                    Layout.fillWidth: true
-                    visible: root.updateState === "available" && root.updates.canInstall
-                    text: root.updates.installStarted
-                          ? qsTr("Finish in the terminal that opened, then come back to this window.")
-                          : qsTr("Installing opens a terminal, where pacman shows the change and asks for your password.")
-                    secondary: true
-                    scale_: 0.88
-                    wrapMode: Text.Wrap
-                }
-                Flow {
-                    Layout.fillWidth: true
+                Row {
+                    Layout.alignment: Qt.AlignTop
                     spacing: 8
                     AppButton {
                         objectName: "installUpdate"

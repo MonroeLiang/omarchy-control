@@ -2,12 +2,13 @@ import QtQuick
 import QtQuick.Layouts
 
 ColumnLayout {
-    spacing: 10
+    spacing: 8
     readonly property var bt: backend.bluetooth
     readonly property bool adapter: !!backend.capabilities.bluetooth
 
     RowLayout {
         Layout.fillWidth: true
+        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
         AppText { text: qsTr("Bluetooth"); font.bold: true; scale_: 1.1; Layout.fillWidth: true }
         AppSwitch { visible: adapter; label: qsTr("Bluetooth"); on: bt.powered; busy: bt.busy; enabled: !bt.busy && bt.status === "ok"; onClicked: bt.setPowered(!on) }
     }
@@ -20,13 +21,14 @@ ColumnLayout {
             model: bt.devices
             delegate: Item {
                 width: parent ? parent.width : 400
-                height: 50
+                height: theme.rowHeight
+                RowDivider {}
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 14
                     anchors.rightMargin: 14
                     spacing: 10
-                    AppIcon { name: "bluetooth"; tint: modelData.connected ? theme.accent : theme.muted }
+                    AppIcon { name: "bluetooth"; tint: modelData.connected ? theme.accentText : theme.muted }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
@@ -45,7 +47,7 @@ ColumnLayout {
                     }
                     AppButton {
                         enabled: !bt.busy
-                        style: "flat"
+                        style: "danger"
                         text: qsTr("Forget")
                         onClicked: confirm.open_(qsTr("Forget %1").arg(modelData.name), qsTr("You will need to pair this device again to use it."), [], qsTr("Forget"), true, function () { bt.forgetDevice(modelData.address) })
                     }

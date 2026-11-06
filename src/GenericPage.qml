@@ -11,6 +11,11 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical: AppScrollBar {
+        parent: root
+        x: root.mirrored ? 0 : root.width - width
+        height: root.availableHeight
+    }
 
     readonly property var pageSections: backend.sections(pageId)
     readonly property var pageBlocks: backend.blocks(pageId)
@@ -37,6 +42,8 @@ ScrollView {
             return
         var y = target.mapToItem(column, 0, 0).y
         contentItem.contentY = Math.max(0, Math.min(y - 24, column.implicitHeight - availableHeight + 40))
+        if (target.takeFocus)
+            target.takeFocus()
     }
     onFocusIdChanged: settleTimer.restart()
     Timer {
@@ -55,9 +62,10 @@ ScrollView {
 
     ColumnLayout {
         id: column
-        width: root.availableWidth - 8
-        spacing: 22
-        x: 0
+        // A line stays readable from label to control, however wide the window gets.
+        width: Math.min(root.availableWidth - 8, theme.fontSize * 72)
+        spacing: 26
+        x: root.mirrored ? root.availableWidth - width : 0
 
         Item { Layout.preferredHeight: 2 }
 

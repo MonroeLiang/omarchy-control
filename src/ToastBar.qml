@@ -43,7 +43,7 @@ Rectangle {
         spacing: 10
         AppIcon {
             name: root.kind === "error" || root.kind === "warning" ? "warning" : root.kind === "opened" ? "external" : "check"
-            tint: root.kind === "error" ? theme.danger : root.kind === "warning" ? theme.warning : theme.accent
+            tint: root.kind === "error" ? theme.dangerText : root.kind === "warning" ? theme.warningText : theme.accentText
         }
         AppText { Layout.fillWidth: true; text: root.message; wrapMode: Text.Wrap }
     }

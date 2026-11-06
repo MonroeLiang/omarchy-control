@@ -7,6 +7,11 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical: AppScrollBar {
+        parent: root
+        x: root.mirrored ? 0 : root.width - width
+        height: root.availableHeight
+    }
     readonly property var history: backend.history
     readonly property var problems: backend.problems
     readonly property var connectedWifi: {
@@ -18,8 +23,9 @@ ScrollView {
     }
 
     ColumnLayout {
-        width: root.availableWidth - 8
-        spacing: 16
+        width: Math.min(root.availableWidth - 8, theme.fontSize * 72)
+        x: root.mirrored ? root.availableWidth - width : 0
+        spacing: 26
 
         Item { Layout.preferredHeight: 2 }
         PageHeading {
@@ -30,42 +36,43 @@ ScrollView {
             subtitle: qsTr("Settings and tools for this computer.")
         }
 
-        // Status band: only things this app has actually established.
+        // Status band: only things this app has actually established, said once.
         AppPanel {
+            readonly property var only: root.problems.length === 1 ? root.problems[0] : null
+            id: status
             Layout.fillWidth: true
             Layout.leftMargin: 20
             Layout.rightMargin: 20
             RowLayout {
                 width: parent.width
-                height: Math.round(theme.fontSize * 3.2)
-                spacing: 14
-                Item { Layout.preferredWidth: 0 }
-                AppIcon { name: "layers" }
-                AppText { text: backend.omarchyVersion ? qsTr("Omarchy %1").arg(backend.omarchyVersion.split("-")[0]) : qsTr("Omarchy") }
-                Rectangle { width: 1; Layout.fillHeight: true; Layout.margins: 10; color: theme.divider }
-                AppIcon { name: root.problems.length ? "warning" : "checkcircle"; tint: root.problems.length ? theme.warning : theme.foreground }
+                height: theme.rowHeight
+                spacing: 12
+                Item { Layout.preferredWidth: 2 }
+                AppIcon { name: root.problems.length ? "warning" : "checkcircle"; tint: root.problems.length ? theme.warningText : theme.muted }
                 AppText {
                     Layout.fillWidth: true
-                    text: root.problems.length ? qsTr("%n problem(s) to look at", "", root.problems.length) : qsTr("No problems found")
+                    text: status.only ? status.only.text
+                        : root.problems.length ? qsTr("%n problem(s) to look at", "", root.problems.length)
+                        : qsTr("No problems found")
                 }
                 AppButton {
                     style: "link"
-                    text: qsTr("View system")
+                    text: status.only ? qsTr("Open") : qsTr("View system")
                     iconName: "arrow"
-                    onClicked: win.go("system", "")
+                    onClicked: win.go(status.only ? status.only.page : "system", "")
                 }
                 Item { Layout.preferredWidth: 4 }
             }
         }
 
         Repeater {
-            model: root.problems
+            model: root.problems.length > 1 ? root.problems : []
             delegate: RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 20
                 Layout.rightMargin: 20
                 spacing: 8
-                AppIcon { name: "warning"; tint: theme.warning; size: 16 }
+                AppIcon { name: "warning"; tint: theme.warningText; size: 16 }
                 AppText { Layout.fillWidth: true; text: modelData.text; wrapMode: Text.Wrap }
                 AppButton { style: "link"; text: qsTr("Open"); iconName: "arrow"; onClicked: win.go(modelData.page, "") }
             }
@@ -83,13 +90,10 @@ ScrollView {
             }
         }
 
-        AppText {
-            Layout.leftMargin: 20
-            Layout.topMargin: 4
-            text: qsTr("Quick settings")
-            font.bold: true
-            scale_: 1.2
-        }
+        ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 8
+        BlockHeading { Layout.fillWidth: true; Layout.leftMargin: 20; Layout.rightMargin: 20; title: qsTr("Quick settings") }
 
         GridLayout {
             Layout.fillWidth: true
@@ -110,11 +114,11 @@ ScrollView {
                 ]
             }
             QuickPanel {
-                title: qsTr("Network")
+                title: qsTr("Network & Bluetooth")
                 icon: "wifi"
                 Item {
                     width: parent.width
-                    height: wifiColumn.implicitHeight + 18
+                    height: Math.max(wifiColumn.implicitHeight + 18, theme.rowHeight)
                     RowLayout {
                         id: wifiRow
                         anchors.fill: parent
@@ -129,10 +133,11 @@ ScrollView {
                                 Layout.fillWidth: true
                                 secondary: true
                                 scale_: 0.88
-                                text: backend.network.status !== "ok" ? qsTr("NetworkManager is not responding")
+                                // A Latin network name must not flip the line in a right-to-left language.
+                                text: (root.mirrored ? "\u200F" : "") + (backend.network.status !== "ok" ? qsTr("NetworkManager is not responding")
                                     : !backend.network.wifiEnabled ? qsTr("Off")
                                     : root.connectedWifi ? qsTr("%1 · Connected").arg(root.connectedWifi.connection)
-                                    : qsTr("Not connected")
+                                    : qsTr("Not connected"))
                             }
                         }
                         AppSwitch {
@@ -140,6 +145,38 @@ ScrollView {
                             on: backend.network.wifiEnabled
                             enabled: backend.network.status === "ok"
                             onClicked: win.setWifi(!on)
+                        }
+                    }
+                    RowDivider {}
+                }
+                Item {
+                    readonly property var bt: backend.bluetooth
+                    readonly property bool adapter: !!backend.capabilities.bluetooth
+                    width: parent.width
+                    height: Math.max(btColumn.implicitHeight + 18, theme.rowHeight)
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        ColumnLayout {
+                            id: btColumn
+                            Layout.fillWidth: true
+                            spacing: 2
+                            AppText { text: qsTr("Bluetooth"); Layout.fillWidth: true }
+                            AppText {
+                                Layout.fillWidth: true
+                                visible: !parent.parent.parent.adapter
+                                secondary: true
+                                scale_: 0.88
+                                text: qsTr("No Bluetooth adapter detected.")
+                            }
+                        }
+                        AppSwitch {
+                            label: qsTr("Bluetooth")
+                            on: parent.parent.bt.powered
+                            busy: parent.parent.bt.busy
+                            enabled: parent.parent.adapter && !parent.parent.bt.busy && parent.parent.bt.status === "ok"
+                            onClicked: parent.parent.bt.setPowered(!on)
                         }
                     }
                 }
@@ -152,9 +189,11 @@ ScrollView {
                 icon: "sound"
                 Item {
                     width: parent.width
-                    height: 42
+                    height: theme.rowHeight + 1
+                    Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 14; anchors.rightMargin: 14; height: 1; color: theme.divider; opacity: 0.6 }
                     RowLayout {
                         anchors.fill: parent
+                        anchors.bottomMargin: 1
                         anchors.leftMargin: 14
                         anchors.rightMargin: 14
                         spacing: 10
@@ -175,13 +214,14 @@ ScrollView {
                             }
                         }
                         AppText {
-                            Layout.minimumWidth: 44
+                            Layout.minimumWidth: 50
                             horizontalAlignment: Text.AlignRight
                             text: backend.audio.defaultOutputVolume >= 0 ? Math.round(volume.value).toLocaleString(Qt.locale(), "f", 0) + "%" : "—"
                         }
                     }
                 }
-                SettingRow { width: parent.width; compact: true; entry: backend.entry("displays.brightness"); last: true }
+                SettingRow { width: parent.width; compact: true; entry: backend.entry("displays.brightness") }
+                SettingRow { width: parent.width; compact: true; entry: backend.entry("displays.nightlight"); last: true }
                 footer: [
                     AppButton { style: "link"; text: qsTr("Sound settings"); iconName: "arrow"; onClicked: win.go("sound", "") },
                     AppButton { style: "link"; text: qsTr("Display settings"); iconName: "arrow"; onClicked: win.go("displays", "") }
@@ -193,20 +233,20 @@ ScrollView {
                 SettingRow { width: parent.width; compact: true; entry: backend.entry("power.profile") }
                 SettingRow { width: parent.width; compact: true; entry: backend.entry("power.idle.lock") }
                 SettingRow { width: parent.width; compact: true; entry: backend.entry("power.stayawake"); last: true }
+                footer: [
+                    AppButton { style: "link"; text: qsTr("Power settings"); iconName: "arrow"; onClicked: win.go("power", "") }
+                ]
             }
+        }
         }
 
         // Pinned destinations
-        AppText {
-            visible: backend.pins.length > 0
-            Layout.leftMargin: 20
-            Layout.topMargin: 4
-            text: qsTr("Pinned")
-            font.bold: true
-            scale_: 1.2
-        }
+        ColumnLayout {
+        visible: backend.pins.length > 0
+        Layout.fillWidth: true
+        spacing: 8
+        BlockHeading { Layout.fillWidth: true; Layout.leftMargin: 20; Layout.rightMargin: 20; title: qsTr("Pinned") }
         AppPanel {
-            visible: backend.pins.length > 0
             Layout.fillWidth: true
             Layout.leftMargin: 20
             Layout.rightMargin: 20
@@ -220,14 +260,12 @@ ScrollView {
                 }
             }
         }
-
-        AppText {
-            Layout.leftMargin: 20
-            Layout.topMargin: 4
-            text: qsTr("Tools & maintenance")
-            font.bold: true
-            scale_: 1.2
         }
+
+        ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 8
+        BlockHeading { Layout.fillWidth: true; Layout.leftMargin: 20; Layout.rightMargin: 20; title: qsTr("Tools & maintenance") }
         AppPanel {
             Layout.fillWidth: true
             Layout.leftMargin: 20
@@ -242,9 +280,11 @@ ScrollView {
                 delegate: AbstractButton {
                     id: tool
                     width: parent ? parent.width : 400
-                    height: Math.round(theme.fontSize * 3.1)
+                    height: theme.rowHeight
                     hoverEnabled: true
                     focusPolicy: Qt.StrongFocus
+                    // Says the same thing here as the row it leads to.
+                    readonly property var reach: modelData.entry ? backend.availability(modelData.entry) : ({ available: true })
                     Accessible.role: Accessible.Button
                     Accessible.name: modelData.title
                     onClicked: modelData.entry ? win.activate(backend.entry(modelData.entry)) : win.go(modelData.page, modelData.focus)
@@ -267,17 +307,17 @@ ScrollView {
                     contentItem: RowLayout {
                         spacing: 12
                         Item { Layout.preferredWidth: 2 }
-                        AppIcon { name: modelData.icon; size: 20 }
-                        AppText { text: modelData.title; Layout.preferredWidth: Math.min(260, tool.width * 0.33) }
-                        AppText { text: modelData.detail; secondary: true; Layout.fillWidth: true }
-                        AppIcon { name: "arrow"; tint: theme.accent; mirror: tool.mirrored }
+                        AppIcon { name: modelData.icon; size: 18; tint: theme.muted }
+                        AppText { text: modelData.title; opacity: tool.reach.available ? 1 : 0.6; Layout.preferredWidth: Math.min(240, tool.width * 0.33) }
+                        AppText { text: tool.reach.available ? modelData.detail : tool.reach.reason; secondary: true; Layout.fillWidth: true }
+                        AppIcon { name: "arrow"; tint: tool.hovered ? theme.accentText : theme.muted; mirror: tool.mirrored }
                         Item { Layout.preferredWidth: 4 }
                     }
                 }
             }
         }
+        }
 
-        Rectangle { Layout.fillWidth: true; Layout.leftMargin: 20; Layout.rightMargin: 20; height: 1; color: theme.divider }
         RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 20
@@ -285,9 +325,10 @@ ScrollView {
             spacing: 10
             AppText {
                 Layout.fillWidth: true
+                secondary: true
                 text: root.history.length ? qsTr("Recent changes: %1").arg(qsTranslate("catalog", root.history[0].label)) : qsTr("Recent changes: none yet")
             }
-            AppButton { style: "link"; text: qsTr("View history"); iconName: "arrow"; onClicked: win.go("advanced", "block.history") }
+            AppButton { visible: root.history.length > 0; style: "link"; text: qsTr("View history"); iconName: "arrow"; onClicked: win.go("advanced", "block.history") }
         }
         Item { Layout.preferredHeight: 12 }
     }

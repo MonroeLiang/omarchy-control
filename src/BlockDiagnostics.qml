@@ -39,7 +39,7 @@ ColumnLayout {
             AppText {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                color: theme.warning
+                color: theme.warningText
                 text: qsTr("These Omarchy commands changed since this app was tested. Their settings read normally, but changes are paused.")
             }
             Repeater {

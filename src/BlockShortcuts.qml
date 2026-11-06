@@ -23,7 +23,7 @@ ColumnLayout {
             onClicked: root.expanded = !root.expanded
         }
     }
-    AppText { visible: shortcuts.status === "unavailable"; text: qsTr("Hyprland is not reachable, so shortcuts cannot be shown."); color: theme.danger; Layout.fillWidth: true; wrapMode: Text.Wrap }
+    AppText { visible: shortcuts.status === "unavailable"; text: qsTr("Hyprland is not reachable, so shortcuts cannot be shown."); color: theme.dangerText; Layout.fillWidth: true; wrapMode: Text.Wrap }
 
     ColumnLayout {
         visible: root.expanded
@@ -109,7 +109,7 @@ ColumnLayout {
             delegate: RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
-                AppText { text: modelData.keys; color: theme.accent; Layout.preferredWidth: 260 }
+                AppText { text: modelData.keys; color: theme.accentText; Layout.preferredWidth: 260 }
                 AppText { text: modelData.description || modelData.command; Layout.fillWidth: true }
                 AppButton { style: "flat"; text: qsTr("Remove"); onClicked: root.shortcuts.removeBinding(modelData.keys) }
             }
@@ -128,7 +128,7 @@ ColumnLayout {
                         anchors.leftMargin: 14
                         anchors.rightMargin: 14
                         spacing: 10
-                        AppText { text: modelData.keys; color: theme.accent; Layout.preferredWidth: 280 }
+                        AppText { text: modelData.keys; color: theme.accentText; Layout.preferredWidth: 280 }
                         AppText { text: modelData.description; Layout.fillWidth: true }
                     }
                 }

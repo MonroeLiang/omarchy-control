@@ -44,7 +44,7 @@ ColumnLayout {
                         AppText {
                             Layout.fillWidth: true
                             secondary: true
-                            scale_: 0.82
+                            scale_: 0.88
                             wrapMode: Text.Wrap
                             text: modelData.at.toLocaleString(Qt.locale(), Locale.ShortFormat) + " · " + parent.parent.parent.outcome() + (modelData.message.length ? " · " + modelData.message : "")
                         }

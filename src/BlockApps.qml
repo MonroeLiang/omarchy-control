@@ -3,7 +3,7 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: root
-    spacing: 10
+    spacing: 8
     readonly property var system: backend.system
     property bool expanded: false
     property string filter: ""
@@ -19,7 +19,8 @@ ColumnLayout {
             model: system.associations
             delegate: Item {
                 width: parent ? parent.width : 400
-                height: 46
+                height: theme.rowHeight
+                RowDivider {}
                 readonly property var options: {
                     var list = modelData.candidates.slice()
                     var known = false
@@ -60,14 +61,20 @@ ColumnLayout {
     }
     RowLayout {
         Layout.fillWidth: true
+        Layout.topMargin: 18
+        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
         AppText { text: qsTr("Installed apps"); font.bold: true; scale_: 1.1; Layout.fillWidth: true }
         AppButton {
             style: "flat"
+            implicitHeight: Math.round(theme.fontSize * 1.75)
             text: root.expanded ? qsTr("Hide") : qsTr("Show %n", "", root.system.apps.length)
             iconName: "chevron"
+            iconRotation: root.expanded ? 180 : 0
+            visible: root.system.apps.length > 0
             onClicked: root.expanded = !root.expanded
         }
     }
+    AppText { visible: root.system.apps.length === 0; text: qsTr("No apps found."); secondary: true }
     AppField { visible: root.expanded; Layout.fillWidth: true; label: qsTr("Filter apps"); placeholderText: qsTr("Filter apps"); onTextChanged: root.filter = text }
     AppPanel {
         visible: root.expanded
@@ -76,7 +83,8 @@ ColumnLayout {
             model: root.expanded ? root.visibleApps.slice(0, 200) : []
             delegate: Item {
                 width: parent ? parent.width : 400
-                height: 44
+                height: theme.rowHeight
+                RowDivider {}
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 14
@@ -86,7 +94,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         AppText { Layout.fillWidth: true; text: modelData.name }
-                        AppText { Layout.fillWidth: true; visible: text.length > 0; secondary: true; scale_: 0.82; text: modelData.comment }
+                        AppText { Layout.fillWidth: true; visible: text.length > 0; secondary: true; scale_: 0.88; text: modelData.comment }
                     }
                     AppButton { text: qsTr("Open"); iconName: "external"; onClicked: root.system.launchApp(modelData.id) }
                 }

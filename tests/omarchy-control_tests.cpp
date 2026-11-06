@@ -2533,11 +2533,17 @@ private slots:
             return boxes;
         };
 
-        // Controls line up down the page, whether or not a row has details.
-        QSet<int> pinEdges;
-        for (QQuickItem *row : rows)
-            pinEdges << qRound(layoutOf(row).at(2).right());
-        QCOMPARE(pinEdges.size(), 1);
+        // Every control ends on the same edge, down the whole page.
+        QSet<int> rightEdges;
+        for (QQuickItem *row : rows) {
+            for (const QString &name : {QStringLiteral("settingControl"), QStringLiteral("actionButton")}) {
+                QQuickItem *control = named(row, name);
+                if (control && control->isVisible())
+                    rightEdges << qRound(control->mapRectToScene(control->boundingRect()).right());
+            }
+        }
+        QVERIFY(!rightEdges.isEmpty());
+        QCOMPARE(rightEdges.size(), 1);
 
         QTest::mouseMove(window, QPoint(1, 1));
         QTest::qWait(250);
@@ -2644,6 +2650,198 @@ private slots:
         QCOMPARE(offset(), 0.0);
         QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "appearance"), Q_ARG(QVariant, far));
         QTRY_VERIFY(offset() > 0);
+    }
+
+    // ---- Look ------------------------------------------------------------------
+    void textColorsStayReadableOnAnyTheme() {
+        // Catppuccin Latte's own secondary text, on its own background.
+        const QStringList latte{"#eff1f5", "#dce0e8"};
+        QVERIFY(Theme::contrast("#9ca0b0", "#eff1f5") < 3);
+        const QString fixed = Theme::readable("#9ca0b0", "#4c4f69", latte);
+        QVERIFY2(Theme::contrast(fixed, "#eff1f5") >= 4.5, qPrintable(fixed));
+        QVERIFY2(Theme::contrast(fixed, "#dce0e8") >= 4.5, qPrintable(fixed));
+        // A color that already reads is left exactly as the theme wrote it.
+        QCOMPARE(Theme::readable("#ff9f0a", "#f5f5f7", {"#1c1c1e", "#2c2c2e"}), QString("#ff9f0a"));
+        // A warning that needs help stays a warning rather than turning gray.
+        const QColor amber(Theme::readable("#df8e1d", "#4c4f69", latte));
+        QVERIFY2(Theme::contrast(amber.name(), "#eff1f5") >= 4.5, qPrintable(amber.name()));
+        QVERIFY2(amber.hslSaturationF() > 0.4, qPrintable(amber.name()));
+        QVERIFY2(qAbs(amber.hslHueF() - QColor("#df8e1d").hslHueF()) < 0.02, qPrintable(amber.name()));
+        // Nothing can be done past the foreground itself, and it does not hang trying.
+        QCOMPARE(Theme::readable("#888888", "#888888", {"#888888"}), QString("#888888"));
+    }
+    void themePreviewsComeFromTheThemesThemselves() {
+        Sandbox s;
+        fakeDesktop(s);
+        writeFile(s.env.omarchyPath + "/themes/tokyo-night/colors.toml", "accent = \"#7aa2f7\"\nbackground = \"#1a1b26\"\n");
+        writeFile(s.env.omarchyPath + "/themes/tokyo-night/preview.png", "x");
+        writeFile(s.env.omarchyPath + "/themes/mine/colors.toml", "accent = \"#000001\"\n");
+        writeFile(s.env.configHome + "/omarchy/themes/mine/colors.toml", "accent = \"#000002\"\n");
+        Theme theme(s.env);
+        const QVariantMap tokyo = theme.preview("Tokyo Night");
+        QCOMPARE(tokyo.value("accent").toString(), QString("#7aa2f7"));
+        QVERIFY(tokyo.value("image").toString().endsWith("/themes/tokyo-night/preview.png"));
+        // The user's own copy of a theme is the one that will be used.
+        QCOMPARE(theme.preview("Mine").value("accent").toString(), QString("#000002"));
+        QVERIFY(!theme.preview("Mine").contains("image"));
+        // No preview, but wallpapers: the first still stands in. A video cannot.
+        writeFile(s.env.configHome + "/omarchy/themes/mine/backgrounds/1-motion.mp4", "x");
+        writeFile(s.env.configHome + "/omarchy/themes/mine/backgrounds/2-still.webp", "x");
+        QVERIFY(theme.preview("Mine").value("image").toString().endsWith("/backgrounds/2-still.webp"));
+        QVERIFY(theme.preview("Not Installed").isEmpty());
+        // The name comes from a command's output, so it cannot walk out of the folder.
+        QVERIFY(theme.preview("../../etc").isEmpty());
+        QVERIFY(theme.preview(".hidden").isEmpty());
+    }
+    void overviewReadsEverySettingItShows() {
+        // A row Overview draws but never reads sits on its loading state forever.
+        Catalog catalog;
+        const QString page = QString::fromUtf8(readAll(PROJECT_ROOT "/src/OverviewPage.qml"));
+        static const QRegularExpression row("SettingRow \\{[^}]*backend\\.entry\\(\"([^\"]+)\"\\)");
+        auto matches = row.globalMatch(page);
+        int rows = 0;
+        while (matches.hasNext()) {
+            const QString id = matches.next().captured(1);
+            ++rows;
+            QVERIFY2(catalog.find(id) && catalog.find(id)->quick, qPrintable(id));
+        }
+        QVERIFY(rows >= 6);
+    }
+    void buttonsSayWhatTheyDo() {
+        Catalog catalog;
+        const auto verb = [&](const char *id) { return catalog.find(id)->verb(); };
+        QCOMPARE(verb("system.reboot"), QString("Reboot"));
+        QCOMPARE(verb("system.shutdown"), QString("Shut down"));
+        QCOMPARE(verb("system.logout"), QString("Log out"));
+        QCOMPARE(verb("system.lock"), QString("Lock"));
+        QCOMPARE(verb("hibernation.remove"), QString("Remove"));
+        QCOMPARE(verb("hibernation.setup"), QString("Set up"));
+        QCOMPARE(verb("update.check"), QString("Check"));
+        QCOMPARE(verb("panel.power"), QString("Open"));
+        // Every verb a row can show is translated wherever the app claims to be.
+        for (const char *language : {"da", "de", "ar"}) {
+            const auto strings = QJsonDocument::fromJson(readAll(QString(PROJECT_ROOT "/src/i18n/") + language + ".json")).object();
+            for (const auto &entry : catalog.entries())
+                if (entry.isAction())
+                    QVERIFY2(strings.contains(entry.verb()), qPrintable(QString(language) + ": " + entry.verb()));
+        }
+    }
+    void aDestructiveDialogStartsOnCancel() {
+        Sandbox s;
+        fakeDesktop(s);
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window, 3000));
+        auto *dialog = window->findChild<QObject *>("confirmDialog");
+        QVERIFY(dialog);
+        const auto open = [&](bool danger) {
+            QMetaObject::invokeMethod(dialog, "open_", Q_ARG(QVariant, "Remove"), Q_ARG(QVariant, "Gone for good."), Q_ARG(QVariant, QVariantList()),
+                                      Q_ARG(QVariant, "Remove"), Q_ARG(QVariant, danger), Q_ARG(QVariant, QVariant()), Q_ARG(QVariant, QVariant()));
+        };
+        open(true);
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QTRY_COMPARE(window->activeFocusItem()->property("text").toString(), QString("Cancel"));
+        QMetaObject::invokeMethod(dialog, "close");
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+        open(false);
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QTRY_COMPARE(window->activeFocusItem()->property("text").toString(), QString("Remove"));
+        QMetaObject::invokeMethod(dialog, "close");
+    }
+    void tabNeverLeavesTheKeyboardOffScreen() {
+        Sandbox s;
+        fakeDesktop(s);
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->resize(1000, 420);
+        window->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window, 3000));
+        QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "input"), Q_ARG(QVariant, QString()));
+        QTest::qWait(300);
+        int inPage = 0;
+        for (int i = 0; i < 90; ++i) {
+            QTest::keyClick(window, Qt::Key_Tab);
+            QTest::qWait(5);
+            QQuickItem *item = window->activeFocusItem();
+            QVERIFY(item);
+            const QRectF box = item->mapRectToScene(item->boundingRect());
+            if (box.left() < 250)
+                continue;   // The sidebar and toolbar do not scroll.
+            ++inPage;
+            QVERIFY2(box.top() >= 0 && box.bottom() <= window->height(), qPrintable(QString("Tab %1 at %2..%3").arg(i).arg(box.top()).arg(box.bottom())));
+        }
+        QVERIFY(inPage > 20);
+    }
+    void pickingAThemeTileChangesTheTheme() {
+        Sandbox s;
+        fakeDesktop(s);
+        writeFile(s.env.stateHome + "/picked", "One");
+        s.omarchy("state='" + s.env.stateHome.toUtf8() + "/picked'\ncase \"$*\" in\n  'theme list') printf 'One\\nTwo\\n';;\n  'theme current') cat \"$state\";;\n  'theme set '*) shift 2; printf '%s' \"$*\" > \"$state\";;\n  version) echo 4.5.0-3;;\nesac\n");
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window, 3000));
+        QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "appearance"), Q_ARG(QVariant, QString()));
+        const auto tile = [&](const QString &name) {
+            QQuickItem *found = nullptr;
+            std::function<void(QQuickItem *)> search = [&](QQuickItem *item) {
+                if (item->property("look").isValid() && item->property("text").toString().isEmpty()) {
+                    QAccessibleInterface *accessible = QAccessible::queryAccessibleInterface(item);
+                    if (accessible && accessible->text(QAccessible::Name) == name)
+                        found = item;
+                }
+                for (QQuickItem *child : item->childItems())
+                    if (!found)
+                        search(child);
+            };
+            search(window->contentItem());
+            return found;
+        };
+        QAccessible::setActive(true);
+        QTRY_VERIFY(tile("Two"));
+        QQuickItem *two = tile("Two");
+        QTRY_VERIFY(tile("One") && tile("One")->property("selected").toBool());
+        QVERIFY(!two->property("selected").toBool());
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, two->mapToScene(QPointF(two->width() / 2, 30)).toPoint());
+        QTRY_VERIFY_WITH_TIMEOUT(!s.calls().filter("omarchy theme set Two").isEmpty(), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(tile("Two") && tile("Two")->property("selected").toBool(), 5000);
     }
 
     // ---- Updates --------------------------------------------------------------

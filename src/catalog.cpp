@@ -15,8 +15,91 @@ static QStringList toStrings(const QJsonValue &value) {
     return out;
 }
 
+QString CatalogEntry::verb() const {
+    // Listed so translators and the coverage report can see strings chosen at runtime.
+    static const QHash<QString, const char *> byFirstWord{
+        {"Add", QT_TRANSLATE_NOOP("HelperLabels", "Add")},
+        {"Allow", QT_TRANSLATE_NOOP("HelperLabels", "Allow")},
+        {"Browse", QT_TRANSLATE_NOOP("HelperLabels", "Browse")},
+        {"Check", QT_TRANSLATE_NOOP("HelperLabels", "Check")},
+        {"Clear", QT_TRANSLATE_NOOP("HelperLabels", "Clear")},
+        {"Clone", QT_TRANSLATE_NOOP("HelperLabels", "Clone")},
+        {"Create", QT_TRANSLATE_NOOP("HelperLabels", "Create")},
+        {"Cycle", QT_TRANSLATE_NOOP("HelperLabels", "Cycle")},
+        {"Diagnose", QT_TRANSLATE_NOOP("HelperLabels", "Diagnose")},
+        {"Factory", QT_TRANSLATE_NOOP("HelperLabels", "Reset")},
+        {"Forget", QT_TRANSLATE_NOOP("HelperLabels", "Forget")},
+        {"List", QT_TRANSLATE_NOOP("HelperLabels", "View")},
+        {"Mirror", QT_TRANSLATE_NOOP("HelperLabels", "Mirror")},
+        {"Next", QT_TRANSLATE_NOOP("HelperLabels", "Next")},
+        {"Pick", QT_TRANSLATE_NOOP("HelperLabels", "Pick")},
+        {"Prune", QT_TRANSLATE_NOOP("HelperLabels", "Prune")},
+        {"Read", QT_TRANSLATE_NOOP("HelperLabels", "Read")},
+        {"Record", QT_TRANSLATE_NOOP("HelperLabels", "Record")},
+        {"Recover", QT_TRANSLATE_NOOP("HelperLabels", "Recover")},
+        {"Refresh", QT_TRANSLATE_NOOP("HelperLabels", "Refresh")},
+        {"Rename", QT_TRANSLATE_NOOP("HelperLabels", "Rename")},
+        {"Resize", QT_TRANSLATE_NOOP("HelperLabels", "Resize")},
+        {"Review", QT_TRANSLATE_NOOP("HelperLabels", "Review")},
+        {"Screen", QT_TRANSLATE_NOOP("HelperLabels", "Record")},
+        {"Screenshot", QT_TRANSLATE_NOOP("HelperLabels", "Capture")},
+        {"Send", QT_TRANSLATE_NOOP("HelperLabels", "Send")},
+        {"Start", QT_TRANSLATE_NOOP("HelperLabels", "Start")},
+        {"Stop", QT_TRANSLATE_NOOP("HelperLabels", "Stop")},
+        {"Switch", QT_TRANSLATE_NOOP("HelperLabels", "Switch")},
+        {"Sync", QT_TRANSLATE_NOOP("HelperLabels", "Sync")},
+        {"Upgrade", QT_TRANSLATE_NOOP("HelperLabels", "Upgrade")},
+        {"Validate", QT_TRANSLATE_NOOP("HelperLabels", "Validate")},
+        {"Change", QT_TRANSLATE_NOOP("HelperLabels", "Change")},
+        {"Choose", QT_TRANSLATE_NOOP("HelperLabels", "Choose")},
+        {"Copy", QT_TRANSLATE_NOOP("HelperLabels", "Copy")},
+        {"Edit", QT_TRANSLATE_NOOP("HelperLabels", "Edit")},
+        {"Hibernate", QT_TRANSLATE_NOOP("HelperLabels", "Hibernate")},
+        {"Install", QT_TRANSLATE_NOOP("HelperLabels", "Install")},
+        {"Lock", QT_TRANSLATE_NOOP("HelperLabels", "Lock")},
+        {"Log", QT_TRANSLATE_NOOP("HelperLabels", "Log out")},
+        {"Print", QT_TRANSLATE_NOOP("HelperLabels", "Print")},
+        {"Reboot", QT_TRANSLATE_NOOP("HelperLabels", "Reboot")},
+        {"Receive", QT_TRANSLATE_NOOP("HelperLabels", "Receive")},
+        {"Reinstall", QT_TRANSLATE_NOOP("HelperLabels", "Reinstall")},
+        {"Reload", QT_TRANSLATE_NOOP("HelperLabels", "Reload")},
+        {"Remove", QT_TRANSLATE_NOOP("HelperLabels", "Remove")},
+        {"Reset", QT_TRANSLATE_NOOP("HelperLabels", "Reset")},
+        {"Restart", QT_TRANSLATE_NOOP("HelperLabels", "Restart")},
+        {"Restore", QT_TRANSLATE_NOOP("HelperLabels", "Restore")},
+        {"Screensaver", QT_TRANSLATE_NOOP("HelperLabels", "Start")},
+        {"Share", QT_TRANSLATE_NOOP("HelperLabels", "Share")},
+        {"Show", QT_TRANSLATE_NOOP("HelperLabels", "Show")},
+        {"Shut", QT_TRANSLATE_NOOP("HelperLabels", "Shut down")},
+        {"Suspend", QT_TRANSLATE_NOOP("HelperLabels", "Suspend")},
+        {"Update", QT_TRANSLATE_NOOP("HelperLabels", "Update")},
+        {"Use", QT_TRANSLATE_NOOP("HelperLabels", "Use")},
+    };
+    if (label.startsWith(QLatin1String("Sign in")))
+        return QT_TRANSLATE_NOOP("HelperLabels", "Sign in");
+    if (label.startsWith(QLatin1String("Set up")))
+        return QT_TRANSLATE_NOOP("HelperLabels", "Set up");
+    if (label.startsWith(QLatin1String("Set ")))
+        return QT_TRANSLATE_NOOP("HelperLabels", "Set");
+    if (label.startsWith(QLatin1String("Turn on")))
+        return QT_TRANSLATE_NOOP("HelperLabels", "Turn on");
+    if (label.startsWith(QLatin1String("Turn off")))
+        return QT_TRANSLATE_NOOP("HelperLabels", "Turn off");
+    if (const auto found = byFirstWord.constFind(label.section(' ', 0, 0)); found != byFirstWord.constEnd())
+        return QString::fromLatin1(found.value());
+    const QString kind = launch.value("kind").toString();
+    if (kind == QLatin1String("page"))
+        return QT_TRANSLATE_NOOP("HelperLabels", "View");
+    if (kind == QLatin1String("config"))
+        return QT_TRANSLATE_NOOP("HelperLabels", "Edit");
+    if (kind == QLatin1String("terminal"))
+        return QT_TRANSLATE_NOOP("HelperLabels", "Run");
+    return QT_TRANSLATE_NOOP("HelperLabels", "Open");
+}
+
 QVariantMap CatalogEntry::toVariant() const {
     QVariantMap m;
+    m["verb"] = verb();
     m["id"] = id;
     m["page"] = page;
     m["section"] = section;

@@ -27,7 +27,7 @@ ColumnLayout {
         visible: root.plugins.status === "shell-down"
         Layout.fillWidth: true
         wrapMode: Text.Wrap
-        color: theme.warning
+        color: theme.warningText
         text: qsTr("The Omarchy shell is not responding, so which plugins are active is unknown. Installed plugins are listed from disk.")
     }
     AppField {
@@ -44,7 +44,8 @@ ColumnLayout {
             model: root.expanded ? root.visibleRows : []
             delegate: Item {
                 width: parent ? parent.width : 400
-                height: 48
+                height: theme.rowHeight
+                RowDivider {}
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 14
@@ -57,7 +58,7 @@ ColumnLayout {
                         AppText {
                             Layout.fillWidth: true
                             secondary: true
-                            scale_: 0.82
+                            scale_: 0.88
                             text: modelData.id + (modelData.clonedFrom ? " · " + qsTr("cloned from %1").arg(modelData.clonedFrom) : "") + (modelData.firstParty ? "" : " · " + qsTr("your plugin"))
                         }
                     }

@@ -89,7 +89,8 @@ ColumnLayout {
                 model: root.provider.rules
                 delegate: Item {
                     width: parent ? parent.width : 400
-                    height: 44
+                    height: theme.rowHeight
+                    RowDivider {}
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 14

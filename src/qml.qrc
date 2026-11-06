@@ -5,6 +5,7 @@
         <file alias="AppField.qml">AppField.qml</file>
         <file alias="AppIcon.qml">AppIcon.qml</file>
         <file alias="AppPanel.qml">AppPanel.qml</file>
+        <file alias="AppScrollBar.qml">AppScrollBar.qml</file>
         <file alias="AppSlider.qml">AppSlider.qml</file>
         <file alias="AppSwitch.qml">AppSwitch.qml</file>
         <file alias="AppText.qml">AppText.qml</file>
@@ -15,7 +16,6 @@
         <file alias="BlockBar.qml">BlockBar.qml</file>
         <file alias="BlockBattery.qml">BlockBattery.qml</file>
         <file alias="BlockBluetooth.qml">BlockBluetooth.qml</file>
-        <file alias="BlockCoverage.qml">BlockCoverage.qml</file>
         <file alias="BlockDiagnostics.qml">BlockDiagnostics.qml</file>
         <file alias="BlockDisplays.qml">BlockDisplays.qml</file>
         <file alias="BlockHeading.qml">BlockHeading.qml</file>
@@ -28,12 +28,14 @@
         <file alias="BlockShortcuts.qml">BlockShortcuts.qml</file>
         <file alias="BlockStartup.qml">BlockStartup.qml</file>
         <file alias="BlockStorage.qml">BlockStorage.qml</file>
+        <file alias="ChoiceTiles.qml">ChoiceTiles.qml</file>
         <file alias="ConfirmDialog.qml">ConfirmDialog.qml</file>
         <file alias="GenericPage.qml">GenericPage.qml</file>
         <file alias="Main.qml">Main.qml</file>
         <file alias="OverviewPage.qml">OverviewPage.qml</file>
         <file alias="PageHeading.qml">PageHeading.qml</file>
         <file alias="QuickPanel.qml">QuickPanel.qml</file>
+        <file alias="RowDivider.qml">RowDivider.qml</file>
         <file alias="SectionBlock.qml">SectionBlock.qml</file>
         <file alias="SettingRow.qml">SettingRow.qml</file>
         <file alias="ShortcutsOverlay.qml">ShortcutsOverlay.qml</file>

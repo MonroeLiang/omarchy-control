@@ -14,6 +14,7 @@ Popup {
     property bool danger: false
     property var onAccept: null
     property var onDecline: null
+    property var opener: null
 
     function accept_() {
         var accept = root.onAccept
@@ -31,8 +32,13 @@ Popup {
         danger = isDanger
         onAccept = accept
         onDecline = decline || null
+        opener = win.activeFocusItem
         open()
-        acceptButton.forceActiveFocus()
+        // A stray Space must never confirm something that cannot be taken back.
+        if (isDanger)
+            cancelButton.forceActiveFocus(Qt.TabFocusReason)
+        else
+            acceptButton.forceActiveFocus(Qt.TabFocusReason)
     }
 
     parent: Overlay.overlay
@@ -47,17 +53,22 @@ Popup {
         radius: theme.radius
         color: theme.window
         border.width: 1
-        border.color: root.danger ? theme.danger : theme.accent
+        border.color: root.danger ? theme.dangerText : theme.divider
     }
     onClosed: {
         if (onDecline)
             onDecline()
         onDecline = null
+        if (opener)
+            opener.forceActiveFocus()
+        opener = null
     }
 
     contentItem: ColumnLayout {
-        spacing: 12
-        AppText { Layout.fillWidth: true; text: root.heading; font.bold: true; scale_: 1.2; wrapMode: Text.Wrap }
+        Accessible.role: Accessible.Dialog
+        Accessible.name: root.heading
+        spacing: 10
+        AppText { Layout.fillWidth: true; text: root.heading; font.bold: true; scale_: 1.1; wrapMode: Text.Wrap; Accessible.role: Accessible.Heading }
         AppText { Layout.fillWidth: true; text: root.body; wrapMode: Text.Wrap; visible: text.length > 0 }
         Repeater {
             model: root.effects
@@ -65,8 +76,10 @@ Popup {
         }
         RowLayout {
             Layout.alignment: Qt.AlignRight
-            spacing: 10
+            Layout.topMargin: 8
+            spacing: 8
             AppButton {
+                id: cancelButton
                 text: qsTr("Cancel")
                 onClicked: root.close()
             }

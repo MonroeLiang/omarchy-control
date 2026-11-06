@@ -6,7 +6,7 @@ import QtQuick.Layouts
 // Hyprland until Preview, and a preview undoes itself unless it is kept.
 ColumnLayout {
     id: root
-    spacing: 12
+    spacing: 8
     readonly property var displays: backend.displays
     property var stage: []
     property bool dirty: false
@@ -63,14 +63,20 @@ ColumnLayout {
         return Math.round((rotated ? s.width : s.height) / Math.max(0.25, s.scale))
     }
 
+    // "2880x1800@120.00" as a person would say it.
+    function modeLabel(mode) {
+        var parts = /^(\d+)x(\d+)@([\d.]+)/.exec(mode)
+        return parts ? parts[1] + " × " + parts[2] + " · " + Math.round(parseFloat(parts[3]) * 100) / 100 + " Hz" : mode
+    }
+
     BlockHeading { Layout.fillWidth: true; title: qsTr("Arrangement") }
-    AppText { visible: displays.status === "unavailable"; text: qsTr("Hyprland is not reachable, so displays cannot be shown."); color: theme.danger; Layout.fillWidth: true; wrapMode: Text.Wrap }
+    AppText { visible: displays.status === "unavailable"; text: qsTr("Hyprland is not reachable, so displays cannot be shown."); color: theme.dangerText; Layout.fillWidth: true; wrapMode: Text.Wrap }
 
     // Lock notice
     AppPanel {
         Layout.fillWidth: true
         visible: displays.status === "ok" && !displays.editingUnlocked
-        padding: 12
+        padding: 14
         RowLayout {
             width: parent.width
             spacing: 12
@@ -97,6 +103,9 @@ ColumnLayout {
         border.width: 1
         border.color: theme.divider
         readonly property real pad: 24
+        // The map sits in the middle of its well, whatever shape the layout makes.
+        readonly property real originX: (width - root.bounds.width * unit) / 2
+        readonly property real originY: (height - root.bounds.height * unit) / 2
         readonly property real unit: root.bounds.width > 0 ? Math.min((width - pad * 2) / root.bounds.width, (height - pad * 2) / root.bounds.height) : 0.1
         Repeater {
             model: root.stage
@@ -106,19 +115,37 @@ ColumnLayout {
                 readonly property real scaleUnit: canvas.unit
                 width: root.logicalWidth(modelData) * scaleUnit
                 height: root.logicalHeight(modelData) * scaleUnit
-                x: canvas.pad + (modelData.x - root.bounds.minX) * scaleUnit
-                y: canvas.pad + (modelData.y - root.bounds.minY) * scaleUnit
-                color: Qt.alpha(theme.accent, drag.active ? 0.3 : 0.16)
-                border.width: 2
-                border.color: theme.accent
+                x: canvas.originX + (modelData.x - root.bounds.minX) * scaleUnit
+                y: canvas.originY + (modelData.y - root.bounds.minY) * scaleUnit
+                // Only looks movable once it is.
+                readonly property bool movable: displays.editingUnlocked && !displays.previewing
+                color: movable ? Qt.alpha(theme.accent, drag.active ? 0.3 : 0.16) : Qt.alpha(theme.foreground, 0.07)
+                border.width: activeFocus ? 3 : movable ? 2 : 1
+                border.color: movable ? theme.accent : theme.divider
                 radius: Math.min(4, theme.radius)
-                Accessible.role: Accessible.Graphic
+                activeFocusOnTab: movable
+                Accessible.role: movable ? Accessible.Button : Accessible.Graphic
+                // The same move without a mouse: arrows nudge, Shift nudges further.
+                Keys.onPressed: function (event) {
+                    if (!movable)
+                        return
+                    var step = event.modifiers & Qt.ShiftModifier ? 100 : 10
+                    var dx = event.key === Qt.Key_Left ? -step : event.key === Qt.Key_Right ? step : 0
+                    var dy = event.key === Qt.Key_Up ? -step : event.key === Qt.Key_Down ? step : 0
+                    if (!dx && !dy)
+                        return
+                    if (dx)
+                        root.edit(index, "x", modelData.x + dx)
+                    if (dy)
+                        root.edit(index, "y", modelData.y + dy)
+                    event.accepted = true
+                }
                 Accessible.name: qsTr("%1 at %2, %3").arg(modelData.output).arg(modelData.x).arg(modelData.y)
                 Column {
                     anchors.centerIn: parent
                     width: parent.width - 8
                     AppText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: modelData.output; font.bold: true }
-                    AppText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.logicalWidth(modelData) + "×" + root.logicalHeight(modelData); secondary: true; scale_: 0.82 }
+                    AppText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.logicalWidth(modelData) + "×" + root.logicalHeight(modelData); secondary: true; scale_: 0.88 }
                 }
                 DragHandler {
                     id: drag
@@ -147,6 +174,7 @@ ColumnLayout {
             delegate: Item {
                 width: parent ? parent.width : 400
                 height: outputColumn.implicitHeight + 18
+                RowDivider {}
                 ColumnLayout {
                     id: outputColumn
                     anchors.left: parent.left
@@ -165,21 +193,25 @@ ColumnLayout {
                             onClicked: root.edit(index, "enabled", !on)
                         }
                     }
-                    Flow {
+                    RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
                         visible: modelData.enabled
                         AppCombo {
                             label: qsTr("Resolution of %1").arg(modelData.output)
-                            implicitWidth: 240
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 240
+                            Layout.maximumWidth: 240
                             enabled: displays.editingUnlocked && !displays.previewing
-                            model: modelData.modes
+                            model: modelData.modes.map(root.modeLabel)
                             currentIndex: modelData.modes.indexOf(modelData.mode)
                             onActivated: function (i) { root.edit(index, "mode", modelData.modes[i]) }
                         }
                         AppCombo {
                             label: qsTr("Scale of %1").arg(modelData.output)
-                            implicitWidth: 120
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 120
+                            Layout.maximumWidth: 120
                             enabled: displays.editingUnlocked && !displays.previewing
                             readonly property var scales: [1, 1.25, 1.5, 1.6, 1.75, 2, 2.5, 3, 4]
                             model: scales.map(function (s) { return Math.round(s * 100) + "%" })
@@ -194,12 +226,15 @@ ColumnLayout {
                         }
                         AppCombo {
                             label: qsTr("Rotation of %1").arg(modelData.output)
-                            implicitWidth: 150
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 150
+                            Layout.maximumWidth: 150
                             enabled: displays.editingUnlocked && !displays.previewing
                             model: [qsTr("Normal"), qsTr("90°"), qsTr("180°"), qsTr("270°")]
                             currentIndex: Math.min(3, modelData.transform)
                             onActivated: function (i) { root.edit(index, "transform", i) }
                         }
+                        Item { Layout.fillWidth: true }
                     }
                 }
             }

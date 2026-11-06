@@ -8,12 +8,12 @@ Generated from the catalog by `bin/coverage` into the [ledger](coverage-ledger.j
 
 | Route | Count |
 | --- | --- |
-| Native typed settings and pages | 97 |
-| Omarchy panels | 23 |
-| Guided setup routes | 335 |
+| Native typed settings and pages | 96 |
+| Omarchy panels | 22 |
+| Guided setup routes | 334 |
 | Specialist apps and links | 19 |
 | Advanced config files | 22 |
-| **Total destinations** | **496** |
+| **Total destinations** | **493** |
 
 | Inventory | Routed | Excluded with a reason | Unclassified |
 | --- | --- | --- | --- |

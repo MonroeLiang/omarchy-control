@@ -1,6 +1,8 @@
 // Theme watching follows Omacut (MIT, David Heinemeier Hansson).
 #include "theme.h"
 
+#include <QUrl>
+
 #include <QColor>
 #include <QDir>
 #include <QFile>
@@ -71,12 +73,89 @@ QHash<QString, QString> Theme::readColors(const QString &path) {
     return colors;
 }
 
+static double relativeLuminance(const QColor &c) {
+    const auto linear = [](double v) { return v <= .04045 ? v / 12.92 : std::pow((v + .055) / 1.055, 2.4); };
+    return .2126 * linear(c.redF()) + .7152 * linear(c.greenF()) + .0722 * linear(c.blueF());
+}
+
 // Black or white, whichever reads on the accent (WCAG relative luminance).
 QString Theme::accentForeground() const {
-    const QColor c(accent());
-    auto linear = [](double v) { return v <= .04045 ? v / 12.92 : std::pow((v + .055) / 1.055, 2.4); };
-    const double luminance = .2126 * linear(c.redF()) + .7152 * linear(c.greenF()) + .0722 * linear(c.blueF());
-    return luminance > .179 ? "black" : "white";
+    return relativeLuminance(QColor(accent())) > .179 ? "black" : "white";
+}
+
+// What AppPanel actually paints: the raised color at 35% over the window.
+QString Theme::panel() const {
+    const QColor top(raised()), under(window());
+    const auto blend = [](float a, float b) { return a * .35f + b * .65f; };
+    return QColor::fromRgbF(blend(top.redF(), under.redF()), blend(top.greenF(), under.greenF()), blend(top.blueF(), under.blueF())).name();
+}
+
+double Theme::contrast(const QString &a, const QString &b) {
+    const double first = relativeLuminance(QColor(a)), second = relativeLuminance(QColor(b));
+    return (qMax(first, second) + .05) / (qMin(first, second) + .05);
+}
+
+QString Theme::readable(const QString &color, const QString &foreground, const QStringList &surfaces, double ratio) {
+    const QColor from(color), to(foreground);
+    if (!from.isValid() || !to.isValid())
+        return color;
+    const auto enoughOn = [&](const QString &candidate) {
+        for (const auto &surface : surfaces)
+            if (contrast(candidate, surface) < ratio)
+                return false;
+        return true;
+    };
+    if (enoughOn(color))
+        return color;
+    // Lighten or darken first, so a warning stays amber instead of drifting to gray.
+    float hue, saturation, lightness;
+    from.getHslF(&hue, &saturation, &lightness);
+    const float target = to.lightnessF() < lightness ? 0.0f : 1.0f;
+    for (int step = 1; step <= 20; ++step) {
+        const QString shifted = QColor::fromHslF(hue, saturation, lightness + (target - lightness) * step / 20.0f).name();
+        if (enoughOn(shifted))
+            return shifted;
+    }
+    // A palette with no room left for that color: fall back toward its own text color.
+    QString candidate = color;
+    for (int step = 0; step <= 20; ++step) {
+        const double t = step / 20.0;
+        candidate = QColor::fromRgbF(from.redF() + (to.redF() - from.redF()) * t,
+                                     from.greenF() + (to.greenF() - from.greenF()) * t,
+                                     from.blueF() + (to.blueF() - from.blueF()) * t).name();
+        if (enoughOn(candidate))
+            break;
+    }
+    return candidate;
+}
+
+QVariantMap Theme::preview(const QString &themeName) const {
+    QString slug = themeName.trimmed().toLower();
+    slug.replace(' ', '-');
+    QVariantMap result;
+    if (slug.isEmpty() || slug.contains('/') || slug.startsWith('.'))
+        return result;
+    // A theme in the user's folder wins over one of the same name that Omarchy ships.
+    for (const QString &directory : {m_env.configHome + "/omarchy/themes/" + slug, m_env.omarchyPath + "/themes/" + slug}) {
+        const auto colors = readColors(directory + "/colors.toml");
+        if (colors.isEmpty())
+            continue;
+        result["background"] = colors.value("background", "#1c1c1e");
+        result["surface"] = colors.value("dark_background", colors.value("background", "#1c1c1e"));
+        result["foreground"] = colors.value("foreground", "#f5f5f7");
+        result["accent"] = colors.value("accent", "#FFD60A");
+        result["line"] = colors.value("selection", colors.value("foreground", "#f5f5f7"));
+        if (QFileInfo::exists(directory + "/preview.png")) {
+            result["image"] = QUrl::fromLocalFile(directory + "/preview.png").toString();
+        } else {
+            // A theme with no preview still has its wallpapers, which say as much.
+            const auto stills = QDir(directory + "/backgrounds").entryList({"*.png", "*.jpg", "*.jpeg", "*.webp"}, QDir::Files | QDir::Readable, QDir::Name);
+            if (!stills.isEmpty())
+                result["image"] = QUrl::fromLocalFile(directory + "/backgrounds/" + stills.first()).toString();
+        }
+        break;
+    }
+    return result;
 }
 
 void Theme::reload() {

@@ -23,6 +23,8 @@ struct CatalogEntry {
     bool isAction() const { return type == QLatin1String("action"); }
     bool isSetting() const { return !isAction(); }
     bool isEditable() const { return isSetting() && type != QLatin1String("status") && !write.isEmpty(); }
+    // What the row's button says: what pressing it does, never how it is launched.
+    QString verb() const;
     QVariantMap toVariant() const;
 };
 

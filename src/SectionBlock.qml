@@ -29,18 +29,23 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
+        Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
         spacing: 8
         AppText {
             text: qsTranslate("catalog", root.title)
             font.bold: true
             scale_: 1.1
             Layout.fillWidth: true
+            Accessible.role: Accessible.Heading
+            Accessible.name: text
         }
         AppButton {
             visible: root.collapsible
             style: "flat"
+            implicitHeight: Math.round(theme.fontSize * 1.75)
             text: root.expanded ? qsTr("Hide") : qsTr("Show %n", "", root.rows.length)
             iconName: "chevron"
+            iconRotation: root.expanded ? 180 : 0
             onClicked: root.expanded = !root.expanded
         }
     }
@@ -55,6 +60,7 @@ ColumnLayout {
                 entry: modelData
                 last: index === root.rows.length - 1
                 highlighted: root.focusId === modelData.id
+                rich: true
             }
         }
     }

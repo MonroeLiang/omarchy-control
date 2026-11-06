@@ -6,7 +6,7 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 
 | Check | Evidence |
 | --- | --- |
-| 258 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
+| 265 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
 | 82 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
 | Package install, upgrade, and removal | `tools/package-check.sh`, the real package in a disposable pacman root, with real `pacman` under `fakeroot` |
 | All 76 typed settings read correctly on real hardware | `omarchy-control doctor` on Omarchy 4.5.0-3; recorded in `live-evidence.json` |
@@ -15,7 +15,7 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 | Release build | The steps in `.github/workflows/release.yml` ran in a clean `archlinux:base-devel` container: tests, package check, package build, checksums, installer check. The workflow itself has not run on GitHub |
 | In-app updates | Fixture-tested with fake `curl` and `sudo`, including a real click through Check, Install, and Restart on the About page. No real release has been checked or installed yet |
 | Coverage against the 4.5 inventory | 433 of 433 public commands and all 356 actionable menu rows have a destination or recorded reason |
-| Accessibility tree | Every control reachable by Tab, on every page, reports a name through Qt's accessibility layer. No screen reader has actually spoken it |
+| Accessibility tree | Every control reachable by Tab, on every page, reports a name through Qt's accessibility layer, and Tab scrolls to keep focus on screen. No screen reader has actually spoken it |
 | Layouts | Real QML on every page: dark and light, sharp and rounded, Arabic and German at the largest text size, 620px wide, and this machine's live data (read-only, config files confirmed untouched) |
 | Independent adversarial review | 33 findings on the code that changes things, covering data loss, false success, and semantic mistakes against Omarchy's scripts. All were fixed, and the concrete ones have regression tests |
 
@@ -47,7 +47,7 @@ These need your real session or hardware. Jason decided on November 6, 2026 to r
 
 ## Languages
 
-Danish, German, and Arabic are 100% translated: 456 interface and 994 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
+Danish, German, and Arabic are 100% translated: 499 interface and 988 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
 
 ## First live run
 

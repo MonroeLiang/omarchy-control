@@ -26,7 +26,29 @@ green = "#ff9f0a"
 T
 printf 'obsidian-circuit\n' >"$H/.local/state/omarchy/current/theme.name"
 printf '[font]\nbase-size = 14\n' >"$H/.config/omarchy/shell.toml"
-touch "$H/.local/state/omarchy/current/theme/backgrounds/1-circuit.png" "$H/.local/state/omarchy/current/theme/backgrounds/2-dusk.png"
+
+# Fictional themes and generated backgrounds, so the Appearance tiles have something to show.
+sandbox_theme() {
+  mkdir -p "$ROOT/omarchy/themes/$1"
+  printf 'mode = "%s"\naccent = "%s"\nselection = "%s"\nbackground = "%s"\ndark_background = "%s"\nforeground = "%s"\n' "$2" "$3" "$4" "$5" "$6" "$7" >"$ROOT/omarchy/themes/$1/colors.toml"
+}
+sandbox_theme catppuccin dark "#cba6f7" "#45475a" "#1e1e2e" "#181825" "#cdd6f4"
+sandbox_theme everforest dark "#a7c080" "#475258" "#2d353b" "#232a2e" "#d3c6aa"
+sandbox_theme obsidian-circuit dark "#ff9f0a" "#3a3a3c" "#1c1c1e" "#161618" "#f5f5f7"
+sandbox_theme tokyo-night dark "#7aa2f7" "#414868" "#1a1b26" "#16161e" "#c0caf5"
+python3 - "$H/.local/state/omarchy/current/theme/backgrounds" <<'PY'
+import struct, sys, zlib
+def png(path, top, bottom, w=320, h=200):
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    rows = b"".join(b"\0" + bytes(int(a + (b - a) * ((y + x / 3) / (h + w / 3))) for a, b in zip(top, bottom) for x in [0]) * w for y in range(h))
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+out = sys.argv[1]
+png(out + "/1-circuit.png", (28, 28, 30), (120, 72, 16))
+png(out + "/2-ember.png", (58, 22, 14), (214, 120, 30))
+png(out + "/3-dusk.png", (20, 24, 54), (140, 60, 110))
+PY
 ln -sf "$H/.local/state/omarchy/current/theme/backgrounds/1-circuit.png" "$H/.local/state/omarchy/current/background"
 printf 'balanced\n' >"$H/.local/state/omarchy/powerprofiles/ac"
 printf 'power-saver\n' >"$H/.local/state/omarchy/powerprofiles/battery"

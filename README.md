@@ -77,9 +77,9 @@ Packages are built for x86_64 by [a public workflow](.github/workflows/release.y
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/screens/appearance.png" alt="The Appearance page"><br><br>
-<b>Typed settings with live values</b><br>
-Theme, fonts, text size, windows, bar, dock, idle timers, power profiles, default apps, input, DNS, and language.
+<img src="docs/screens/appearance.png" alt="The Appearance page, choosing a theme from tiles"><br><br>
+<b>See a theme before you pick it</b><br>
+Themes and backgrounds are tiles, not filenames. The same live, verified settings cover fonts, windows, the bar and dock, idle timers, power profiles, input, DNS, and language.
 </td>
 <td width="50%" valign="top">
 <img src="docs/screens/sound.png" alt="The Sound and devices page"><br><br>
@@ -107,7 +107,7 @@ The window follows your theme and language live, works by keyboard alone, and mi
 
 ### Coverage
 
-| 97 | 23 | 335 | 19 | 22 |
+| 96 | 22 | 334 | 19 | 22 |
 | :---: | :---: | :---: | :---: | :---: |
 | native settings and pages | Omarchy panels | guided routes | specialist apps | config files |
 
@@ -184,7 +184,7 @@ Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wa
 ```sh
 bin/build                  # build/omarchy-control
 bin/install                # Build the Arch package from this checkout and install it
-bin/test                   # 258 tests; never touches the real desktop
+bin/test                   # 265 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
 tools/installer-check.sh   # install.sh against real release files in a disposable root

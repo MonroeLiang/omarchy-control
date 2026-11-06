@@ -28,6 +28,7 @@ ApplicationWindow {
     property var pageHistory: []
     property bool helpVisible: false
     readonly property bool narrow: width < theme.fontSize * 61
+    readonly property int sidebarWidth: narrow ? 60 : Math.max(256, theme.fontSize * 18.5)
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.hasOwnProperty("cursorPosition")
 
     // ---- Shared actions, used by every page -----------------------------------
@@ -41,6 +42,26 @@ ApplicationWindow {
         // Also covers clicking the tab already open, which changes no page.
         if (!focusRequest.length)
             scrollPageToTop()
+    }
+    // Tab never leaves the keyboard's place off-screen.
+    onActiveFocusItemChanged: {
+        var item = activeFocusItem
+        var page = pageLoader.item
+        if (!item || !page)
+            return
+        var view = page.contentItem
+        var ancestor = item.parent
+        while (ancestor && ancestor !== view)
+            ancestor = ancestor.parent
+        if (!ancestor)
+            return
+        var margin = 24
+        var top = item.mapToItem(view.contentItem, 0, 0).y
+        var bottom = top + item.height
+        if (top - margin < view.contentY)
+            view.contentY = Math.max(0, top - margin)
+        else if (bottom + margin > view.contentY + view.height)
+            view.contentY = Math.min(Math.max(0, view.contentHeight - view.height), bottom + margin - view.height)
     }
     function scrollPageToTop() {
         if (!pageLoader.item)
@@ -93,7 +114,7 @@ ApplicationWindow {
     }
     function activate(entry) {
         if (entry.confirm === "confirm" || entry.confirm === "destructive") {
-            confirm.open_(qsTranslate("catalog", entry.label), qsTranslate("catalog", entry.confirmText || ""), [], entry.confirm === "destructive" ? qsTr("Continue") : qsTr("Open"), entry.confirm === "destructive", function () {
+            confirm.open_(qsTranslate("catalog", entry.label), qsTranslate("catalog", entry.confirmText || ""), [], qsTranslate("HelperLabels", entry.verb || "Open"), entry.confirm === "destructive", function () {
                 backend.launch(entry.id)
             })
             return
@@ -230,37 +251,54 @@ ApplicationWindow {
                 color: theme.sidebar
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 18
-                    anchors.rightMargin: 16
-                    spacing: 16
-                    AppIcon { name: "logo"; tint: theme.accent; size: 22 }
-                    AppText {
-                        visible: !win.narrow
-                        text: qsTr("Omarchy Control")
-                        font.bold: true
-                        scale_: 1.2
+                    spacing: 0
+                    // The brand sits over the sidebar, and search starts where the content does.
+                    Item {
+                        Layout.preferredWidth: win.sidebarWidth
+                        Layout.fillHeight: true
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 19
+                            spacing: 10
+                            AppIcon { name: "logo"; tint: theme.accentText; size: 22 }
+                            AppText {
+                                visible: !win.narrow
+                                text: qsTr("Omarchy Control")
+                                font.bold: true
+                                scale_: 1.1
+                                Layout.fillWidth: true
+                            }
+                        }
                     }
-                    AppField {
-                        id: searchField
-                        label: qsTr("Search settings, devices, and tools")
+                    Item {
                         Layout.fillWidth: true
-                        leftPadding: 38
-                        rightPadding: 76
-                        placeholderText: qsTr("Search settings, devices, and tools")
-                        Keys.onDownPressed: results.currentIndex = Math.min(results.currentIndex + 1, results.count - 1)
-                        Keys.onUpPressed: results.currentIndex = Math.max(results.currentIndex - 1, 0)
-                        Keys.onReturnPressed: results.openCurrent()
-                        Keys.onEnterPressed: results.openCurrent()
-                        AppIcon { x: searchField.mirrored ? searchField.width - width - 12 : 12; anchors.verticalCenter: parent.verticalCenter; name: "search"; tint: theme.muted }
-                        Rectangle {
-                            x: searchField.mirrored ? 6 : searchField.width - width - 6
+                        Layout.fillHeight: true
+                        AppField {
+                            id: searchField
+                            readonly property bool rtl: shell.LayoutMirroring.enabled
+                            label: qsTr("Search settings, devices, and tools")
+                            anchors.left: parent.left
+                            anchors.leftMargin: 20
                             anchors.verticalCenter: parent.verticalCenter
-                            width: keyHint.implicitWidth + 14
-                            height: parent.height - 12
-                            radius: Math.min(4, theme.radius)
-                            color: theme.raised
-                            visible: !searchField.activeFocus
-                            AppText { id: keyHint; anchors.centerIn: parent; text: "Ctrl K"; secondary: true; scale_: 0.82 }
+                            width: Math.min(parent.width - 48, theme.fontSize * 46)
+                            leftPadding: rtl ? 76 : 38
+                            rightPadding: rtl ? 38 : 76
+                            placeholderText: qsTr("Search settings, devices, and tools")
+                            Keys.onDownPressed: results.currentIndex = Math.min(results.currentIndex + 1, results.count - 1)
+                            Keys.onUpPressed: results.currentIndex = Math.max(results.currentIndex - 1, 0)
+                            Keys.onReturnPressed: results.openCurrent()
+                            Keys.onEnterPressed: results.openCurrent()
+                            AppIcon { x: searchField.rtl ? searchField.width - width - 12 : 12; anchors.verticalCenter: parent.verticalCenter; name: "search"; tint: theme.muted }
+                            Rectangle {
+                                x: searchField.rtl ? 6 : searchField.width - width - 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: keyHint.implicitWidth + 14
+                                height: parent.height - 12
+                                radius: Math.min(4, theme.radius)
+                                color: theme.raised
+                                visible: !searchField.activeFocus
+                                AppText { id: keyHint; anchors.centerIn: parent; text: "Ctrl K"; secondary: true; scale_: 0.88 }
+                            }
                         }
                     }
                 }
@@ -275,7 +313,7 @@ ApplicationWindow {
                 // Sidebar
                 Rectangle {
                     Layout.fillHeight: true
-                    Layout.preferredWidth: win.narrow ? 60 : Math.max(250, theme.fontSize * 21)
+                    Layout.preferredWidth: win.sidebarWidth
                     color: theme.sidebar
                     ColumnLayout {
                         anchors.fill: parent
@@ -290,55 +328,57 @@ ApplicationWindow {
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
                             keyNavigationEnabled: true
-                            delegate: AbstractButton {
-                                id: navButton
-                                objectName: "nav_" + modelData.id
+                            delegate: Item {
+                                // Thirteen items read as four groups: home, this desktop, the
+                                // machine behind it, and this app.
+                                readonly property int gap: ["appearance", "apps", "about"].indexOf(modelData.id) >= 0 ? 12 : 0
                                 width: navigation.width
-                                height: Math.round(theme.fontSize * 2.9)
-                                hoverEnabled: true
-                                focusPolicy: Qt.StrongFocus
-                                readonly property bool selected: win.currentPage === modelData.id
-                                Accessible.role: Accessible.Button
-                                Accessible.name: qsTranslate("catalog", modelData.label)
-                                Accessible.selected: selected
-                                onClicked: win.go(modelData.id, "")
-                                ToolTip.visible: win.narrow && hovered
-                                ToolTip.text: qsTranslate("catalog", modelData.label)
-                                background: Rectangle {
-                                    radius: Math.min(4, theme.radius)
-                                    color: navButton.selected ? Qt.alpha(theme.accent, 0.2) : navButton.hovered ? Qt.alpha(theme.foreground, 0.05) : "transparent"
-                                    border.width: navButton.visualFocus ? 2 : 0
-                                    border.color: theme.accent
-                                    Rectangle {
-                                        visible: navButton.selected
-                                        width: 3
-                                        height: parent.height
-                                        color: theme.accent
-                                        x: navButton.mirrored ? parent.width - width : 0
+                                height: navButton.height + gap
+                                AbstractButton {
+                                    id: navButton
+                                    objectName: "nav_" + modelData.id
+                                    y: parent.gap
+                                    width: parent.width
+                                    height: Math.round(theme.fontSize * 2.7)
+                                    hoverEnabled: true
+                                    focusPolicy: Qt.StrongFocus
+                                    readonly property bool selected: win.currentPage === modelData.id
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: qsTranslate("catalog", modelData.label)
+                                    Accessible.selected: selected
+                                    onClicked: win.go(modelData.id, "")
+                                    ToolTip.visible: win.narrow && hovered
+                                    ToolTip.text: qsTranslate("catalog", modelData.label)
+                                    background: Rectangle {
+                                        radius: Math.min(4, theme.radius)
+                                        color: navButton.selected ? Qt.alpha(theme.accent, 0.16) : navButton.down ? Qt.alpha(theme.foreground, 0.1) : navButton.hovered ? Qt.alpha(theme.foreground, 0.05) : "transparent"
+                                        border.width: navButton.visualFocus ? 2 : 0
+                                        border.color: theme.accent
+                                        Behavior on color { enabled: theme.animate; ColorAnimation { duration: 100 } }
                                     }
-                                }
-                                contentItem: RowLayout {
-                                    spacing: 12
-                                    Item { Layout.preferredWidth: 4 }
-                                    AppIcon {
-                                        name: modelData.icon
-                                        size: 20
-                                        tint: navButton.selected ? theme.accent : theme.foreground
-                                    }
-                                    AppText {
-                                        visible: !win.narrow
-                                        Layout.fillWidth: true
-                                        text: qsTranslate("catalog", modelData.label)
-                                        color: navButton.selected ? theme.accent : theme.foreground
+                                    contentItem: RowLayout {
+                                        spacing: 12
+                                        Item { Layout.preferredWidth: 4 }
+                                        AppIcon {
+                                            name: modelData.icon
+                                            size: 18
+                                            tint: navButton.selected ? theme.accentText : theme.muted
+                                        }
+                                        AppText {
+                                            visible: !win.narrow
+                                            Layout.fillWidth: true
+                                            text: qsTranslate("catalog", modelData.label)
+                                            color: theme.foreground
+                                        }
                                     }
                                 }
                             }
                         }
                         RowLayout {
-                            visible: !win.narrow
                             Layout.fillWidth: true
-                            Layout.margins: 6
+                            Layout.margins: win.narrow ? 0 : 6
                             AppText {
+                                visible: !win.narrow
                                 Layout.fillWidth: true
                                 text: backend.omarchyVersion ? qsTr("Omarchy %1").arg(backend.omarchyVersion.split("-")[0]) : ""
                                 secondary: true
@@ -346,8 +386,12 @@ ApplicationWindow {
                             }
                             AppButton {
                                 style: "flat"
-                                text: qsTr("?  Shortcuts")
-                                implicitHeight: 24
+                                Layout.fillWidth: win.narrow
+                                text: win.narrow ? "" : qsTr("Shortcuts")
+                                leadingIcon: "help"
+                                Accessible.name: qsTr("Shortcuts")
+                                ToolTip.visible: win.narrow && hovered
+                                ToolTip.text: qsTr("Shortcuts")
                                 onClicked: win.helpVisible = true
                             }
                         }
@@ -370,7 +414,6 @@ ApplicationWindow {
                         id: pageLoader
                         objectName: "pageLoader"
                         anchors.fill: parent
-                        anchors.topMargin: 10
                         sourceComponent: win.currentPage === "overview" ? overviewComponent : pageComponent
                     }
                     Component { id: overviewComponent; OverviewPage {} }
@@ -450,7 +493,7 @@ ApplicationWindow {
                                         AppText {
                                             Layout.rightMargin: 12
                                             secondary: true
-                                            scale_: 0.82
+                                            scale_: 0.88
                                             text: {
                                                 switch (modelData.integration) {
                                                 case "native": return qsTr("Setting")

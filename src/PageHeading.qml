@@ -4,7 +4,7 @@ import QtQuick.Layouts
 ColumnLayout {
     property string title: ""
     property string subtitle: ""
-    spacing: 2
+    spacing: 4
     AppText {
         text: title
         font.bold: true

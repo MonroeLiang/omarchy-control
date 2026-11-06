@@ -5,6 +5,7 @@ RowLayout {
     property string title: ""
     default property alias actions: tail.data
     spacing: 8
+    Layout.preferredHeight: Math.round(theme.fontSize * 1.75)
     AppText {
         text: parent.title
         font.bold: true

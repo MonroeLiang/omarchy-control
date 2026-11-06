@@ -14,7 +14,8 @@ ColumnLayout {
             model: root.services.startupApps
             delegate: Item {
                 width: parent ? parent.width : 400
-                height: 46
+                height: theme.rowHeight
+                RowDivider {}
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 14
@@ -24,7 +25,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         AppText { Layout.fillWidth: true; text: modelData.name }
-                        AppText { Layout.fillWidth: true; secondary: true; scale_: 0.82; visible: text.length > 0; text: modelData.comment }
+                        AppText { Layout.fillWidth: true; secondary: true; scale_: 0.88; visible: text.length > 0; text: modelData.comment }
                     }
                     AppSwitch {
                         label: qsTr("Start %1 at login").arg(modelData.name)

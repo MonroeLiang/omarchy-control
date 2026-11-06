@@ -8,13 +8,16 @@ ColumnLayout {
     spacing: 8
     readonly property var disks: backend.system.storage
     BlockHeading { Layout.fillWidth: true; title: qsTr("Storage") }
+    AppText { visible: root.disks.length === 0; text: qsTr("No disks found."); secondary: true }
     AppPanel {
         Layout.fillWidth: true
+        visible: root.disks.length > 0
         Repeater {
             model: root.disks
             delegate: Item {
                 width: parent ? parent.width : 400
                 height: 58
+                RowDivider {}
                 ColumnLayout {
                     anchors.left: parent.left
                     anchors.right: parent.right

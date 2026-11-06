@@ -1,7 +1,7 @@
 {
     "claimedCommands": 301,
     "claimedMenu": 356,
-    "entries": 496,
+    "entries": 493,
     "excludedCommands": 132,
     "excludedMenu": 0,
     "exclusions": {
@@ -2374,7 +2374,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Logout",
+                "Log out",
                 "logout"
             ],
             "source_references": [
@@ -2420,7 +2420,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Shutdown",
+                "Shut down",
                 "shutdown"
             ],
             "source_references": [
@@ -2642,30 +2642,6 @@
             "applicable_capability": [
             ],
             "apply_restart_semantics": "",
-            "domain": "C02",
-            "id": "appearance.top-bar.indicators.battery-percentage",
-            "implementation_status": "implemented",
-            "integration_mode": "omarchy-panel",
-            "known_limitation": "",
-            "read_method": "none",
-            "recovery_class": "no-undo",
-            "searchable_labels": [
-                "Show Battery %",
-                "show battery %"
-            ],
-            "source_references": [
-                "appearance.top-bar.indicators.battery-percentage-on",
-                "omarchy shell",
-                "appearance.top-bar.indicators.battery-percentage-off"
-            ],
-            "supported_versions": "omarchy 4.5.x",
-            "validation_evidence": "route-reviewed",
-            "write_or_launch_method": "exec"
-        },
-        {
-            "applicable_capability": [
-            ],
-            "apply_restart_semantics": "",
             "domain": "C01",
             "id": "appearance.branding.about.text",
             "implementation_status": "implemented",
@@ -2674,7 +2650,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Edit Text",
+                "Edit About text",
                 "edit text"
             ],
             "source_references": [
@@ -2697,7 +2673,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Set From Image",
+                "Set About text from an image",
                 "set from image"
             ],
             "source_references": [
@@ -2720,7 +2696,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Restore Default",
+                "Restore default About text",
                 "restore default"
             ],
             "source_references": [
@@ -2743,7 +2719,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Edit Text",
+                "Edit screensaver text",
                 "edit text"
             ],
             "source_references": [
@@ -2766,7 +2742,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Set From Image",
+                "Set screensaver text from an image",
                 "set from image"
             ],
             "source_references": [
@@ -2789,7 +2765,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Restore Default",
+                "Restore default screensaver text",
                 "restore default"
             ],
             "source_references": [
@@ -2835,7 +2811,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Clipboard History",
+                "Clipboard history",
                 "clipboard history"
             ],
             "source_references": [
@@ -3278,7 +3254,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Network Speed Test",
+                "Network speed test",
                 "network speed test"
             ],
             "source_references": [
@@ -3301,7 +3277,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Disk Speed Test",
+                "Disk speed test",
                 "disk speed test"
             ],
             "source_references": [
@@ -3393,7 +3369,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Keyboard Layouts",
+                "Keyboard layouts",
                 "keyboard layouts"
             ],
             "source_references": [
@@ -3416,7 +3392,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Input Methods",
+                "Input methods",
                 "input methods"
             ],
             "source_references": [
@@ -4060,7 +4036,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Add Plugin",
+                "Add a plugin from Git",
                 "add plugin"
             ],
             "source_references": [
@@ -4083,7 +4059,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Clone Plugin",
+                "Clone a plugin",
                 "clone plugin"
             ],
             "source_references": [
@@ -4106,7 +4082,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Plugin",
+                "Remove a plugin",
                 "remove plugin"
             ],
             "source_references": [
@@ -4129,7 +4105,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Set up Fingerprint",
+                "Set up fingerprint",
                 "fingerprint"
             ],
             "source_references": [
@@ -4198,7 +4174,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Set up SSH Agent",
+                "Set up SSH agent",
                 "ssh agent"
             ],
             "source_references": [
@@ -4221,7 +4197,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Set up Sudoless Docker",
+                "Set up sudoless Docker",
                 "sudoless docker"
             ],
             "source_references": [
@@ -4244,7 +4220,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Set up Passwordless Sudo",
+                "Set up passwordless sudo",
                 "passwordless sudo"
             ],
             "source_references": [
@@ -4381,8 +4357,9 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Install Theme",
-                "theme"
+                "Install a theme",
+                "theme",
+                "install theme"
             ],
             "source_references": [
                 "install.style.theme",
@@ -4404,8 +4381,9 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Install Background",
-                "background"
+                "Install a background",
+                "background",
+                "install background"
             ],
             "source_references": [
                 "install.style.background",
@@ -4565,8 +4543,9 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Install Web App",
-                "web app"
+                "Install a web app",
+                "web app",
+                "install web app"
             ],
             "source_references": [
                 "install.webapp",
@@ -4656,7 +4635,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Install Preinstalls",
+                "Install preinstalls",
                 "preinstalls"
             ],
             "source_references": [
@@ -5668,7 +5647,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Install Xbox Controllers",
+                "Install Xbox controllers",
                 "xbox controllers"
             ],
             "source_references": [
@@ -6242,8 +6221,9 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Theme",
-                "theme"
+                "Remove a theme",
+                "theme",
+                "remove theme"
             ],
             "source_references": [
                 "remove.theme",
@@ -6265,8 +6245,9 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Web App",
-                "web app"
+                "Remove a web app",
+                "web app",
+                "remove web app"
             ],
             "source_references": [
                 "remove.webapp",
@@ -6334,7 +6315,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Preinstalls",
+                "Remove preinstalls",
                 "preinstalls"
             ],
             "source_references": [
@@ -6357,7 +6338,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Fingerprint",
+                "Remove fingerprint",
                 "fingerprint"
             ],
             "source_references": [
@@ -6426,7 +6407,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Sudoless Docker",
+                "Remove sudoless Docker",
                 "sudoless docker"
             ],
             "source_references": [
@@ -6702,7 +6683,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove SSH Agent",
+                "Remove SSH agent",
                 "ssh agent"
             ],
             "source_references": [
@@ -7093,8 +7074,9 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Xbox Controllers (󰂯)",
-                "xbox controllers (󰂯)"
+                "Remove Xbox controllers",
+                "xbox controllers (󰂯)",
+                "remove xbox controllers (󰂯)"
             ],
             "source_references": [
                 "remove.gaming.xbox-controllers",
@@ -7714,7 +7696,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Use the Stable channel",
+                "Use the stable channel",
                 "stable"
             ],
             "source_references": [
@@ -7783,7 +7765,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Use the Dev channel",
+                "Use the dev channel",
                 "dev"
             ],
             "source_references": [
@@ -7829,7 +7811,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Restart Shell",
+                "Restart shell",
                 "shell"
             ],
             "source_references": [
@@ -7944,7 +7926,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Reset Shell config",
+                "Reset shell config",
                 "shell"
             ],
             "source_references": [
@@ -7967,7 +7949,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Restart Audio",
+                "Restart audio",
                 "audio"
             ],
             "source_references": [
@@ -8036,7 +8018,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Restart Trackpad",
+                "Restart trackpad",
                 "trackpad"
             ],
             "source_references": [
@@ -10010,29 +9992,6 @@
             ],
             "apply_restart_semantics": "",
             "domain": "C21",
-            "id": "plugin.add",
-            "implementation_status": "implemented",
-            "integration_mode": "omarchy-wizard",
-            "known_limitation": "",
-            "read_method": "none",
-            "recovery_class": "no-undo",
-            "searchable_labels": [
-                "Add a plugin from Git",
-                "widget"
-            ],
-            "source_references": [
-                "omarchy plugin add",
-                "setup.plugin.add"
-            ],
-            "supported_versions": "omarchy 4.5.x",
-            "validation_evidence": "route-reviewed",
-            "write_or_launch_method": "terminal"
-        },
-        {
-            "applicable_capability": [
-            ],
-            "apply_restart_semantics": "",
-            "domain": "C21",
             "id": "plugin.update",
             "implementation_status": "implemented",
             "integration_mode": "omarchy-wizard",
@@ -10447,7 +10406,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Reset Package manager config"
+                "Reset package manager config"
             ],
             "source_references": [
                 "omarchy refresh pacman"
@@ -10468,7 +10427,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Reset Login screen"
+                "Reset login screen"
             ],
             "source_references": [
                 "omarchy refresh sddm"
@@ -11727,28 +11686,6 @@
             "applicable_capability": [
             ],
             "apply_restart_semantics": "",
-            "domain": "C24",
-            "id": "native.coverage",
-            "implementation_status": "implemented",
-            "integration_mode": "native",
-            "known_limitation": "",
-            "read_method": "none",
-            "recovery_class": "no-undo",
-            "searchable_labels": [
-                "Coverage report",
-                "integration",
-                "status"
-            ],
-            "source_references": [
-            ],
-            "supported_versions": "omarchy 4.5.x",
-            "validation_evidence": "route-reviewed",
-            "write_or_launch_method": "page"
-        },
-        {
-            "applicable_capability": [
-            ],
-            "apply_restart_semantics": "",
             "domain": "C18",
             "id": "app.update",
             "implementation_status": "implemented",
@@ -11868,9 +11805,9 @@
     "modes": {
         "advanced-config": 22,
         "external-helper": 19,
-        "native": 97,
-        "omarchy-panel": 23,
-        "omarchy-wizard": 335
+        "native": 96,
+        "omarchy-panel": 22,
+        "omarchy-wizard": 334
     },
     "unclassifiedCommands": [
     ],
