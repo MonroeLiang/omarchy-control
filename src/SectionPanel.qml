@@ -21,8 +21,8 @@ Item {
     // to, in the order the groups first appear, with a gap between runs.
     readonly property var runs: {
         var settingKeys = [], actionKeys = [], byKey = {}
-        // A library draws its rows inside its own groups.
-        var rows = library.length ? [] : root.rows
+        // A library draws its rows inside its own groups, and a strip side by side.
+        var rows = library.length || root.spec.strip ? [] : root.rows
         for (var i = 0; i < rows.length; ++i) {
             var action = rows[i].type === "action"
             var key = (action ? "a:" : "s:") + (rows[i].group || "")
@@ -86,6 +86,9 @@ Item {
             return blockLoader.item.rowItem ? blockLoader.item.rowItem(id) : null
         if (headerRow.item && headerRow.item.entryId === id)
             return headerRow.item
+        for (var t = 0; t < stripRepeater.count; ++t)
+            if (stripRepeater.itemAt(t) && stripRepeater.itemAt(t).entryId === id)
+                return stripRepeater.itemAt(t)
         for (var g = 0; g < libraryRepeater.count; ++g) {
             var group = libraryRepeater.itemAt(g)
             for (var k = 0; group && k < group.items.count; ++k) {
@@ -116,6 +119,10 @@ Item {
         }
         if (collapsible) {
             disclose.forceActiveFocus(Qt.TabFocusReason)
+            return
+        }
+        if (root.spec.strip && stripRepeater.count) {
+            stripRepeater.itemAt(0).takeFocus()
             return
         }
         if (library.length) {
@@ -344,6 +351,40 @@ Item {
                                         navigation: !!root.spec.navigation && modelData.type === "action"
                                         last: parent.run === root.runs.length - 1 && index === runRows.count - 1
                                         highlighted: root.focusId === modelData.id
+                                    }
+                                }
+                            }
+                        }
+                        // A strip: a few readings side by side, stacked when there is no room.
+                        GridLayout {
+                            id: strip
+                            visible: !!root.spec.strip
+                            width: body.width
+                            columns: width > theme.fontSize * 50 ? Math.max(1, stripRepeater.count) : 1
+                            columnSpacing: 0
+                            rowSpacing: 0
+                            Repeater {
+                                id: stripRepeater
+                                model: root.spec.strip ? root.rows : []
+                                delegate: SettingRow {
+                                    // Equal shares of the line, whatever each one has to say.
+                                    Layout.fillWidth: true
+                                    Layout.preferredWidth: strip.width / strip.columns
+                                    Layout.maximumWidth: strip.width / strip.columns
+                                    entry: modelData
+                                    rich: true
+                                    // Stacked, the readings get the usual rule between them.
+                                    last: strip.columns > 1 || index === stripRepeater.count - 1
+                                    highlighted: root.focusId === modelData.id
+                                    // Between readings on one line, a hairline instead of a rule below.
+                                    Rectangle {
+                                        visible: index > 0 && strip.columns > 1
+                                        width: 1
+                                        anchors.top: parent.top
+                                        anchors.bottom: parent.bottom
+                                        anchors.topMargin: 14
+                                        anchors.bottomMargin: 14
+                                        color: theme.divider
                                     }
                                 }
                             }
