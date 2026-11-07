@@ -3114,41 +3114,75 @@
    {
     "value": "chromium",
     "label": "Chromium",
-    "requiresCommand": "chromium"
+    "requiresCommand": "chromium",
+    "icons": [
+     "chromium",
+     "web-browser"
+    ]
    },
    {
     "value": "chrome",
     "label": "Chrome",
-    "requiresCommand": "google-chrome-stable"
+    "requiresCommand": "google-chrome-stable",
+    "icons": [
+     "google-chrome",
+     "chrome",
+     "web-browser"
+    ]
    },
    {
     "value": "brave",
     "label": "Brave",
-    "requiresCommand": "brave"
+    "requiresCommand": "brave",
+    "icons": [
+     "brave-browser",
+     "brave",
+     "web-browser"
+    ]
    },
    {
     "value": "brave-origin",
     "label": "Brave Origin",
-    "requiresCommand": "brave-origin"
+    "requiresCommand": "brave-origin",
+    "icons": [
+     "brave-origin",
+     "brave-browser",
+     "web-browser"
+    ]
    },
    {
     "value": "edge",
     "label": "Edge",
-    "requiresCommand": "microsoft-edge-stable"
+    "requiresCommand": "microsoft-edge-stable",
+    "icons": [
+     "microsoft-edge",
+     "microsoft-edge-stable",
+     "web-browser"
+    ]
    },
    {
     "value": "firefox",
     "label": "Firefox",
-    "requiresCommand": "firefox"
+    "requiresCommand": "firefox",
+    "icons": [
+     "firefox",
+     "web-browser"
+    ]
    },
    {
     "value": "zen",
     "label": "Zen",
-    "requiresCommand": "zen-browser"
+    "requiresCommand": "zen-browser",
+    "icons": [
+     "zen-browser",
+     "zen",
+     "web-browser"
+    ]
    }
   ],
   "recovery": "auto-undo",
-  "scope": "per-user"
+  "scope": "per-user",
+  "icon": "globe"
  },
  {
   "id": "apps.default.terminal",
@@ -3188,26 +3222,45 @@
    {
     "value": "alacritty",
     "label": "Alacritty",
-    "requiresCommand": "alacritty"
+    "requiresCommand": "alacritty",
+    "icons": [
+     "Alacritty",
+     "alacritty",
+     "utilities-terminal"
+    ]
    },
    {
     "value": "foot",
     "label": "Foot",
-    "requiresCommand": "foot"
+    "requiresCommand": "foot",
+    "icons": [
+     "foot",
+     "utilities-terminal"
+    ]
    },
    {
     "value": "ghostty",
     "label": "Ghostty",
-    "requiresCommand": "ghostty"
+    "requiresCommand": "ghostty",
+    "icons": [
+     "com.mitchellh.ghostty",
+     "ghostty",
+     "utilities-terminal"
+    ]
    },
    {
     "value": "kitty",
     "label": "Kitty",
-    "requiresCommand": "kitty"
+    "requiresCommand": "kitty",
+    "icons": [
+     "kitty",
+     "utilities-terminal"
+    ]
    }
   ],
   "recovery": "auto-undo",
-  "scope": "per-user"
+  "scope": "per-user",
+  "icon": "terminal"
  },
  {
   "id": "apps.default.editor",
@@ -3252,46 +3305,85 @@
    {
     "value": "nvim",
     "label": "Neovim",
-    "requiresCommand": "nvim"
+    "requiresCommand": "nvim",
+    "icons": [
+     "nvim",
+     "neovim",
+     "accessories-text-editor"
+    ]
    },
    {
     "value": "code",
     "label": "VS Code",
-    "requiresCommand": "code"
+    "requiresCommand": "code",
+    "icons": [
+     "vscode",
+     "visual-studio-code",
+     "code",
+     "accessories-text-editor"
+    ]
    },
    {
     "value": "cursor",
     "label": "Cursor",
-    "requiresCommand": "cursor"
+    "requiresCommand": "cursor",
+    "icons": [
+     "cursor",
+     "accessories-text-editor"
+    ]
    },
    {
     "value": "zed",
     "label": "Zed",
-    "requiresCommand": "zeditor"
+    "requiresCommand": "zeditor",
+    "icons": [
+     "zed",
+     "dev.zed.Zed",
+     "accessories-text-editor"
+    ]
    },
    {
     "value": "sublime_text",
     "label": "Sublime Text",
-    "requiresCommand": "subl"
+    "requiresCommand": "subl",
+    "icons": [
+     "sublime-text",
+     "sublime_text",
+     "accessories-text-editor"
+    ]
    },
    {
     "value": "helix",
     "label": "Helix",
-    "requiresCommand": "helix"
+    "requiresCommand": "helix",
+    "icons": [
+     "helix",
+     "accessories-text-editor"
+    ]
    },
    {
     "value": "vim",
     "label": "Vim",
-    "requiresCommand": "vim"
+    "requiresCommand": "vim",
+    "icons": [
+     "gvim",
+     "vim",
+     "accessories-text-editor"
+    ]
    },
    {
     "value": "emacs",
     "label": "Emacs",
-    "requiresCommand": "emacs"
+    "requiresCommand": "emacs",
+    "icons": [
+     "emacs",
+     "accessories-text-editor"
+    ]
    }
   ],
   "recovery": "auto-undo",
-  "scope": "per-user"
+  "scope": "per-user",
+  "icon": "edit"
  },
  {
   "id": "apps.default.agent",
@@ -3315,6 +3407,12 @@
   },
   "map": {
    "": "Not set"
+  },
+  "icon": "advanced",
+  "link": {
+   "label": "AI agents",
+   "page": "apps",
+   "focus": "panel:AI tools"
   }
  },
  {
@@ -3340,6 +3438,12 @@
   },
   "map": {
    "": "Not set"
+  },
+  "icon": "mic",
+  "link": {
+   "label": "Input & accessibility",
+   "page": "input",
+   "focus": "panel:Dictation"
   }
  },
  {

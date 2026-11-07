@@ -1853,5 +1853,22 @@
  "Removes the swap file and boot resume settings. Needs administrator access.": "يزيل ملف التبديل وإعدادات الاستئناف عند الإقلاع. يتطلب صلاحيات المسؤول.",
  "Start screensaver": "تشغيل حافظ الشاشة",
  "Stay awake is on · Idle timers paused": "البقاء مستيقظًا مفعّل · مؤقتات الخمول متوقفة مؤقتًا",
- "Voxtype": "Voxtype"
+ "Voxtype": "Voxtype",
+ "Browse and open installed applications.": "تصفّح التطبيقات المثبّتة وافتحها.",
+ "Looking up which apps open your files…": "جارٍ البحث عن التطبيقات التي تفتح ملفاتك…",
+ "Manage in %1": "الإدارة في %1",
+ "No app matches that.": "لا يوجد تطبيق مطابق.",
+ "Open %1": "فتح %1",
+ "AI apps": "تطبيقات الذكاء الاصطناعي",
+ "AI tools": "أدوات الذكاء الاصطناعي",
+ "Browsers": "المتصفحات",
+ "Choosing an agent sets it as default and starts it. It may install it first.": "يؤدي اختيار وكيل إلى تعيينه افتراضيًا وتشغيله، وقد يُثبَّت أولًا.",
+ "Defaults": "الافتراضيات",
+ "Development tools": "أدوات التطوير",
+ "Editors": "المحررات",
+ "Fonts & themes": "الخطوط والسمات",
+ "Games": "الألعاب",
+ "Software": "البرمجيات",
+ "Terminals": "الطرفيات",
+ "Web apps & TUIs": "تطبيقات الويب وواجهات TUI"
 }

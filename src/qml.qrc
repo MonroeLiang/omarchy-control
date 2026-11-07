@@ -17,7 +17,8 @@
         <file alias="AudioDeviceRow.qml">AudioDeviceRow.qml</file>
         <file alias="AudioDevicePanel.qml">AudioDevicePanel.qml</file>
         <file alias="BlockAbout.qml">BlockAbout.qml</file>
-        <file alias="BlockApps.qml">BlockApps.qml</file>
+        <file alias="BlockAssociations.qml">BlockAssociations.qml</file>
+        <file alias="BlockInstalledApps.qml">BlockInstalledApps.qml</file>
         <file alias="BlockOutput.qml">BlockOutput.qml</file>
         <file alias="BlockMicrophone.qml">BlockMicrophone.qml</file>
         <file alias="BlockAppAudio.qml">BlockAppAudio.qml</file>
@@ -48,6 +49,7 @@
         <file alias="SectionBlock.qml">SectionBlock.qml</file>
         <file alias="SectionPanel.qml">SectionPanel.qml</file>
         <file alias="PanelHeading.qml">PanelHeading.qml</file>
+        <file alias="CountPill.qml">CountPill.qml</file>
         <file alias="ActionTiles.qml">ActionTiles.qml</file>
         <file alias="SettingRow.qml">SettingRow.qml</file>
         <file alias="ShortcutsOverlay.qml">ShortcutsOverlay.qml</file>
@@ -107,6 +109,13 @@
         <file alias="icons/shield.svg">icons/shield.svg</file>
         <file alias="icons/sound.svg">icons/sound.svg</file>
         <file alias="icons/sun.svg">icons/sun.svg</file>
+        <file alias="icons/edit.svg">icons/edit.svg</file>
+        <file alias="icons/image.svg">icons/image.svg</file>
+        <file alias="icons/mail.svg">icons/mail.svg</file>
+        <file alias="icons/music.svg">icons/music.svg</file>
+        <file alias="icons/server.svg">icons/server.svg</file>
+        <file alias="icons/sparkle.svg">icons/sparkle.svg</file>
+        <file alias="icons/type.svg">icons/type.svg</file>
         <file alias="icons/logout.svg">icons/logout.svg</file>
         <file alias="icons/pause.svg">icons/pause.svg</file>
         <file alias="icons/sleep.svg">icons/sleep.svg</file>

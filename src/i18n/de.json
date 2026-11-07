@@ -1801,5 +1801,22 @@
  "Removes the swap file and boot resume settings. Needs administrator access.": "Entfernt die Auslagerungsdatei und die Einstellungen zum Fortsetzen beim Start. Erfordert Administratorrechte.",
  "Start screensaver": "Bildschirmschoner starten",
  "Stay awake is on · Idle timers paused": "Wach bleiben ist an · Leerlauf-Timer pausiert",
- "Voxtype": "Voxtype"
+ "Voxtype": "Voxtype",
+ "Browse and open installed applications.": "Installierte Anwendungen durchsuchen und öffnen.",
+ "Looking up which apps open your files…": "Es wird ermittelt, welche Apps Ihre Dateien öffnen…",
+ "Manage in %1": "In %1 verwalten",
+ "No app matches that.": "Keine App passt dazu.",
+ "Open %1": "%1 öffnen",
+ "AI apps": "KI-Apps",
+ "AI tools": "KI-Werkzeuge",
+ "Browsers": "Browser",
+ "Choosing an agent sets it as default and starts it. It may install it first.": "Die Wahl eines Agenten macht ihn zum Standard und startet ihn. Dabei wird er eventuell zuerst installiert.",
+ "Defaults": "Standards",
+ "Development tools": "Entwicklungswerkzeuge",
+ "Editors": "Editoren",
+ "Fonts & themes": "Schriften und Designs",
+ "Games": "Spiele",
+ "Software": "Software",
+ "Terminals": "Terminals",
+ "Web apps & TUIs": "Web-Apps und TUIs"
 }

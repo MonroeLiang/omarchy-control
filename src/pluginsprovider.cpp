@@ -97,25 +97,7 @@ QVariantMap PluginsProvider::resolveDockApp(const Env &env, const QString &deskt
             break;
         }
     }
-    QString icon = FileOps::iniGet(entry, group, QStringLiteral("Icon")).value;
-    if (icon.isEmpty())
-        return app;
-    QString path;
-    if (QDir::isAbsolutePath(icon)) {
-        path = QFileInfo::exists(icon) ? icon : QString();
-    } else {
-        icon.remove(QRegularExpression("\\.(png|svg|xpm)$"));
-        if (IconThemes::isValidId(icon)) {
-            path = IconThemes::findIcon(env, iconTheme, {icon}, 96);
-            // Old apps still put their icon straight in pixmaps, which no theme covers.
-            for (qsizetype i = 0; path.isEmpty() && i < roots.size(); ++i)
-                for (const char *extension : {".svg", ".png"})
-                    if (path.isEmpty() && QFileInfo::exists(roots[i] + "/pixmaps/" + icon + QLatin1String(extension)))
-                        path = roots[i] + "/pixmaps/" + icon + QLatin1String(extension);
-        }
-    }
-    if (!path.isEmpty())
-        app["icon"] = QUrl::fromLocalFile(path).toString();
+    app["icon"] = IconThemes::appIconUrl(env, iconTheme, {FileOps::iniGet(entry, group, QStringLiteral("Icon")).value}, 96);
     return app;
 }
 

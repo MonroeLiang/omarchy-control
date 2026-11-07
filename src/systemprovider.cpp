@@ -1,5 +1,7 @@
 #include "systemprovider.h"
 
+#include "iconthemes.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QDirIterator>
@@ -97,7 +99,7 @@ QVariantList SystemProvider::readApps(const Env &env) {
         for (const auto &file : QDir(directory).entryInfoList({"*.desktop"}, QDir::Files | QDir::Readable)) {
             QByteArray contents;
             FileOps::readFile(file.absoluteFilePath(), &contents);
-            QString name, comment, mimes;
+            QString name, comment, mimes, icon;
             bool hidden = false, inEntry = false, application = false;
             for (const auto &raw : QString::fromUtf8(contents).split('\n')) {
                 const QString line = raw.trimmed();
@@ -111,6 +113,8 @@ QVariantList SystemProvider::readApps(const Env &env) {
                     name = line.mid(5);
                 else if (line.startsWith("Comment=") && comment.isEmpty())
                     comment = line.mid(8);
+                else if (line.startsWith("Icon=") && icon.isEmpty())
+                    icon = line.mid(5);
                 else if (line.startsWith("MimeType="))
                     mimes = line.mid(9);
                 else if (line == QLatin1String("Type=Application"))
@@ -120,7 +124,7 @@ QVariantList SystemProvider::readApps(const Env &env) {
             }
             if (!application || name.isEmpty())
                 continue;
-            found.insert(file.fileName(), QVariantMap{{"id", file.fileName()}, {"name", name}, {"comment", comment}, {"mimes", mimes}, {"hidden", hidden}});
+            found.insert(file.fileName(), QVariantMap{{"id", file.fileName()}, {"name", name}, {"comment", comment}, {"mimes", mimes}, {"hidden", hidden}, {"iconName", icon}});
         }
     }
     QVariantList rows;
@@ -148,7 +152,18 @@ static const QList<QPair<QString, const char *>> &commonMimes() {
 }
 
 void SystemProvider::refreshApps() {
-    m_apps = readApps(m_runner->env());
+    const Env &env = m_runner->env();
+    m_apps = readApps(env);
+    // Each app's own icon from the desktop's icon theme, looked up once per icon name.
+    const QString theme = IconThemes::desktopDefault(env);
+    for (auto &value : m_apps) {
+        auto app = value.toMap();
+        const QString name = app.value("iconName").toString();
+        if (!m_iconUrls.contains(name))
+            m_iconUrls.insert(name, IconThemes::appIconUrl(env, theme, {name}));
+        app["icon"] = m_iconUrls.value(name);
+        value = app;
+    }
     emit appsChanged();
     auto results = std::make_shared<QHash<QString, QString>>();
     auto remaining = std::make_shared<int>(commonMimes().size());
@@ -163,9 +178,19 @@ void SystemProvider::refreshApps() {
                 for (const auto &app : std::as_const(m_apps)) {
                     const auto map = app.toMap();
                     if (map.value("mimes").toString().split(';').contains(m))
-                        candidates << QVariantMap{{"value", map.value("id")}, {"label", map.value("name")}};
+                        candidates << QVariantMap{{"value", map.value("id")}, {"label", map.value("name")}, {"icon", map.value("icon")}};
                 }
-                rows << QVariantMap{{"mime", m}, {"label", QCoreApplication::translate("SystemProvider", text)}, {"current", results->value(m)}, {"candidates", candidates}};
+                // The current handler by its app's name and icon where it is installed, even
+                // when it does not list this type; otherwise its id, exactly as configured.
+                const QString current = results->value(m);
+                QString currentLabel = current, currentIcon;
+                for (const auto &app : std::as_const(m_apps))
+                    if (app.toMap().value("id").toString() == current) {
+                        currentLabel = app.toMap().value("name").toString();
+                        currentIcon = app.toMap().value("icon").toString();
+                    }
+                rows << QVariantMap{{"mime", m}, {"label", QCoreApplication::translate("SystemProvider", text)}, {"current", current},
+                                    {"currentLabel", currentLabel}, {"currentIcon", currentIcon}, {"candidates", candidates}};
             }
             m_associations = rows;
             emit appsChanged();

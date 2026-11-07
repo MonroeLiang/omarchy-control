@@ -165,6 +165,25 @@ QVariantList Backend::panels(const QString &page) const {
                 panel["rows"] = entries;
                 const QString header = panelValue.toObject().value("header").toString();
                 panel["header"] = header.isEmpty() ? QVariant() : entryOf(header);
+                // A library's groups carry their rows as full entries too.
+                if (panelValue.toObject().contains("library")) {
+                    QVariantList groups;
+                    for (const auto &groupValue : panelValue.toObject().value("library").toArray()) {
+                        QVariantMap group = groupValue.toObject().toVariantMap();
+                        QVariantList items;
+                        for (const auto &itemValue : groupValue.toObject().value("items").toArray()) {
+                            QVariantMap item = itemValue.toObject().toVariantMap();
+                            QVariantList itemRows;
+                            for (const auto &id : itemValue.toObject().value("rows").toArray())
+                                itemRows << entryOf(id.toString());
+                            item["rows"] = itemRows;
+                            items << item;
+                        }
+                        group["items"] = items;
+                        groups << group;
+                    }
+                    panel["library"] = groups;
+                }
                 panels << panel;
             }
             columns << QVariant(panels);
@@ -292,7 +311,20 @@ void Backend::refresh(const QString &id) {
         state["status"] = "loading";
     setState(id, state);
 
-    m_core->engine.readChoices(id, [this, id](const QVariantList &choices) {
+    m_core->engine.readChoices(id, [this, id](const QVariantList &listed) {
+        // A choice that names an app gets that app's icon from the icon theme.
+        QVariantList choices = listed;
+        for (auto &value : choices) {
+            auto choice = value.toMap();
+            if (!choice.contains("icons"))
+                continue;
+            const QStringList names = choice.value("icons").toStringList();
+            const QString key = names.join('|');
+            if (!m_iconUrls.contains(key))
+                m_iconUrls.insert(key, IconThemes::appIconUrl(m_core->env, IconThemes::desktopDefault(m_core->env), names));
+            choice["icon"] = m_iconUrls.value(key);
+            value = choice;
+        }
         m_choices.insert(id, choices);
         QVariantMap updated = currentState(id);
         updated["choices"] = choices;

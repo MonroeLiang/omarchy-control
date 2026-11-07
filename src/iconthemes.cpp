@@ -1,5 +1,7 @@
 #include "iconthemes.h"
 
+#include <QRegularExpression>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -355,4 +357,30 @@ QImage IconPackImageProvider::requestImage(const QString &id, QSize *size, const
         return empty;
     }
     return render(path, target);
+}
+
+QString IconThemes::appIconUrl(const Env &env, const QString &theme, const QStringList &icons, int size) {
+    QStringList roots{env.dataHome};
+    roots += env.dataDirs;
+    for (QString icon : icons) {
+        if (icon.isEmpty())
+            continue;
+        QString path;
+        if (QDir::isAbsolutePath(icon)) {
+            path = QFileInfo::exists(icon) ? icon : QString();
+        } else {
+            icon.remove(QRegularExpression("\\.(png|svg|xpm)$"));
+            if (!isValidId(icon))
+                continue;
+            path = findIcon(env, theme, {icon}, size);
+            // Old apps still put their icon straight in pixmaps, which no theme covers.
+            for (qsizetype i = 0; path.isEmpty() && i < roots.size(); ++i)
+                for (const char *extension : {".svg", ".png"})
+                    if (path.isEmpty() && QFileInfo::exists(roots[i] + "/pixmaps/" + icon + QLatin1String(extension)))
+                        path = roots[i] + "/pixmaps/" + icon + QLatin1String(extension);
+        }
+        if (!path.isEmpty())
+            return QUrl::fromLocalFile(path).toString();
+    }
+    return {};
 }

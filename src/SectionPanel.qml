@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 // One section of a composed page: a heading with a line icon, inside its card or above
@@ -20,6 +21,8 @@ Item {
     // to, in the order the groups first appear, with a gap between runs.
     readonly property var runs: {
         var settingKeys = [], actionKeys = [], byKey = {}
+        // A library draws its rows inside its own groups.
+        var rows = library.length ? [] : root.rows
         for (var i = 0; i < rows.length; ++i) {
             var action = rows[i].type === "action"
             var key = (action ? "a:" : "s:") + (rows[i].group || "")
@@ -32,6 +35,38 @@ Item {
         return settingKeys.concat(actionKeys).map(function (key) { return byKey[key] })
     }
     readonly property bool inset: !!spec.inset
+    // A long section can start closed behind its heading, with its size said there.
+    readonly property bool collapsible: !!spec.collapsible
+    property bool expanded: !collapsible
+    readonly property var library: spec.library || []
+    // Which library groups are open, by section name.
+    property var open: ({})
+    function setOpen(section, value) {
+        var next = Object.assign({}, open)
+        if (value)
+            next[section] = true
+        else
+            delete next[section]
+        open = next
+    }
+    // Opens whatever holds this entry. True when something had to open, so the caller
+    // can wait for the rows to be laid out before scrolling to one.
+    function reveal(id) {
+        var opened = false
+        if (collapsible && !expanded && rows.some(function (row) { return row.id === id })) {
+            expanded = true
+            opened = true
+        }
+        for (var g = 0; g < library.length; ++g)
+            for (var i = 0; i < library[g].items.length; ++i) {
+                var item = library[g].items[i]
+                if (!open[item.section] && item.rows.some(function (row) { return row.id === id })) {
+                    setOpen(item.section, true)
+                    opened = true
+                }
+            }
+        return opened
+    }
     readonly property bool outside: !!spec.outside
     readonly property bool headed: spec.heading !== false && !root.header
     // The jump link that leads here, if any: its own label, or the section's name.
@@ -51,6 +86,14 @@ Item {
             return blockLoader.item.rowItem ? blockLoader.item.rowItem(id) : null
         if (headerRow.item && headerRow.item.entryId === id)
             return headerRow.item
+        for (var g = 0; g < libraryRepeater.count; ++g) {
+            var group = libraryRepeater.itemAt(g)
+            for (var k = 0; group && k < group.items.count; ++k) {
+                var found = group.items.itemAt(k) ? group.items.itemAt(k).rowItem(id) : null
+                if (found)
+                    return found
+            }
+        }
         for (var r = 0; r < runRepeater.count; ++r) {
             var run = runRepeater.itemAt(r)
             if (run && run.tiled) {
@@ -69,6 +112,16 @@ Item {
         if (blockLoader.item) {
             if (blockLoader.item.takeFocus)
                 blockLoader.item.takeFocus()
+            return
+        }
+        if (collapsible) {
+            disclose.forceActiveFocus(Qt.TabFocusReason)
+            return
+        }
+        if (library.length) {
+            var firstGroup = libraryRepeater.count ? libraryRepeater.itemAt(0) : null
+            if (firstGroup && firstGroup.items.count)
+                firstGroup.items.itemAt(0).takeFocus()
             return
         }
         var firstRun = runRepeater.count ? runRepeater.itemAt(0) : null
@@ -150,19 +203,64 @@ Item {
                         size: Math.round(theme.fontSize * 1.75)
                         tint: theme.foreground
                     }
-                    AppText {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: root.title
-                        font.weight: Font.DemiBold
-                        scale_: 1.45
-                        wrapMode: Text.Wrap
-                        Accessible.role: Accessible.Heading
-                        Accessible.name: text
+                        spacing: 2
+                        AppText {
+                            Layout.fillWidth: true
+                            text: root.title
+                            font.weight: Font.DemiBold
+                            scale_: 1.45
+                            wrapMode: Text.Wrap
+                            Accessible.role: Accessible.Heading
+                            Accessible.name: text
+                        }
+                        AppText {
+                            visible: text.length > 0
+                            Layout.fillWidth: true
+                            text: qsTranslate("catalog", root.spec.description || "")
+                            secondary: true
+                            scale_: 0.9
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                    CountPill {
+                        visible: root.collapsible
+                        count: root.rows.length
+                    }
+                    AppIcon {
+                        visible: root.collapsible
+                        name: "chevron"
+                        size: 16
+                        tint: theme.muted
+                        rotation: root.expanded ? 180 : 0
+                        Behavior on rotation { enabled: theme.animate; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    }
+                }
+                // The whole heading opens and closes a collapsible panel.
+                AbstractButton {
+                    id: disclose
+                    objectName: "panelDisclosure"
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    visible: root.collapsible
+                    focusPolicy: Qt.StrongFocus
+                    hoverEnabled: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: root.title + ", " + root.rows.length
+                    Accessible.expandable: true
+                    Accessible.expanded: root.expanded
+                    onClicked: root.expanded = !root.expanded
+                    background: Rectangle {
+                        radius: theme.controlRadius
+                        color: disclose.hovered ? Qt.alpha(theme.foreground, 0.04) : "transparent"
+                        border.width: disclose.visualFocus ? 2 : 0
+                        border.color: theme.accent
                     }
                 }
             }
             Rectangle {
-                visible: (root.headed && !root.outside) || !!root.header
+                visible: ((root.headed && !root.outside) || !!root.header) && root.expanded
                 x: 16
                 width: parent.width - 32
                 height: 1
@@ -171,6 +269,7 @@ Item {
 
             // An engine's own set of rows reads as one card within the section.
             Item {
+                visible: root.expanded
                 width: parent.width
                 implicitHeight: body.implicitHeight + (root.inset ? 26 : root.headed && !root.outside ? 4 : 0)
                 height: implicitHeight
@@ -245,6 +344,116 @@ Item {
                                         navigation: !!root.spec.navigation && modelData.type === "action"
                                         last: parent.run === root.runs.length - 1 && index === runRows.count - 1
                                         highlighted: root.focusId === modelData.id
+                                    }
+                                }
+                            }
+                        }
+                        // The library: groups under quiet headings, each closed until asked.
+                        Repeater {
+                            id: libraryRepeater
+                            model: root.library
+                            delegate: Column {
+                                readonly property alias items: itemRepeater
+                                width: body.width
+                                AppText {
+                                    visible: text.length > 0
+                                    x: 18
+                                    width: parent.width - 36
+                                    height: visible ? implicitHeight + 16 : 0
+                                    verticalAlignment: Text.AlignBottom
+                                    bottomPadding: 4
+                                    text: qsTranslate("catalog", modelData.heading || "")
+                                    font.weight: Font.Medium
+                                    secondary: true
+                                    Accessible.role: Accessible.Heading
+                                    Accessible.name: text
+                                }
+                                Repeater {
+                                    id: itemRepeater
+                                    model: modelData.items
+                                    delegate: Column {
+                                        id: group
+                                        readonly property var item: modelData
+                                        readonly property bool isOpen: !!root.open[item.section]
+                                        function takeFocus() { groupButton.forceActiveFocus(Qt.TabFocusReason) }
+                                        function rowItem(id) {
+                                            for (var i = 0; i < groupRows.count; ++i)
+                                                if (groupRows.itemAt(i) && groupRows.itemAt(i).entryId === id)
+                                                    return groupRows.itemAt(i)
+                                            return null
+                                        }
+                                        width: body.width
+                                        AbstractButton {
+                                            id: groupButton
+                                            objectName: "libraryGroup_" + group.item.section
+                                            width: parent.width
+                                            implicitHeight: Math.max(Math.round(theme.fontSize * 2.4), groupLabel.implicitHeight + 12)
+                                            focusPolicy: Qt.StrongFocus
+                                            hoverEnabled: true
+                                            Accessible.role: Accessible.Button
+                                            Accessible.name: groupLabel.text + ", " + group.item.rows.length
+                                            Accessible.expandable: true
+                                            Accessible.expanded: group.isOpen
+                                            onClicked: root.setOpen(group.item.section, !group.isOpen)
+                                            background: Item {
+                                                Rectangle {
+                                                    anchors.fill: parent
+                                                    anchors.leftMargin: 6
+                                                    anchors.rightMargin: 6
+                                                    radius: theme.controlRadius
+                                                    color: groupButton.hovered ? Qt.alpha(theme.foreground, 0.04) : "transparent"
+                                                    border.width: groupButton.visualFocus ? 2 : 0
+                                                    border.color: theme.accent
+                                                }
+                                                Rectangle {
+                                                    anchors.bottom: parent.bottom
+                                                    x: 16
+                                                    width: parent.width - 32
+                                                    height: 1
+                                                    color: theme.hairline
+                                                }
+                                            }
+                                            contentItem: RowLayout {
+                                                spacing: 12
+                                                AppIcon {
+                                                    Layout.leftMargin: 12
+                                                    name: group.item.icon || "list"
+                                                    size: Math.round(theme.fontSize * 1.3)
+                                                    tint: theme.foreground
+                                                }
+                                                AppText {
+                                                    id: groupLabel
+                                                    Layout.fillWidth: true
+                                                    wrapMode: Text.Wrap
+                                                    text: qsTranslate("catalog", group.item.label || group.item.section)
+                                                }
+                                                CountPill { count: group.item.rows.length }
+                                                AppIcon {
+                                                    Layout.rightMargin: 12
+                                                    name: "chevron"
+                                                    size: 16
+                                                    tint: theme.muted
+                                                    rotation: group.isOpen ? 180 : 0
+                                                    Behavior on rotation { enabled: theme.animate; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                                                }
+                                            }
+                                        }
+                                        Repeater {
+                                            id: groupRows
+                                            model: group.isOpen ? group.item.rows : []
+                                            delegate: SettingRow {
+                                                width: body.width
+                                                entry: modelData
+                                                rich: true
+                                                last: index === group.item.rows.length - 1
+                                                highlighted: root.focusId === modelData.id
+                                            }
+                                        }
+                                        Item {
+                                            visible: group.isOpen
+                                            width: parent.width
+                                            height: visible ? 8 : 0
+                                        }
                                     }
                                 }
                             }

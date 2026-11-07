@@ -412,6 +412,9 @@ Item {
             enabled: root.editable
             textRole: "label"
             valueRole: "value"
+            // The chosen app's own icon, where the choices name apps.
+            iconRole: "icon"
+            leadingImage: currentIndex >= 0 && model[currentIndex] && model[currentIndex].icon ? model[currentIndex].icon : ""
             // As wide as its longest choice needs, within reason, so a short list leaves
             // the description its room and a long label is not cut off.
             readonly property real longest: {
@@ -420,7 +423,7 @@ Item {
                     widest = Math.max(widest, choiceMetrics.advanceWidth(list[i].label))
                 return widest
             }
-            implicitWidth: root.compact ? 220 : Math.min(320, root.width * 0.55, Math.max(170, longest + 60))
+            implicitWidth: root.compact ? 220 : Math.min(320, root.width * 0.55, Math.max(170, longest + 60 + (leadingImage.length ? theme.fontSize * 1.5 : 0)))
             readonly property string current: root.st.value === undefined ? "" : root.st.value
             // A value set outside the app may not be in the list; show it as it is
             // rather than pretending it is one of the choices.
@@ -429,7 +432,7 @@ Item {
                 var source = root.st.choices || []
                 var found = false
                 for (var i = 0; i < source.length; ++i) {
-                    list.push({ value: source[i].value, label: qsTranslate("catalog", source[i].label) })
+                    list.push({ value: source[i].value, label: qsTranslate("catalog", source[i].label), icon: source[i].icon || "" })
                     if (source[i].value === current)
                         found = true
                 }
@@ -556,7 +559,10 @@ Item {
     }
     Component {
         id: statusControl
+        ColumnLayout {
+            spacing: 2
         RowLayout {
+            Layout.alignment: Qt.AlignRight
             spacing: 8
             // A yes-or-no status says yes with a mark as well as a word.
             AppIcon {
@@ -572,6 +578,17 @@ Item {
                 horizontalAlignment: Text.AlignRight
                 Layout.maximumWidth: root.width * 0.5
             }
+        }
+        // Where this is managed, when that is somewhere else.
+        AppButton {
+            visible: root.rich && !!root.entry.link && !!root.entry.link.page
+            Layout.alignment: Qt.AlignRight
+            style: "link"
+            text: root.entry.link ? qsTranslate("catalog", root.entry.link.label || "") : ""
+            iconName: "external"
+            Accessible.name: qsTr("Manage in %1").arg(text)
+            onClicked: win.go(root.entry.link.page, root.entry.link.focus || "")
+        }
         }
     }
 }
