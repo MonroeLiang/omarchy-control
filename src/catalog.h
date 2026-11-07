@@ -28,6 +28,8 @@ struct CatalogEntry {
     QString iconName, multiLabel, multiDescription;
     // A named set within a section, such as one dictation engine's settings and actions.
     QString group;
+    // How an action reads when drawn as a tile: "danger" for one that ends the session.
+    QString tone;
 
     bool isAction() const { return type == QLatin1String("action"); }
     bool isSetting() const { return !isAction(); }

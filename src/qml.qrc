@@ -48,6 +48,7 @@
         <file alias="SectionBlock.qml">SectionBlock.qml</file>
         <file alias="SectionPanel.qml">SectionPanel.qml</file>
         <file alias="PanelHeading.qml">PanelHeading.qml</file>
+        <file alias="ActionTiles.qml">ActionTiles.qml</file>
         <file alias="SettingRow.qml">SettingRow.qml</file>
         <file alias="ShortcutsOverlay.qml">ShortcutsOverlay.qml</file>
         <file alias="ThemePreview.qml">ThemePreview.qml</file>
@@ -106,6 +107,10 @@
         <file alias="icons/shield.svg">icons/shield.svg</file>
         <file alias="icons/sound.svg">icons/sound.svg</file>
         <file alias="icons/sun.svg">icons/sun.svg</file>
+        <file alias="icons/logout.svg">icons/logout.svg</file>
+        <file alias="icons/pause.svg">icons/pause.svg</file>
+        <file alias="icons/sleep.svg">icons/sleep.svg</file>
+        <file alias="icons/snowflake.svg">icons/snowflake.svg</file>
         <file alias="icons/clipboard.svg">icons/clipboard.svg</file>
         <file alias="icons/folder.svg">icons/folder.svg</file>
         <file alias="icons/gamepad.svg">icons/gamepad.svg</file>

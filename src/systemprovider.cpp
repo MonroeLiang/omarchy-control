@@ -60,7 +60,10 @@ void SystemProvider::refresh() {
         if (readLine(power.filePath(name) + "/type") != QLatin1String("Battery"))
             continue;
         m_battery["present"] = true;
-        m_battery["percent"] = readLine(power.filePath(name) + "/capacity").toInt();
+        // An unreadable level is unknown, not empty.
+        bool readable = false;
+        const int percent = readLine(power.filePath(name) + "/capacity").toInt(&readable);
+        m_battery["percent"] = readable ? percent : -1;
         m_battery["status"] = readLine(power.filePath(name) + "/status");
         const int cycles = readLine(power.filePath(name) + "/cycle_count").toInt();
         if (cycles > 0)

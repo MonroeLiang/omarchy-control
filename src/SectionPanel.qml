@@ -39,6 +39,10 @@ Item {
     readonly property bool jumpTarget: jumpLabel.length > 0
 
     // From the parts' natural sizes, never from the card's stretched one.
+    // A block can leave the page entirely, as Battery does on a computer without one.
+    // Its own wish, apart from whether its row is on screen.
+    readonly property bool wanted: !blockLoader.item || blockLoader.item.shown === undefined || blockLoader.item.shown
+    visible: wanted
     implicitHeight: block.length ? blockLoader.implicitHeight
                   : (outsideHeading.visible ? outsideHeading.implicitHeight + layout.spacing : 0) + card.implicitHeight
 
@@ -49,6 +53,11 @@ Item {
             return headerRow.item
         for (var r = 0; r < runRepeater.count; ++r) {
             var run = runRepeater.itemAt(r)
+            if (run && run.tiled) {
+                var tile = run.tiles.tileFor(id)
+                if (tile)
+                    return tile
+            }
             for (var i = 0; run && i < run.rows.count; ++i)
                 if (run.rows.itemAt(i) && run.rows.itemAt(i).entryId === id)
                     return run.rows.itemAt(i)
@@ -63,7 +72,7 @@ Item {
             return
         }
         var firstRun = runRepeater.count ? runRepeater.itemAt(0) : null
-        var first = headerRow.item || (firstRun && firstRun.rows.count ? firstRun.rows.itemAt(0) : null)
+        var first = headerRow.item || (firstRun && firstRun.rows.count ? firstRun.rows.itemAt(0) : firstRun && firstRun.tiled ? firstRun.tiles : null)
         if (first)
             first.takeFocus()
     }
@@ -207,16 +216,28 @@ Item {
                             model: root.runs
                             delegate: Column {
                                 readonly property alias rows: runRows
+                                readonly property alias tiles: runTiles
                                 readonly property int run: index
+                                // The panel's tile group is drawn as tiles, not rows.
+                                readonly property bool tiled: !!root.spec.tiles && modelData.length > 0 && modelData[0].group === root.spec.tiles
                                 width: body.width
                                 Item {
                                     visible: parent.run > 0
                                     width: parent.width
-                                    height: visible ? 10 : 0
+                                    height: visible ? (parent.tiled ? 16 : 10) : 0
+                                }
+                                ActionTiles {
+                                    id: runTiles
+                                    visible: parent.tiled
+                                    x: 16
+                                    width: parent.width - 32
+                                    height: visible ? implicitHeight + 16 : 0
+                                    entries: parent.tiled ? modelData : []
+                                    focusId: root.focusId
                                 }
                                 Repeater {
                                     id: runRows
-                                    model: modelData
+                                    model: parent.tiled ? [] : modelData
                                     delegate: SettingRow {
                                         width: body.width
                                         entry: modelData
@@ -225,6 +246,63 @@ Item {
                                         last: parent.run === root.runs.length - 1 && index === runRows.count - 1
                                         highlighted: root.focusId === modelData.id
                                     }
+                                }
+                            }
+                        }
+                        // A state that changes what the rows above mean, said where they are.
+                        Item {
+                            readonly property var notice: root.spec.notice || null
+                            readonly property var st: notice ? (backend.states[backend.stateKey(notice.setting)] || ({})) : ({})
+                            visible: !!notice && st.value === notice.value
+                            width: parent.width
+                            height: visible ? noticeBox.height + 22 : 0
+                            Rectangle {
+                                id: noticeBox
+                                objectName: "panelNotice"
+                                x: 14
+                                y: 8
+                                width: parent.width - 28
+                                height: noticeRow.implicitHeight + 18
+                                radius: theme.controlRadius
+                                color: Qt.alpha(theme.foreground, 0.03)
+                                border.width: 1
+                                border.color: theme.divider
+                                RowLayout {
+                                    id: noticeRow
+                                    x: 14
+                                    width: parent.width - 28
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 10
+                                    AppIcon { name: root.spec.notice ? root.spec.notice.icon || "info" : "info"; size: Math.round(theme.fontSize * 1.2); tint: theme.muted }
+                                    AppText {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
+                                        scale_: 0.93
+                                        text: root.spec.notice ? qsTranslate("catalog", root.spec.notice.text || "") : ""
+                                    }
+                                }
+                            }
+                        }
+                        // What the actions above do beyond their names.
+                        Item {
+                            visible: !!root.spec.footnote
+                            width: parent.width
+                            height: visible ? footRow.implicitHeight + 30 : 0
+                            Rectangle { x: 16; width: parent.width - 32; height: 1; color: theme.hairline }
+                            RowLayout {
+                                id: footRow
+                                x: 16
+                                y: 15
+                                width: parent.width - 32
+                                spacing: 8
+                                AppIcon { name: "info"; size: 14; tint: theme.muted; Layout.alignment: Qt.AlignTop; Layout.topMargin: 2 }
+                                AppText {
+                                    objectName: "panelFootnote"
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.Wrap
+                                    secondary: true
+                                    scale_: 0.9
+                                    text: qsTranslate("catalog", root.spec.footnote || "")
                                 }
                             }
                         }

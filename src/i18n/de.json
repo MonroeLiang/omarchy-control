@@ -1792,5 +1792,14 @@
  "Going back to the previous one in %n second(s).": {
   "one": "Zurück zur vorherigen in %n Sekunde.",
   "other": "Zurück zur vorherigen in %n Sekunden."
- }
+ },
+ "Charging": "Wird geladen",
+ "Full": "Voll",
+ "On battery": "Akkubetrieb",
+ "Plugged in, not charging": "Angeschlossen, lädt nicht",
+ "Log out, Reboot, and Shut down close your open apps first.": "Abmelden, Neustart und Herunterfahren schließen zuerst Ihre geöffneten Apps.",
+ "Removes the swap file and boot resume settings. Needs administrator access.": "Entfernt die Auslagerungsdatei und die Einstellungen zum Fortsetzen beim Start. Erfordert Administratorrechte.",
+ "Start screensaver": "Bildschirmschoner starten",
+ "Stay awake is on · Idle timers paused": "Wach bleiben ist an · Leerlauf-Timer pausiert",
+ "Voxtype": "Voxtype"
 }

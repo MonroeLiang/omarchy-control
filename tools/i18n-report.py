@@ -26,6 +26,10 @@ def strings():
     catalog = set()
     for page in json.load(open(SRC + "/data/pages.json", encoding="utf-8")):
         catalog.update([page["label"], page["description"], *page.get("sections", []), *page.get("jumps", [])])
+        for row in page.get("panels", []):
+            for column in row.get("columns", []):
+                for panel in column:
+                    catalog.update(filter(None, [panel.get("title"), panel.get("footnote"), (panel.get("notice") or {}).get("text")]))
     for name in ("settings", "workflows"):
         for entry in json.load(open(f"{SRC}/data/{name}.json", encoding="utf-8")):
             catalog.update(filter(None, [entry["label"], entry.get("description"), entry.get("section"), entry.get("confirmText"), entry.get("confirmAlways"), entry.get("placeholder"), entry.get("restart"),
