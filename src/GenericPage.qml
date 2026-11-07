@@ -293,6 +293,8 @@ ScrollView {
                 subtitle: qsTranslate("catalog", root.page.description || "")
             }
             Item {
+                // A page with no sections to jump between has no bar for them.
+                visible: root.jumpSections.length > 0
                 Layout.fillWidth: true
                 Layout.leftMargin: 20
                 Layout.rightMargin: 20

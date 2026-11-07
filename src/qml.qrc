@@ -17,6 +17,8 @@
         <file alias="AudioDeviceRow.qml">AudioDeviceRow.qml</file>
         <file alias="AudioDevicePanel.qml">AudioDevicePanel.qml</file>
         <file alias="BlockAbout.qml">BlockAbout.qml</file>
+        <file alias="BlockAboutDetails.qml">BlockAboutDetails.qml</file>
+        <file alias="BlockUpdates.qml">BlockUpdates.qml</file>
         <file alias="BlockAssociations.qml">BlockAssociations.qml</file>
         <file alias="BlockInstalledApps.qml">BlockInstalledApps.qml</file>
         <file alias="BlockOutput.qml">BlockOutput.qml</file>
@@ -109,6 +111,7 @@
         <file alias="icons/shield.svg">icons/shield.svg</file>
         <file alias="icons/sound.svg">icons/sound.svg</file>
         <file alias="icons/sun.svg">icons/sun.svg</file>
+        <file alias="icons/balance.svg">icons/balance.svg</file>
         <file alias="icons/book.svg">icons/book.svg</file>
         <file alias="icons/brush.svg">icons/brush.svg</file>
         <file alias="icons/hook.svg">icons/hook.svg</file>

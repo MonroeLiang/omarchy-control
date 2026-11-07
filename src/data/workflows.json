@@ -9445,7 +9445,8 @@
   "launch": {
    "kind": "url",
    "url": "https://github.com/last-refuge/omarchy-control"
-  }
+  },
+  "icon": "git"
  },
  {
   "id": "app.releases",
@@ -9465,7 +9466,8 @@
   "launch": {
    "kind": "url",
    "url": "https://github.com/last-refuge/omarchy-control/releases"
-  }
+  },
+  "icon": "file"
  },
  {
   "id": "app.issues",
@@ -9486,7 +9488,8 @@
   "launch": {
    "kind": "url",
    "url": "https://github.com/last-refuge/omarchy-control/issues/new"
-  }
+  },
+  "icon": "warning"
  },
  {
   "id": "app.license",
@@ -9506,7 +9509,8 @@
   "launch": {
    "kind": "url",
    "url": "https://github.com/last-refuge/omarchy-control/blob/main/LICENSE"
-  }
+  },
+  "icon": "balance"
  },
  {
   "id": "appearance.icons.import",
