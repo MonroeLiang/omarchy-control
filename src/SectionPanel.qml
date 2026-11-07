@@ -442,7 +442,9 @@ Item {
                                                     anchors.leftMargin: 6
                                                     anchors.rightMargin: 6
                                                     radius: theme.controlRadius
-                                                    color: groupButton.hovered ? Qt.alpha(theme.foreground, 0.04) : "transparent"
+                                                    // A group whose actions undo your setup reads with caution.
+                                                    color: group.item.tone === "caution" ? Qt.alpha(theme.warningText, groupButton.hovered ? 0.14 : 0.09)
+                                                         : groupButton.hovered ? Qt.alpha(theme.foreground, 0.04) : "transparent"
                                                     border.width: groupButton.visualFocus ? 2 : 0
                                                     border.color: theme.accent
                                                 }
@@ -460,7 +462,7 @@ Item {
                                                     Layout.leftMargin: 12
                                                     name: group.item.icon || "list"
                                                     size: Math.round(theme.fontSize * 1.3)
-                                                    tint: theme.foreground
+                                                    tint: group.item.tone === "caution" ? theme.warningText : theme.foreground
                                                 }
                                                 AppText {
                                                     id: groupLabel

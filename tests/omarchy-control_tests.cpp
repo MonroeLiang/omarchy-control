@@ -1793,6 +1793,57 @@ esac)SH");
         // The firewall actions keep their section; only their panel is new.
         QCOMPARE(catalog.find("firewall.allow")->section, QString("Remote login"));
     }
+    void everySystemEntryIsPlacedOnce() {
+        Catalog catalog;
+        QStringList placed, blocks;
+        QHash<QString, int> library;
+        QString cautionGroup;
+        for (const auto &row : catalog.panelLayout("system"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    if (!panel.value("block").toString().isEmpty())
+                        blocks << panel.value("block").toString();
+                    for (const auto &id : panel.value("rows").toArray())
+                        placed << id.toString();
+                    for (const auto &group : panel.value("library").toArray())
+                        for (const auto &itemValue : group.toObject().value("items").toArray()) {
+                            const auto item = itemValue.toObject();
+                            library.insert(item.value("section").toString(), item.value("rows").toArray().size());
+                            if (item.value("tone").toString() == "caution")
+                                cautionGroup = item.value("section").toString();
+                        }
+                }
+        // Three native destinations stand for the live blocks; the rest are library rows.
+        QStringList expected, natives;
+        for (const auto *entry : catalog.entriesForPage("system")) {
+            if (entry->launch.value("kind").toString() == QLatin1String("page") && entry->launch.value("page").toString() == QLatin1String("system"))
+                natives << entry->launch.value("focus").toString();
+            else
+                expected << entry->id;
+        }
+        QCOMPARE(expected.size() + natives.size(), 66);
+        QCOMPARE(expected.size(), 63);
+        QCOMPARE(placed.size(), QSet<QString>(placed.begin(), placed.end()).size());
+        placed.sort();
+        expected.sort();
+        QCOMPARE(placed, expected);
+        natives.sort();
+        QCOMPARE(natives, QStringList({"block.services", "block.startup", "block.storage"}));
+        QCOMPARE(blocks, QStringList({"storage", "services", "startup"}));
+        // Seven groups, counted from the catalog, the resets set apart.
+        QCOMPARE(library.size(), 7);
+        QCOMPARE(library.value("This computer"), 6);
+        QCOMPARE(library.value("Updates"), 13);
+        QCOMPARE(library.value("Language and time"), 7);
+        QCOMPARE(library.value("Snapshots and recovery"), 5);
+        QCOMPARE(library.value("Boot and firmware"), 6);
+        QCOMPARE(library.value("Restart components"), 10);
+        QCOMPARE(library.value("Reset to defaults"), 16);
+        QCOMPARE(cautionGroup, QString("Reset to defaults"));
+        // The jump links, in reading order.
+        QCOMPARE(catalog.page("system")->jumps, QStringList({"Storage", "Startup apps", "Services", "Maintenance"}));
+    }
     void networkRefusesBadIds() {
         Sandbox s;
         s.command("nmcli", "exit 0");
@@ -1973,6 +2024,24 @@ esac)SH");
         QCOMPARE(rows.size(), 2);
         QCOMPARE(rows[1].toMap().value("mount").toString(), QString("/my disk"));
         QCOMPARE(rows[1].toMap().value("percent").toInt(), 95);
+    }
+    void storageKnowsAppMountsSharedDisksAndMissingReadings() {
+        const auto rows = SystemProvider::parseDf("Filesystem Type 1B-blocks Used Avail Use% Mounted on\n"
+                                                  "/dev/a btrfs 1000 420 580 42% /\n"
+                                                  "/dev/a btrfs 1000 420 580 42% /home\n"
+                                                  "T3-Code.AppImage fuse.T3-Code.AppImage 181 181 0 100% /tmp/.mount_T3-CoAb12\n"
+                                                  "//nas/share cifs - - - - /mnt/nas\n");
+        QCOMPARE(rows.size(), 4);
+        // The second subvolume says whose space it uses; the first does not.
+        QVERIFY(!rows[0].toMap().contains("sharedWith"));
+        QCOMPARE(rows[1].toMap().value("sharedWith").toString(), QString("/"));
+        // An app running from an image is apart, and is not counted as a disk.
+        QVERIFY(rows[2].toMap().value("temporary").toBool());
+        QVERIFY(!rows[0].toMap().value("temporary").toBool());
+        QVERIFY(!rows[2].toMap().contains("sharedWith"));
+        // A reading that failed is unknown, not an empty disk.
+        QVERIFY(rows[0].toMap().value("known").toBool());
+        QVERIFY(!rows[3].toMap().value("known").toBool());
     }
     void diagnosticsAreRedacted() {
         const QString report = SystemProvider::buildDiagnostics("wifi password=hunter2\ntoken: abc", {{"shell", true}}, {{"omarchy", "4.5"}}, {});
@@ -4736,6 +4805,112 @@ exit 0)SH");
         QVERIFY(!s.calls().join('\n').contains("ufw disable"));
         QMetaObject::invokeMethod(dialog, "accept_");
         QTRY_VERIFY(s.calls().join('\n').contains("ufw disable"));
+    }
+
+    void theSystemPageManagesStorageStartupAndServices() {
+        Sandbox s;
+        desktopFixture(s);
+        s.command("df", R"SH(cat <<'OUT'
+Filesystem Type 1B-blocks Used Avail Use% Mounted on
+/dev/a btrfs 1000000000000 420000000000 580000000000 42% /
+/dev/a btrfs 1000000000000 420000000000 580000000000 42% /home
+Notes.AppImage fuse.Notes.AppImage 180000000 180000000 0 100% /tmp/.mount_NotesAb12
+OUT)SH");
+        s.command("systemctl", R"SH(case "$*" in
+*--user*list-units*) echo '[{"unit":"sync.service","active":"active","description":"Sync"},{"unit":"broken.service","active":"failed","description":"Broken"}]';;
+*--system*list-units*) echo '[{"unit":"NetworkManager.service","active":"active","description":"Network Manager"}]';;
+*list-unit-files*) echo '[]';;
+*show*) printf 'ActiveState=inactive\nResult=success\n';;
+esac)SH");
+        for (int i = 0; i < 14; ++i)
+            writeFile(s.env.sys(QString("/etc/xdg/autostart/agent%1.desktop").arg(i, 2, 10, QChar('0'))),
+                      QString("[Desktop Entry]\nName=Agent %1\nComment=%2\nExec=agent\n").arg(i).arg(i == 7 ? "Keeps keys" : "Helps").toUtf8());
+        s.command("omarchy-launch-about", "exit 0");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("system");
+
+        // Disks apart from the app mounted from an image, which waits behind its count.
+        QTRY_COMPARE(page.named("storageMount").size(), 2);
+        QCOMPARE(page.named("temporaryMounts").size(), 1);
+
+        // A first look at the startup list, the rest in place, and a filter over descriptions.
+        QTRY_COMPARE(page.named("startupApp").size(), 12);
+        QMetaObject::invokeMethod(page.named("startupShowAll").first(), "clicked");
+        QTRY_COMPARE(page.named("startupApp").size(), 14);
+        page.named("startupFilter").first()->setProperty("text", "keeps keys");
+        QTRY_COMPARE(page.named("startupApp").size(), 1);
+        QCOMPARE(page.named("startupApp").first()->property("appId").toString(), QString("agent07.desktop"));
+        page.named("startupFilter").first()->setProperty("text", "nothing like this");
+        QTRY_COMPARE(page.named("startupApp").size(), 0);
+        page.named("startupFilter").first()->setProperty("text", "");
+
+        // A failure opens Services by itself, and says so from outside.
+        QTRY_VERIFY(!page.named("serviceRow").isEmpty());
+        QCOMPARE(page.named("servicesFailed").size(), 1);
+        auto button = [&](const QString &unit, const QString &name) -> QQuickItem * {
+            for (QQuickItem *row : page.named("serviceRow"))
+                if (row->property("unit").toString() == unit)
+                    for (QQuickItem *child : row->findChildren<QQuickItem *>())
+                        if (child->objectName() == name && child->isVisible())
+                            return child;
+            return nullptr;
+        };
+        // Your own service changes straight away.
+        QTRY_VERIFY(button("broken.service", "serviceRestart"));
+        QMetaObject::invokeMethod(button("broken.service", "serviceRestart"), "clicked");
+        QTRY_VERIFY(s.calls().join('\n').contains("systemctl --user restart broken.service"));
+        // A system one is confirmed first, with what it costs.
+        QMetaObject::invokeMethod(page.named("servicesSystem").first(), "clicked");
+        QTRY_VERIFY(button("NetworkManager.service", "serviceStartStop"));
+        auto *dialog = page.window->findChild<QObject *>("confirmDialog");
+        QMetaObject::invokeMethod(button("NetworkManager.service", "serviceStartStop"), "clicked");
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QVERIFY(dialog->property("body").toString().contains("freeze"));
+        QVERIFY(!s.calls().join('\n').contains("--system stop"));
+        QMetaObject::invokeMethod(dialog, "accept_");
+        QTRY_VERIFY(s.calls().join('\n').contains("systemctl --system stop NetworkManager.service"));
+
+        // Search lands on each block and lights its jump link.
+        page.open("system", "block.startup");
+        QTRY_VERIFY(page.focusWithin(page.named("startupFilter").first()));
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Startup apps"));
+        page.open("system", "block.services");
+        QTRY_VERIFY(page.focusWithin(page.named("servicesFilter").first()));
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Services"));
+
+        // A library entry opens its group, lands, and runs its existing workflow.
+        Catalog catalog;
+        QString reset, computer;
+        for (const auto *entry : catalog.entriesForPage("system")) {
+            if (reset.isEmpty() && entry->section == "Reset to defaults")
+                reset = entry->id;
+            if (computer.isEmpty() && entry->section == "This computer")
+                computer = entry->id;
+        }
+        QVERIFY(!reset.isEmpty() && !computer.isEmpty());
+        QVERIFY(!page.row(reset));
+        page.open("system", reset);
+        QTRY_VERIFY(page.row(reset));
+        QTRY_VERIFY(page.focusWithin(page.row(reset)));
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Maintenance"));
+        page.open("system", computer);
+        QTRY_VERIFY(page.row(computer));
+        QTRY_VERIFY(page.focusWithin(page.row(computer)));
+        auto press = [&](const QString &id) {
+            for (QQuickItem *child : page.row(id)->findChildren<QQuickItem *>())
+                if (child->objectName() == "actionButton")
+                    QMetaObject::invokeMethod(child, "clicked");
+        };
+        press("about");
+        QTRY_VERIFY(s.calls().join('\n').contains("omarchy-launch-about"));
+        // A reset asks first and runs nothing when declined.
+        const int before = s.calls().size();
+        press(reset);
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QMetaObject::invokeMethod(dialog, "close");
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+        QCOMPARE(s.calls().size(), before);
     }
 
     void theBarEditorShowsTheModelItEdits() {

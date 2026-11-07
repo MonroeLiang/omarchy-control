@@ -64,6 +64,11 @@ static void runSteps(QQuickWindow *window, Backend &backend, const QString &home
                 if (item->objectName() == QLatin1String("settingRow") && item->property("entryId").toString() == value)
                     item->setProperty("showDetails", true);
             });
+        else if (name == QLatin1String("click"))
+            visit(window->contentItem(), [&](QQuickItem *item) {
+                if (item->objectName() == value && item->isVisible())
+                    QMetaObject::invokeMethod(item, "click");
+            });
         else if (name == QLatin1String("scroll"))
             visit(window->contentItem(), [&](QQuickItem *item) {
                 if (item->objectName() == QLatin1String("pageLoader"))

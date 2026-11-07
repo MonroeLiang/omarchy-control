@@ -109,6 +109,10 @@
         <file alias="icons/shield.svg">icons/shield.svg</file>
         <file alias="icons/sound.svg">icons/sound.svg</file>
         <file alias="icons/sun.svg">icons/sun.svg</file>
+        <file alias="icons/chip.svg">icons/chip.svg</file>
+        <file alias="icons/database.svg">icons/database.svg</file>
+        <file alias="icons/gear.svg">icons/gear.svg</file>
+        <file alias="icons/login.svg">icons/login.svg</file>
         <file alias="icons/console.svg">icons/console.svg</file>
         <file alias="icons/container.svg">icons/container.svg</file>
         <file alias="icons/fingerprint.svg">icons/fingerprint.svg</file>

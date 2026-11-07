@@ -77,6 +77,20 @@ cp "$H/.config/omarchy/shell.json" "$ROOT/omarchy/config/omarchy/shell.json"
 printf -- 'dofile("x")\nrequire("default.hypr.omarchy")\nrequire("hypr.monitors")\nrequire("hypr.autostart")\nrequire("default.hypr.toggles")\n' >"$H/.config/hypr/hyprland.lua"
 printf '{"en":{"name":"English","englishName":"English","formatLocale":"en-US"},"da":{"name":"Dansk","englishName":"Danish","formatLocale":"da-DK"},"ar":{"name":"العربية","englishName":"Arabic","formatLocale":"ar-AE"},"de":{"name":"Deutsch","englishName":"German","formatLocale":"de-DE"}}\n' >"$ROOT/omarchy/default/i18n/locales.json"
 printf '[Desktop Entry]\nType=Application\nName=Sync Client\nComment=Keeps a folder in sync\nExec=sync-client\n' >"$H/.config/autostart/sync-client.desktop"
+# Things the system starts at login, one of them turned off here, more than fit at first look.
+X="$ROOT/sys-root/etc/xdg/autostart"
+mkdir -p "$X"
+for entry in "at-spi-dbus-bus:Accessibility bus:Lets assistive tools talk to apps:text-x-generic" "blueman:Bluetooth applet:Shows Bluetooth devices in the bar:" \
+             "firefox-sync:Firefox:Opens your browser at login:web-browser" "gnome-keyring-pkcs11:Certificate and key storage:Unlocks keys when you log in:" \
+             "gnome-keyring-secrets:Secret storage:Keeps passwords for apps:" "gnome-keyring-ssh:SSH key agent:Offers your SSH keys to apps:utilities-terminal" \
+             "nm-applet:Network applet:Shows network status:" "org.gnome.Nautilus:Files:Watches removable drives:folder" \
+             "polkit-agent:Authentication agent:Asks for your password when an app needs it:" "print-applet:Print queue:Shows print jobs:" \
+             "tracker-miner:File indexer:Indexes files for search:text-x-generic" "user-dirs-update:User folders update:Keeps standard folder names current:folder" \
+             "xdg-user-dirs:User folders:Creates standard folders on first login:folder" "xembedsniproxy:Tray icon bridge:Shows older tray icons in the bar:"; do
+  IFS=: read -r id name comment icon <<<"$entry"
+  printf '[Desktop Entry]\nType=Application\nName=%s\nComment=%s\nIcon=%s\nExec=%s\n' "$name" "$comment" "$icon" "$id" >"$X/$id.desktop"
+done
+printf '[Desktop Entry]\nType=Application\nName=Print queue\nComment=Shows print jobs\nExec=print-applet\nHidden=true\n' >"$H/.config/autostart/print-applet.desktop"
 mkdir -p "$ROOT"/sys-root/sys/class/power_supply/BAT0 "$ROOT"/sys-root/sys/class/net/wlan0/wireless "$ROOT"/sys-root/sys/class/bluetooth/hci0 "$ROOT"/sys-root/sys/class/dmi/id
 printf 'Battery\n' >"$ROOT/sys-root/sys/class/power_supply/BAT0/type"
 printf '86\n' >"$ROOT/sys-root/sys/class/power_supply/BAT0/capacity"
@@ -159,6 +173,16 @@ cp "$HERE/fake-hyprctl" "$ROOT/bin/hyprctl"
 for tool in pactl nmcli bluetoothctl systemctl timedatectl xdg-mime; do
   ln -sf "$ROOT/bin/omarchy" "$ROOT/bin/$tool"
 done
-printf '#!/bin/sh\nprintf "Filesystem Type Size Used Avail Use%% Mounted\n/dev/nvme0n1p2 btrfs 1000000000000 420000000000 580000000000 42%% /\n/dev/nvme0n1p1 vfat 2000000000 400000000 1600000000 20%% /boot\n"\n' >"$ROOT/bin/df"
+# Two subvolumes of one disk, the boot partition, and an app running from an image.
+cat >"$ROOT/bin/df" <<'DF'
+#!/bin/sh
+cat <<'OUT'
+Filesystem Type 1B-blocks Used Avail Use% Mounted on
+/dev/nvme0n1p2 btrfs 1000000000000 420000000000 580000000000 42% /
+/dev/nvme0n1p2 btrfs 1000000000000 420000000000 580000000000 42% /home
+/dev/nvme0n1p1 vfat 2000000000 400000000 1600000000 20% /boot
+Notes.AppImage fuse.Notes.AppImage 180000000 180000000 0 100% /tmp/.mount_NotesAb12
+OUT
+DF
 chmod +x "$ROOT"/bin/*
 for tool in powerprofilesctl firefox ghostty foot nvim code; do printf '#!/bin/sh\nexit 0\n' >"$ROOT/bin/$tool"; chmod +x "$ROOT/bin/$tool"; done

@@ -23,6 +23,7 @@ QVariantList SystemProvider::parseDf(const QByteArray &text) {
     QVariantList rows;
     const auto lines = QString::fromUtf8(text).split('\n', Qt::SkipEmptyParts);
     static const QStringList ignored{"tmpfs", "devtmpfs", "efivarfs", "overlay", "squashfs", "proc", "sysfs", "ramfs", "fuse.portal"};
+    QHash<QString, QString> firstMount;
     for (int i = 1; i < lines.size(); ++i) {
         const auto fields = lines[i].simplified().split(' ');
         if (fields.size() < 6 || ignored.contains(fields[1]))
@@ -35,6 +36,21 @@ QVariantList SystemProvider::parseDf(const QByteArray &text) {
         row["available"] = fields[4].toDouble();
         row["percent"] = fields[5].chopped(1).toInt();
         row["mount"] = fields.mid(6).join(' ');
+        // An app run from an image, such as an AppImage, mounts itself while it runs. It
+        // is shown apart, since it is neither a disk nor space you can use.
+        const QString fstype = fields[1], device = fields[0], mount = row["mount"].toString();
+        row["temporary"] = (fstype.startsWith("fuse.") && (fstype.endsWith(".AppImage", Qt::CaseInsensitive) || device.endsWith(".AppImage", Qt::CaseInsensitive)))
+                           || mount.startsWith("/tmp/.mount_");
+        // A size of nothing is a reading that failed, not an empty disk.
+        row["known"] = row["size"].toDouble() > 0;
+        // Subvolumes of one disk, such as / and /home on btrfs, draw on the same space;
+        // the later ones say so instead of looking like more room.
+        if (!row["temporary"].toBool() && device.startsWith('/')) {
+            if (firstMount.contains(device))
+                row["sharedWith"] = firstMount.value(device);
+            else
+                firstMount.insert(device, mount);
+        }
         rows << row;
     }
     return rows;
