@@ -3600,6 +3600,361 @@ private:
     }
 
 private slots:
+    // --- The Desktop page ---
+
+    void aDockPinShowsWhatItsDesktopEntrySays() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString shared = s.env.dataDirs.last() + "/applications/";
+        addPack(desk.system, "Yaru-blue", {"folder", "named-app"});
+        addPack(desk.system, "Other", {"named-app"});
+        addPack(desk.system, "hicolor", {"only-in-hicolor"});
+        writeFile(shared + "named.desktop", "[Desktop Entry]\nName=Named App\nIcon=named-app\n[Desktop Action x]\nName=Not this\nIcon=not-this\n");
+        writeFile(shared + "hicolor.desktop", "[Desktop Entry]\nName=H\nIcon=only-in-hicolor\n");
+        writeFile(shared + "absolute.desktop", "[Desktop Entry]\nName=A\nIcon=" + s.dir.path().toUtf8() + "/pic.png\n");
+        writeFile(s.dir.path() + "/pic.png", "x");
+        writeFile(shared + "gone.desktop", "[Desktop Entry]\nName=G\nIcon=/nowhere/pic.png\n");
+        writeFile(shared + "noicon.desktop", "[Desktop Entry]\nName=Plain\n");
+        writeFile(shared + "pixmap.desktop", "[Desktop Entry]\nName=P\nIcon=oldapp.png\n");
+        writeFile(s.env.dataDirs.last() + "/pixmaps/oldapp.png", "x");
+        writeFile(shared + "mine.desktop", "[Desktop Entry]\nName=System copy\n");
+        writeFile(s.env.dataHome + "/applications/mine.desktop", "[Desktop Entry]\nName=My copy\n");
+
+        const auto app = [&](const QString &id) { return PluginsProvider::resolveDockApp(s.env, id, "Yaru-blue"); };
+        QCOMPARE(app("named").value("name").toString(), QString("Named App"));
+        QVERIFY(app("named").value("icon").toString().contains("/Yaru-blue/"));
+        // The pack in use decides, as it does for every other app.
+        QVERIFY(PluginsProvider::resolveDockApp(s.env, "named", "Other").value("icon").toString().contains("/Other/"));
+        QVERIFY(app("hicolor").value("icon").toString().contains("/hicolor/"));
+        QVERIFY(app("absolute").value("icon").toString().endsWith("/pic.png"));
+        QVERIFY(app("pixmap").value("icon").toString().endsWith("/pixmaps/oldapp.png"));
+        QCOMPARE(app("mine").value("name").toString(), QString("My copy"));
+        // Each of these falls through to the same drawn fallback, with its entry's word on it.
+        QCOMPARE(app("gone").value("icon").toString(), QString());
+        QCOMPARE(app("noicon").value("icon").toString(), QString());
+        QCOMPARE(app("noicon").value("name").toString(), QString("Plain"));
+        QVERIFY(!app("not-installed").value("installed").toBool());
+        QCOMPARE(app("../../etc/passwd").value("name").toString(), QString());
+    }
+
+    void dockAppsKeepTheirOrderAndUseThePackInUse() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString shared = s.env.dataDirs.last() + "/applications/";
+        writeFile(shared + "b.desktop", "[Desktop Entry]\nName=Bee\nIcon=folder\n");
+        writeFile(shared + "a.desktop", "[Desktop Entry]\nName=Ay\nIcon=folder\n");
+        writeFile(s.env.configHome + "/omarchy/shell.json", "{\"dock\":{\"pinned\":[\"b\",\"missing\",\"a\"]}}");
+        desk.setEffective("Numix");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        PluginsProvider plugins(&runner, &coordinator);
+        plugins.refresh();
+        QTRY_VERIFY(plugins.dockApps().value(0).toMap().value("icon").toString().contains("/Numix/"));
+        QStringList names;
+        for (const auto &row : plugins.dockApps())
+            names << row.toMap().value("name").toString();
+        QCOMPARE(names, QStringList({"Bee", "", "Ay"}));
+        QCOMPARE(plugins.dockPins(), QStringList({"b", "missing", "a"}));
+    }
+
+    void aReorderThatDidNotHappenIsNotReportedAsDone() {
+        Sandbox s;
+        const QByteArray before = "{\"bar\":{\"layout\":{\"left\":[\"a\",\"b\",\"c\"]}}}\n";
+        const QString config = s.env.configHome + "/omarchy/shell.json";
+        writeFile(config, before);
+        // Exits cleanly and changes nothing. The widget is still in its section, which is
+        // all the old check looked at.
+        s.omarchy("exit 0");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        PluginsProvider plugins(&runner, &coordinator);
+        QSignalSpy messages(&plugins, &PluginsProvider::message);
+        plugins.moveWidget("a", "left", 2, "left", 0);
+        QVERIFY(plugins.changing());
+        QTRY_VERIFY_WITH_TIMEOUT(messages.count() >= 1, 8000);
+        QVERIFY(messages.first().at(1).toBool());
+        QVERIFY(messages.first().at(0).toString().contains("did not move"));
+        QVERIFY(!plugins.changing());
+        QCOMPARE(readAll(config), before);
+    }
+
+private:
+    struct DesktopPage {
+        Sandbox &s;
+        Translator translator;
+        Theme theme;
+        Backend backend;
+        QQmlApplicationEngine engine;
+        QQuickWindow *window = nullptr;
+        explicit DesktopPage(Sandbox &sandbox)
+            : s(sandbox), translator(sandbox.env.configHome + "/omarchy/language", ":/i18n", sandbox.env.omarchyPath + "/default/i18n/locales.json"), theme(sandbox.env), backend(sandbox.env) {
+            QQuickStyle::setStyle("Material");
+            engine.addImageProvider("icons", new IconProvider);
+            engine.addImageProvider("iconpacks", new IconPackImageProvider(sandbox.env));
+            engine.rootContext()->setContextProperty("translator", &translator);
+            engine.rootContext()->setContextProperty("theme", &theme);
+            engine.rootContext()->setContextProperty("backend", &backend);
+            engine.rootContext()->setContextProperty("initialPage", QString());
+            engine.rootContext()->setContextProperty("initialSetting", QString());
+            engine.load(QUrl("qrc:/Main.qml"));
+            window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+            window->resize(1427, 1102);
+            window->requestActivate();
+        }
+        void show(const QString &focus = {}) {
+            QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "desktop"), Q_ARG(QVariant, focus));
+        }
+        QList<QQuickItem *> named(const QString &objectName) const {
+            QList<QQuickItem *> found;
+            std::function<void(QQuickItem *)> search = [&](QQuickItem *item) {
+                if (item->objectName() == objectName && item->isVisible())
+                    found << item;
+                for (QQuickItem *child : item->childItems())
+                    search(child);
+            };
+            search(window->contentItem());
+            return found;
+        }
+        QQuickItem *chip(const QString &id) const {
+            for (QQuickItem *item : named("barWidgetChip"))
+                if (item->property("widgetId").toString() == id)
+                    return item;
+            return nullptr;
+        }
+        QQuickItem *handle(const QString &id) const {
+            QQuickItem *c = chip(id);
+            if (!c)
+                return nullptr;
+            for (QQuickItem *child : c->childItems())
+                if (child->objectName() == "barWidgetHandle")
+                    return child;
+            return nullptr;
+        }
+        QStringList section(const QString &id) {
+            QStringList ids;
+            for (const auto &value : backend.plugins()->barLayout().value(id).toList())
+                ids << value.toString();
+            return ids;
+        }
+        QStringList moves() const {
+            QStringList out;
+            for (const QString &call : s.calls())
+                if (call.startsWith("omarchy bar move"))
+                    out << call.mid(17);
+            return out;
+        }
+    };
+
+    static void desktopFixture(Sandbox &s) {
+        fakeDesktop(s);
+        s.omarchy(kFakeBar);
+        const QString state = s.env.home + "/bar-state/";
+        writeFile(state + "left", "omarchy.menu omarchy.workspaces\n");
+        writeFile(state + "centerBegin", "\n");
+        writeFile(state + "center", "omarchy.clock\n");
+        writeFile(state + "centerEnd", "omarchy.weather omarchy.system-update\n");
+        writeFile(state + "right", "omarchy.tray omarchy.network omarchy.audio omarchy.power mystery.thing\n");
+        writeFile(state + "tray", "\n");
+        writeFile(state + "pins", "firefox gone org.gnome.Nautilus\n");
+        writeFile(s.env.configHome + "/omarchy/shell.json", "{\"bar\":{\"id\":\"local.test-bar\",\"layout\":{\"left\":[\"omarchy.menu\",\"omarchy.workspaces\"],\"centerBegin\":[],\"center\":[{\"id\":\"omarchy.clock\"}],\"centerEnd\":[\"omarchy.weather\",\"omarchy.system-update\"],\"right\":[\"omarchy.tray\",\"omarchy.network\",\"omarchy.audio\",\"omarchy.power\",\"mystery.thing\"],\"tray\":[]}},\"dock\":{\"pinned\":[\"firefox\",\"gone\",\"org.gnome.Nautilus\"]}}\n");
+        const QString shared = s.env.dataDirs.last();
+        addPack(shared + "/icons", "Yaru-blue", {"web-browser", "folder"});
+        writeFile(shared + "/applications/firefox.desktop", "[Desktop Entry]\nName=Firefox\nIcon=web-browser\n");
+        writeFile(shared + "/applications/org.gnome.Nautilus.desktop", "[Desktop Entry]\nName=Files\nIcon=folder\n");
+    }
+
+private slots:
+    void theBarEditorShowsTheModelItEdits() {
+        Sandbox s;
+        desktopFixture(s);
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        QAccessible::setActive(true);
+        page.show();
+        QTRY_VERIFY(page.chip("omarchy.clock"));
+
+        // Five regions in the preview, the same five the editor has, holding the same widgets.
+        QTRY_COMPARE(page.named("barPreviewRegion").size(), 5);
+        QStringList regions;
+        for (QQuickItem *region : page.named("barPreviewRegion"))
+            regions << region->property("regionId").toString();
+        QCOMPARE(regions, QStringList({"left", "centerBegin", "center", "centerEnd", "right"}));
+        QCOMPARE(page.named("barPreviewRegion").at(4)->property("regionItems").toList().size(), 5);
+        QVERIFY(page.named("barPreview").size() == 1);
+        // The tray drawer is off the bar, so only the editor has it, with its empty state.
+        QVERIFY(!page.named("barSection_tray").isEmpty());
+
+        // The name from the running plugin list, its glyph, and the plain one for the unknown.
+        QTRY_COMPARE(page.chip("omarchy.menu")->property("widgetName").toString(), QString("Omarchy menu"));
+        QCOMPARE(page.chip("omarchy.menu")->property("widgetIcon").toString(), QString("logo"));
+        QCOMPARE(page.chip("mystery.thing")->property("widgetName").toString(), QString("Thing"));
+        QCOMPARE(page.chip("mystery.thing")->property("widgetIcon").toString(), QString("plugin"));
+
+        QTRY_VERIFY(!page.named("activeBar").isEmpty());
+        QVERIFY(QAccessible::queryAccessibleInterface(page.named("activeBar").first())->text(QAccessible::Name).contains("local.test-bar"));
+
+        // Every placement stays reachable from the dropdown, with the reorders added on.
+        QCOMPARE(page.chip("omarchy.network")->property("actions").toList().size(), 8);
+        QCOMPARE(page.chip("omarchy.tray")->property("actions").toList().size(), 7);
+        QAccessible::setActive(false);
+    }
+
+    void theArrowKeysReorderAndKeepTheKeyboardThere() {
+        Sandbox s;
+        desktopFixture(s);
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.show();
+        QTRY_VERIFY(page.handle("omarchy.audio"));
+
+        page.handle("omarchy.audio")->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(page.window, Qt::Key_Left);
+        QTRY_COMPARE(page.section("right"), QStringList({"omarchy.tray", "omarchy.audio", "omarchy.network", "omarchy.power", "mystery.thing"}));
+        QCOMPARE(page.moves().last(), QString("omarchy.audio --section right --index 1 --from-section right --from-index 2"));
+        QTRY_VERIFY(page.window->activeFocusItem() == page.handle("omarchy.audio"));
+        QTRY_VERIFY(!page.backend.plugins()->changing());
+
+        // Omarchy takes it out before putting it in, so one along is one along.
+        QTest::keyClick(page.window, Qt::Key_Right);
+        QTRY_COMPARE(page.section("right").at(2), QString("omarchy.audio"));
+        QCOMPARE(page.moves().last(), QString("omarchy.audio --section right --index 2 --from-section right --from-index 1"));
+        QTRY_VERIFY(!page.backend.plugins()->changing());
+        QTRY_VERIFY(page.window->activeFocusItem() == page.handle("omarchy.audio"));
+
+        // Up goes to the end of the region before it.
+        QTest::keyClick(page.window, Qt::Key_Up);
+        QTRY_COMPARE(page.section("centerEnd"), QStringList({"omarchy.weather", "omarchy.system-update", "omarchy.audio"}));
+        QVERIFY(!page.section("right").contains("omarchy.audio"));
+        QTRY_VERIFY(!page.backend.plugins()->changing());
+        QTRY_VERIFY(page.window->activeFocusItem() == page.handle("omarchy.audio"));
+
+        // Nowhere further to go is not a change at all.
+        const int count = page.moves().size();
+        page.handle("omarchy.menu")->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(page.window, Qt::Key_Left);
+        QTest::keyClick(page.window, Qt::Key_Up);
+        QTest::qWait(100);
+        QCOMPARE(page.moves().size(), count);
+
+        // A press while one is landing would use positions about to change.
+        page.handle("omarchy.tray")->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(page.window, Qt::Key_Right);
+        QTest::keyClick(page.window, Qt::Key_Right);
+        QTRY_VERIFY(!page.backend.plugins()->changing());
+        QCOMPARE(page.moves().size(), count + 1);
+    }
+
+    void draggingAWidgetPlacesItWhereItIsDropped() {
+        Sandbox s;
+        desktopFixture(s);
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.show();
+        QTRY_VERIFY(page.handle("omarchy.tray"));
+        QTest::qWait(150);
+        const auto centre = [&](QQuickItem *item, qreal fx = 0.5) { return item->mapToScene(QPointF(item->width() * fx, item->height() / 2)).toPoint(); };
+        const auto drag = [&](const QString &id, const QPoint &to) {
+            const QPoint from = centre(page.handle(id));
+            QTest::mousePress(page.window, Qt::LeftButton, Qt::NoModifier, from);
+            for (int i = 1; i <= 6; ++i)
+                QTest::mouseMove(page.window, from + (to - from) * i / 6);
+            QVERIFY(!page.named("barDragGhost").isEmpty());
+            QTest::mouseRelease(page.window, Qt::LeftButton, Qt::NoModifier, to);
+        };
+
+        // Further along its own region: dropped before power, which is index 2 once it has left.
+        drag("omarchy.tray", centre(page.chip("omarchy.power"), 0.2));
+        QTRY_COMPARE(page.section("right"), QStringList({"omarchy.network", "omarchy.audio", "omarchy.tray", "omarchy.power", "mystery.thing"}));
+        QCOMPARE(page.moves().last(), QString("omarchy.tray --section right --index 2 --from-section right --from-index 0"));
+        QTRY_VERIFY(!page.backend.plugins()->changing());
+        QTRY_VERIFY(page.handle("omarchy.clock"));
+        QTest::qWait(150);
+
+        // Into another region, ahead of what is there.
+        drag("omarchy.audio", centre(page.chip("omarchy.clock"), 0.2));
+        QTRY_COMPARE(page.section("center"), QStringList({"omarchy.audio", "omarchy.clock"}));
+        QTRY_VERIFY(!page.backend.plugins()->changing());
+        QTest::qWait(150);
+
+        // Into an empty one, which only has its label to aim at.
+        QQuickItem *empty = page.named("barSection_tray").first();
+        drag("omarchy.weather", empty->mapToScene(QPointF(empty->width() * 0.6, empty->height() / 2)).toPoint());
+        QTRY_COMPARE(page.section("tray"), QStringList({"omarchy.weather"}));
+        QTRY_VERIFY(!page.backend.plugins()->changing());
+        QTest::qWait(150);
+
+        // Back where it started, or out over nothing, or called off: none of them is a change.
+        const int count = page.moves().size();
+        const QPoint start = centre(page.handle("omarchy.network"));
+        QTest::mousePress(page.window, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(page.window, start + QPoint(20, 0));
+        QTest::mouseMove(page.window, centre(page.chip("omarchy.network"), 0.3));
+        QTest::mouseRelease(page.window, Qt::LeftButton, Qt::NoModifier, centre(page.chip("omarchy.network"), 0.3));
+        drag("omarchy.network", QPoint(page.window->width() - 4, 4));
+        QTest::mousePress(page.window, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(page.window, start + QPoint(40, 0));
+        QTest::keyClick(page.window, Qt::Key_Escape);
+        QVERIFY(page.named("barDragGhost").isEmpty());
+        QTest::mouseRelease(page.window, Qt::LeftButton, Qt::NoModifier, start + QPoint(40, 0));
+        QTest::qWait(100);
+        QCOMPARE(page.moves().size(), count);
+    }
+
+    void pinnedAppsShowIconsAndCanBeRemoved() {
+        Sandbox s;
+        desktopFixture(s);
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        QAccessible::setActive(true);
+        page.show();
+        QTRY_COMPARE(page.named("dockApp").size(), 3);
+        // In their order, the real icon where there is one and the same fallback where not.
+        QCOMPARE(page.named("dockApp").at(0)->property("appName").toString(), QString("Firefox"));
+        QCOMPARE(page.named("dockApp").at(1)->property("appName").toString(), QString("Gone"));
+        QCOMPARE(page.named("dockApp").at(2)->property("appName").toString(), QString("Files"));
+        QTRY_COMPARE(page.named("dockAppIcon").size(), 2);
+        QCOMPARE(page.named("dockAppFallback").size(), 1);
+
+        QQuickItem *remove = page.named("dockRemove").at(1);
+        QCOMPARE(QAccessible::queryAccessibleInterface(remove)->text(QAccessible::Name), QString("Unpin Gone"));
+        remove->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(page.window, Qt::Key_Space);
+        QTRY_COMPARE(page.named("dockApp").size(), 2);
+        QVERIFY(s.calls().contains("omarchy dock unpin gone"));
+        // The keyboard moves to whichever took its place.
+        QTRY_VERIFY(page.window->activeFocusItem() == page.named("dockRemove").at(1));
+        QAccessible::setActive(false);
+    }
+
+    void theFoldedToolsCountAndOpenInPlace() {
+        Sandbox s;
+        desktopFixture(s);
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        QAccessible::setActive(true);
+        page.show();
+        QTRY_VERIFY(!page.named("disclosure_plugins").isEmpty());
+        QVERIFY(!page.named("disclosure_shortcuts").isEmpty());
+        QVERIFY(!page.named("disclosure_rules").isEmpty());
+        QTRY_VERIFY(QAccessible::queryAccessibleInterface(page.named("disclosure_plugins").first())->text(QAccessible::Name).contains("2"));
+
+        // Nothing is built until it is opened, and it opens where it is.
+        QQuickItem *header = page.named("disclosure_plugins").first();
+        QCOMPARE(page.named("iconPackSearch").size(), 0);
+        const qreal below = page.named("disclosure_shortcuts").first()->mapToScene(QPointF(0, 0)).y();
+        header->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(page.window, Qt::Key_Space);
+        QTRY_VERIFY(page.named("disclosure_shortcuts").first()->mapToScene(QPointF(0, 0)).y() > below + 40);
+        QCOMPARE(page.window->activeFocusItem(), header);
+        QTest::keyClick(page.window, Qt::Key_Space);
+        QTRY_COMPARE(page.named("disclosure_shortcuts").first()->mapToScene(QPointF(0, 0)).y(), below);
+
+        // Search reaches each one by name, opens it, and leaves the keyboard on it.
+        page.show("block.rules");
+        QTRY_VERIFY(page.window->activeFocusItem() == page.named("disclosure_rules").first());
+        QAccessible::setActive(false);
+    }
+
     // --- Icon packs ---
 
     void iconPacksComeFromEveryRootWithHiddenAndCursorOnesLeftOut() {

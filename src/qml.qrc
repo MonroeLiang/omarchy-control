@@ -1,6 +1,9 @@
 <RCC>
     <qresource prefix="/">
         <file alias="AppButton.qml">AppButton.qml</file>
+        <file alias="BarPreview.qml">BarPreview.qml</file>
+        <file alias="BarWidgetChip.qml">BarWidgetChip.qml</file>
+        <file alias="DisclosurePanel.qml">DisclosurePanel.qml</file>
         <file alias="IconPackTiles.qml">IconPackTiles.qml</file>
         <file alias="IconFolderDialog.qml">IconFolderDialog.qml</file>
         <file alias="AppCombo.qml">AppCombo.qml</file>
@@ -70,6 +73,18 @@
         <file alias="icons/info.svg">icons/info.svg</file>
         <file alias="icons/input.svg">icons/input.svg</file>
         <file alias="icons/layers.svg">icons/layers.svg</file>
+        <file alias="icons/grip.svg">icons/grip.svg</file>
+        <file alias="icons/nodes.svg">icons/nodes.svg</file>
+        <file alias="icons/plugin.svg">icons/plugin.svg</file>
+        <file alias="icons/windows.svg">icons/windows.svg</file>
+        <file alias="icons/weather.svg">icons/weather.svg</file>
+        <file alias="icons/calendar.svg">icons/calendar.svg</file>
+        <file alias="icons/wave.svg">icons/wave.svg</file>
+        <file alias="icons/bolt.svg">icons/bolt.svg</file>
+        <file alias="icons/cube.svg">icons/cube.svg</file>
+        <file alias="icons/dropbox.svg">icons/dropbox.svg</file>
+        <file alias="icons/mic.svg">icons/mic.svg</file>
+        <file alias="icons/music.svg">icons/music.svg</file>
         <file alias="icons/list.svg">icons/list.svg</file>
         <file alias="icons/lock.svg">icons/lock.svg</file>
         <file alias="icons/logo.svg">icons/logo.svg</file>

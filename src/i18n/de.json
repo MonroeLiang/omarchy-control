@@ -1653,5 +1653,13 @@
  "%1 could not be removed.": "%1 konnte nicht entfernt werden.",
  "Another icon pack is being imported. Try again when it is done.": "Es wird gerade ein anderes Symbolpaket importiert. Versuche es danach erneut.",
  "Its author marked it hidden, so it is not offered as a choice.": "Sein Autor hat es als verborgen markiert, daher wird es nicht zur Auswahl angeboten.",
- "Your active bar is %1. It reads this layout, but a custom bar can draw it differently.": "Ihre aktive Leiste ist %1. Sie liest dieses Layout, aber eine benutzerdefinierte Leiste kann es anders darstellen."
+ "Active bar:": "Aktive Leiste:",
+ "Active bar: %1": "Aktive Leiste: %1",
+ "Custom bars may display this layout differently.": "Eigene Leisten zeigen dieses Layout möglicherweise anders an.",
+ "Drag to reorder, or use the arrow keys": "Zum Umordnen ziehen oder die Pfeiltasten verwenden",
+ "Left and right arrows move it along its region. Up and down arrows move it to the next region.": "Die Pfeiltasten nach links und rechts verschieben es innerhalb seines Bereichs. Die Pfeiltasten nach oben und unten verschieben es in den nächsten Bereich.",
+ "Move earlier": "Nach vorne",
+ "Move later": "Nach hinten",
+ "Preview of the bar layout": "Vorschau des Leistenlayouts",
+ "Reorder %1": "%1 umordnen"
 }

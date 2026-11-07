@@ -7,41 +7,21 @@ ColumnLayout {
     id: root
     spacing: 8
     readonly property var plugins: backend.plugins
-    property bool expanded: false
     property string filter: ""
     readonly property var visibleRows: plugins.plugins.filter(function (p) {
         return !filter.length || (p.name + " " + p.id).toLowerCase().indexOf(filter.toLowerCase()) >= 0
     })
 
-    RowLayout {
-        Layout.fillWidth: true
-        AppText { text: qsTr("Plugins"); font.weight: Font.DemiBold; scale_: 1.25; Layout.fillWidth: true }
-        AppButton {
-            style: "flat"
-            text: root.expanded ? qsTr("Hide") : qsTr("Show %n", "", root.plugins.plugins.length)
-            iconName: "chevron"
-            onClicked: root.expanded = !root.expanded
-        }
-    }
-    AppText {
-        visible: root.plugins.status === "shell-down"
-        Layout.fillWidth: true
-        wrapMode: Text.Wrap
-        color: theme.warningText
-        text: qsTr("The Omarchy shell is not responding, so which plugins are active is unknown. Installed plugins are listed from disk.")
-    }
     AppField {
-        visible: root.expanded
         Layout.fillWidth: true
         label: qsTr("Filter plugins")
         placeholderText: qsTr("Filter plugins")
         onTextChanged: root.filter = text
     }
     AppPanel {
-        visible: root.expanded
         Layout.fillWidth: true
         Repeater {
-            model: root.expanded ? root.visibleRows : []
+            model: root.visibleRows
             delegate: Item {
                 width: parent ? parent.width : 400
                 height: theme.rowHeight

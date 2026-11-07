@@ -18,7 +18,12 @@ ScrollView {
     }
 
     readonly property var pageSections: backend.sections(pageId)
-    readonly property var pageBlocks: backend.blocks(pageId)
+    // These fold away into one panel; the rest are shown as they are. Each is still a block
+    // of its own, so search can land on it by name.
+    readonly property var foldedNames: ["plugins", "shortcuts", "rules"]
+    readonly property var allBlocks: backend.blocks(pageId)
+    readonly property var pageBlocks: allBlocks.filter(function (name) { return foldedNames.indexOf(name) < 0 })
+    readonly property var foldedBlocks: allBlocks.filter(function (name) { return foldedNames.indexOf(name) >= 0 })
 
     function scrollToFocus() {
         if (!focusId.length)
@@ -31,6 +36,8 @@ ScrollView {
                 if (loader && loader.blockName === name)
                     target = loader
             }
+            if (!target)
+                target = folded.reveal(name)
         } else {
             for (var j = 0; j < sectionRepeater.count; ++j) {
                 var row = sectionRepeater.itemAt(j).rowItem(focusId)
@@ -86,6 +93,14 @@ ScrollView {
                 Layout.rightMargin: 20
                 source: "qrc:/Block" + modelData.charAt(0).toUpperCase() + modelData.slice(1) + ".qml"
             }
+        }
+        DisclosurePanel {
+            id: folded
+            visible: blocks.length > 0
+            blocks: root.foldedBlocks
+            Layout.fillWidth: true
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
         }
         Repeater {
             id: sectionRepeater

@@ -67,8 +67,8 @@ printf 'claude\n' >"$H/.local/state/omarchy/defaults/agent"
 cat >"$H/.config/omarchy/shell.json" <<'T'
 {
   "version": 1,
-  "bar": {"position": "top", "background": "opaque", "layout": {"left": [{"id": "omarchy.menu"}, {"id": "omarchy.workspaces"}], "centerBegin": [], "center": [{"id": "omarchy.clock"}], "centerEnd": [{"id": "omarchy.weather"}], "right": [{"id": "omarchy.tray"}, {"id": "omarchy.audio"}, {"id": "omarchy.network"}, {"id": "omarchy.power"}], "tray": []}},
-  "dock": {"pinned": ["firefox", "foot", "org.gnome.Nautilus"]},
+  "bar": {"position": "top", "background": "opaque", "id": "local.harbor-bar", "layout": {"left": [{"id": "omarchy.menu"}, {"id": "omarchy.workspaces"}], "centerBegin": [{"id": "omarchy.indicators"}], "center": [{"id": "omarchy.clock"}], "centerEnd": [{"id": "omarchy.weather"}, {"id": "omarchy.system-update"}], "right": [{"id": "omarchy.tray"}, {"id": "omarchy.keyboard-layout"}, {"id": "omarchy.tailscale"}, {"id": "local.notes"}, {"id": "omarchy.bluetooth"}, {"id": "omarchy.network"}, {"id": "omarchy.audio"}, {"id": "omarchy.monitor"}, {"id": "omarchy.power"}], "tray": []}},
+  "dock": {"pinned": ["firefox", "foot", "org.gnome.Nautilus", "omacalc", "not-installed-app"]},
   "idle": {"screensaver": 150, "lock": 300},
   "plugins": []
 }
@@ -141,6 +141,12 @@ for pack, name, a, b, r in [
     write(pack, "apps", "web-browser", browser(a, b, r))
 PY
 printf 'Yaru-blue' >"$H/.fake-icon-theme"
+A="$ROOT/sys-root/usr/share/applications"
+mkdir -p "$A"
+for app in "firefox:Firefox:web-browser" "foot:Foot:utilities-terminal" "org.gnome.Nautilus:Files:folder" "omacalc:Omacalc:text-x-generic"; do
+  IFS=: read -r id name icon <<<"$app"
+  printf '[Desktop Entry]\nType=Application\nName=%s\nIcon=%s\nExec=%s\n' "$name" "$icon" "$id" >"$A/$id.desktop"
+done
 cp "$HERE/fake-gsettings" "$ROOT/bin/gsettings"
 cp "$HERE/fake-dconf" "$ROOT/bin/dconf"
 cp "$HERE/fake-omarchy" "$ROOT/bin/omarchy"

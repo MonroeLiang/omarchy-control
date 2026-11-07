@@ -1689,5 +1689,13 @@
  "%1 could not be removed.": "تعذرت إزالة %1.",
  "Another icon pack is being imported. Try again when it is done.": "تجري حاليًا عملية استيراد حزمة أيقونات أخرى. حاول مجددًا عند انتهائها.",
  "Its author marked it hidden, so it is not offered as a choice.": "وسمها مؤلفها بأنها مخفية، لذا لا تُعرض كخيار.",
- "Your active bar is %1. It reads this layout, but a custom bar can draw it differently.": "الشريط النشط لديك هو %1. يقرأ هذا التخطيط، لكن الشريط المخصص قد يرسمه بشكل مختلف."
+ "Active bar:": "الشريط النشط:",
+ "Active bar: %1": "الشريط النشط: %1",
+ "Custom bars may display this layout differently.": "قد تعرض الأشرطة المخصصة هذا التخطيط بشكل مختلف.",
+ "Drag to reorder, or use the arrow keys": "اسحب لإعادة الترتيب، أو استخدم مفاتيح الأسهم",
+ "Left and right arrows move it along its region. Up and down arrows move it to the next region.": "يحركه السهمان الأيسر والأيمن داخل منطقته. ويحركه السهمان الأعلى والأسفل إلى المنطقة التالية.",
+ "Move earlier": "نقل إلى موضع سابق",
+ "Move later": "نقل إلى موضع لاحق",
+ "Preview of the bar layout": "معاينة تخطيط الشريط",
+ "Reorder %1": "إعادة ترتيب %1"
 }

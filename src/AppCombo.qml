@@ -5,9 +5,14 @@ import QtQuick.Controls.Material
 ComboBox {
     id: root
     property string label: ""
+    // For a name, not a value, and for sitting inside a control that draws its own edge.
+    property bool proportional: false
+    property bool flush: false
+    property string leadingIcon: ""
+    property color leadingTint: theme.foreground
     implicitHeight: Math.round(theme.fontSize * 2.2) + 2
     implicitWidth: 220
-    font.family: "monospace"
+    font.family: proportional ? theme.uiFont : "monospace"
     font.pixelSize: theme.fontSize
     Accessible.name: label
     Material.roundedScale: theme.controlRadius
@@ -21,14 +26,24 @@ ComboBox {
     background: Rectangle {
         radius: theme.controlRadius
         color: root.down ? Qt.alpha(theme.foreground, 0.1) : root.hovered ? Qt.alpha(theme.foreground, 0.06) : "transparent"
-        border.width: root.visualFocus ? 2 : 1
+        border.width: root.visualFocus ? 2 : root.flush ? 0 : 1
         border.color: root.visualFocus ? theme.accent : theme.divider
         Behavior on color { enabled: theme.animate; ColorAnimation { duration: 100 } }
     }
+    AppIcon {
+        visible: root.leadingIcon.length > 0
+        name: root.leadingIcon
+        tint: root.leadingTint
+        size: Math.round(theme.fontSize * 1.15)
+        x: root.mirrored ? root.width - width - 4 : 4
+        anchors.verticalCenter: parent.verticalCenter
+    }
     contentItem: AppText {
-        mono: true
-        leftPadding: root.mirrored ? 30 : 12
-        rightPadding: root.mirrored ? 12 : 30
+        readonly property int iconSpace: root.leadingIcon.length ? Math.round(theme.fontSize * 1.15) + 10 : 12
+        readonly property int chevronSpace: root.flush ? 24 : 30
+        mono: !root.proportional
+        leftPadding: root.mirrored ? chevronSpace : iconSpace
+        rightPadding: root.mirrored ? iconSpace : chevronSpace
         verticalAlignment: Text.AlignVCenter
         // An empty list says so instead of drawing a blank box.
         text: root.displayText.length ? root.displayText : qsTr("Not set")
@@ -37,7 +52,8 @@ ComboBox {
     indicator: AppIcon {
         name: "chevron"
         size: 14
-        x: root.mirrored ? 10 : root.width - width - 10
+        readonly property int inset: root.flush ? 7 : 10
+        x: root.mirrored ? inset : root.width - width - inset
         anchors.verticalCenter: parent.verticalCenter
         tint: theme.muted
         rotation: root.popup.visible ? 180 : 0
@@ -62,7 +78,7 @@ ComboBox {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                mono: true
+                mono: !root.proportional
                 text: root.textAt(option.index)
             }
             AppIcon {
