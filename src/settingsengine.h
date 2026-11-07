@@ -77,6 +77,7 @@ private:
     QStringList substitute(const QJsonArray &argv, const QString &value, const CatalogEntry *entry = nullptr, const QString &target = {}) const;
     static QStringList targeted(const QStringList &argv, const CatalogEntry &entry, const QString &target);
     QStringList expandArgv(const QStringList &argv) const;
+    QString configuredHyprValue(const CatalogEntry &entry, const QStringList &path, QString *source) const;
     void verifyValue(const QString &id, const QString &expected, int attempts, ChangeCoordinator::Done done);
     void submitHypr(const CatalogEntry &entry, const QString &value, const QString &before, bool beforeWasDefault, bool remove,
                     const QString &kind, ApplyCallback callback);

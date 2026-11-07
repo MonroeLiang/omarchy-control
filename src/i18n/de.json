@@ -1870,5 +1870,8 @@
  "History": "Verlauf",
  "Manuals, keybindings, and community.": "Handbücher, Tastenkürzel und Community.",
  "Tools, sessions, hooks, and debugging.": "Werkzeuge, Sitzungen, Hooks und Fehlersuche.",
- "Installed": "Installiert"
+ "Installed": "Installiert",
+ "Floating workspaces focus on click. This applies on tiled workspaces.": "Schwebende Arbeitsbereiche fokussieren per Klick. Dies gilt für gekachelte Arbeitsbereiche.",
+ "Floating workspaces set this themselves. This applies on tiled workspaces.": "Schwebende Arbeitsbereiche legen dies selbst fest. Dies gilt für gekachelte Arbeitsbereiche.",
+ "Your config": "Ihre Konfiguration"
 }

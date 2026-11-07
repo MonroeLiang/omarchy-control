@@ -1813,7 +1813,8 @@
   "sources": [],
   "read": {
    "kind": "hypr",
-   "option": "input:follow_mouse"
+   "option": "input:follow_mouse",
+   "floating": "click"
   },
   "write": {
    "kind": "hypr",

@@ -280,7 +280,33 @@ void SettingsEngine::read(const QString &id, ReadCallback callback) {
             } else {
                 result.source = QCoreApplication::translate("SettingsEngine", "Omarchy default or your config");
             }
-            callback(result);
+            // Omarchy's floating workspaces set some values for themselves while one is
+            // active, as focus on click instead of on hover. There Hyprland reports
+            // Omarchy's value, not the one configured, so the configured one is shown,
+            // and a change is confirmed by the file written and a clean reload.
+            const QString floating = e->read.value("floating").toString();
+            if (floating.isEmpty() || moduleState == HyprModule::ModifiedByUser
+                || m_runner->env().findExecutable("omarchy-hyprland-workspace-layout-current").isEmpty()) {
+                callback(result);
+                return;
+            }
+            m_runner->run({"omarchy-hyprland-workspace-layout-current"}, CommandOptions{3000}, this, [this, e, path, floating, result, callback](const CommandResult &layout) mutable {
+                if (!layout.ok() || QString::fromUtf8(layout.out).trimmed() != QLatin1String("floating")) {
+                    callback(result);
+                    return;
+                }
+                QString source;
+                const QString configured = configuredHyprValue(*e, path, &source);
+                if (!configured.isEmpty()) {
+                    result.value = configured;
+                    result.source = source;
+                }
+                result.extra.insert("floatingWorkspace", true);
+                result.reason = floating == QLatin1String("click")
+                    ? QCoreApplication::translate("SettingsEngine", "Floating workspaces focus on click. This applies on tiled workspaces.")
+                    : QCoreApplication::translate("SettingsEngine", "Floating workspaces set this themselves. This applies on tiled workspaces.");
+                callback(result);
+            });
         });
         return;
     }
@@ -576,6 +602,49 @@ QStringList SettingsEngine::substitute(const QJsonArray &argv, const QString &va
     for (auto &text : out)
         text.replace("{value}", value);
     return out;
+}
+
+// The value a Hyprland option is configured to, from the files that set it rather than
+// the compositor: what this app wrote, else an uncommented assignment in the user's own
+// files, else Omarchy's default. Read as text, never run.
+QString SettingsEngine::configuredHyprValue(const CatalogEntry &entry, const QStringList &path, QString *source) const {
+    HyprModule module(m_runner->env());
+    if (module.load() && module.hasOption(path)) {
+        *source = QCoreApplication::translate("SettingsEngine", "Set here");
+        return module.option(path).toVariant().toString();
+    }
+    const QString key = path.isEmpty() ? QString() : path.last();
+    const QRegularExpression assignment(QStringLiteral("^\\s*%1\\s*=\\s*(-?[0-9.]+|true|false)\\s*,?\\s*(--.*)?$").arg(QRegularExpression::escape(key)));
+    auto scan = [&assignment](const QString &file) {
+        QFile f(file);
+        QString found;
+        if (!f.open(QIODevice::ReadOnly))
+            return found;
+        for (const QString &line : QString::fromUtf8(f.readAll()).split('\n')) {
+            const auto match = assignment.match(line);
+            if (match.hasMatch())
+                found = match.captured(1);
+        }
+        return found;
+    };
+    const QDir user(m_runner->env().configHome + "/hypr");
+    QString value;
+    for (const QString &name : user.entryList({"*.lua"}, QDir::Files, QDir::Name)) {
+        if (name == QLatin1String("omarchy-control.lua"))
+            continue;
+        const QString found = scan(user.filePath(name));
+        if (!found.isEmpty())
+            value = found;
+    }
+    if (!value.isEmpty()) {
+        *source = QCoreApplication::translate("SettingsEngine", "Your config");
+        return value;
+    }
+    Q_UNUSED(entry);
+    value = scan(m_runner->env().omarchyPath + "/default/hypr/" + path.value(0) + ".lua");
+    if (!value.isEmpty())
+        *source = QCoreApplication::translate("SettingsEngine", "Omarchy default");
+    return value;
 }
 
 void SettingsEngine::verifyValue(const QString &id, const QString &expected, int attempts, ChangeCoordinator::Done done) {
