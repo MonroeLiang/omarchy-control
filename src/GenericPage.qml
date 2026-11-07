@@ -248,13 +248,19 @@ ScrollView {
                     return panels[i].jumpTarget && panels[i].jumpLabel ? panels[i] : null
         return null
     }
-    onFocusIdChanged: settleTimer.restart()
+    // Each new destination gets its own full highlight, even when one search follows another.
+    onFocusIdChanged: {
+        settleTimer.restart()
+        if (focusId.length)
+            highlightTimer.restart()
+    }
     Timer {
         id: settleTimer
         interval: 60
         onTriggered: root.scrollToFocus()
     }
     Timer {
+        id: highlightTimer
         // The highlight marks where search landed, then gets out of the way.
         running: root.focusId.length > 0
         interval: 2600
