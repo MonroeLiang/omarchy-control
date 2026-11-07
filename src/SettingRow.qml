@@ -20,6 +20,15 @@ Item {
     property string headingIcon: ""
     // A row that only leads elsewhere: the whole row goes there, marked with a chevron.
     property bool navigation: false
+    // A config file, shown as its file: the name, the folder it is in, then what it is for.
+    property bool file: false
+    readonly property string filePath: file ? (entry.file || "") : ""
+    readonly property string fileName: filePath.replace(/\/+$/, "").split("/").pop()
+    readonly property string fileFolder: filePath.slice(0, filePath.length - fileName.length)
+    readonly property bool fileNamed: {
+        var label = (entry.label || "").toLowerCase(), name = fileName.toLowerCase()
+        return label === name || label === name.replace(/^\./, "")
+    }
 
     readonly property string entryId: entry.id || ""
     // A setting for one display of several reads and writes that display: the one
@@ -93,8 +102,8 @@ Item {
     AppIcon {
         id: icon
         visible: root.rich && name.length > 0
-        name: root.headingIcon || root.entry.icon || ""
-        size: Math.round(theme.fontSize * (root.headingTitle.length ? 1.75 : 1.55))
+        name: root.headingIcon || (root.file ? "file" : root.entry.icon || "")
+        size: Math.round(theme.fontSize * (root.headingTitle.length ? 1.75 : root.file ? 1.3 : 1.55))
         tint: root.unavailable ? theme.muted : root.tone === "good" ? theme.goodText : root.tone === "danger" ? theme.dangerText : theme.foreground
         // Something that takes away, marked on its icon as well as its button.
         AppIcon {
@@ -154,9 +163,10 @@ Item {
                         AppText {
                             id: title
                             Layout.maximumWidth: parent.width - quietActions.implicitWidth - 6
-                            text: root.headingTitle.length ? root.headingTitle : root.labelText
+                            text: root.headingTitle.length ? root.headingTitle : root.file && root.fileName.length ? root.fileName : root.labelText
+                            mono: root.file && root.fileName.length > 0
                             // A long or translated name gets a second line rather than losing its end.
-                            wrapMode: Text.Wrap
+                            wrapMode: root.file ? Text.WrapAnywhere : Text.Wrap
                             scale_: root.headingTitle.length ? 1.45 : 1
                             font.weight: root.headingTitle.length ? Font.DemiBold : Font.Normal
                             Accessible.role: root.headingTitle.length ? Accessible.Heading : Accessible.StaticText
@@ -219,9 +229,21 @@ Item {
                     }
                 }
                 AppText {
+                    objectName: "fileFolder"
                     Layout.fillWidth: true
-                    visible: !root.compact && root.descriptionText.length > 0 && !root.unavailable
-                    text: root.descriptionText
+                    visible: root.file && root.fileFolder.length > 0
+                    text: root.fileFolder
+                    mono: true
+                    secondary: true
+                    scale_: 0.85
+                    wrapMode: Text.WrapAnywhere
+                }
+                AppText {
+                    Layout.fillWidth: true
+                    visible: !root.compact && text.length > 0 && !root.unavailable
+                    // A file whose name does not say what it is keeps its name from the catalog.
+                    text: root.file ? [root.fileNamed ? "" : root.labelText, root.descriptionText].filter(function (part) { return part.length > 0 }).join(" · ")
+                                    : root.descriptionText
                     secondary: true
                     scale_: 0.88
                     wrapMode: Text.Wrap

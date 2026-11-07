@@ -69,6 +69,11 @@ static void runSteps(QQuickWindow *window, Backend &backend, const QString &home
                 if (item->objectName() == value && item->isVisible())
                     QMetaObject::invokeMethod(item, "click");
             });
+        else if (name == QLatin1String("text"))
+            visit(window->contentItem(), [&](QQuickItem *item) {
+                if (item->objectName() == value.section('/', 0, 0) && item->isVisible())
+                    item->setProperty("text", value.section('/', 1));
+            });
         else if (name == QLatin1String("scroll"))
             visit(window->contentItem(), [&](QQuickItem *item) {
                 if (item->objectName() == QLatin1String("pageLoader"))
@@ -109,7 +114,10 @@ int main(int argc, char *argv[]) {
     const QString root = args.value(1), output = args.value(2);
     const QStringList pages = args.mid(3);
     QDir().mkpath(output);
-    const Env env = root == QLatin1String("--real") ? Env::system() : Env::sandbox(root, root + "/bin");
+    Env env = root == QLatin1String("--real") ? Env::system() : Env::sandbox(root, root + "/bin");
+    // A sandbox can ask for the compatibility checks a real session makes, to show their warning.
+    if (qEnvironmentVariableIsSet("SCREENS_COMPAT"))
+        env.enforceCompat = true;
     QElapsedTimer started;
     started.start();
 

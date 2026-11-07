@@ -1844,6 +1844,52 @@ esac)SH");
         // The jump links, in reading order.
         QCOMPARE(catalog.page("system")->jumps, QStringList({"Storage", "Startup apps", "Services", "Maintenance"}));
     }
+    void everyAdvancedEntryIsPlacedOnce() {
+        Catalog catalog;
+        QStringList placed, blocks;
+        QHash<QString, QStringList> bySection;
+        QJsonObject files;
+        for (const auto &row : catalog.panelLayout("advanced"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    if (!panel.value("block").toString().isEmpty())
+                        blocks << panel.value("block").toString();
+                    for (const auto &id : panel.value("rows").toArray()) {
+                        placed << id.toString();
+                        bySection[panel.value("section").toString()] << id.toString();
+                    }
+                    if (panel.value("files").toBool())
+                        files = panel;
+                }
+        // Three native destinations stand for the blocks; every other entry is a row, once.
+        QStringList expected, natives;
+        for (const auto *entry : catalog.entriesForPage("advanced")) {
+            if (entry->launch.value("kind").toString() == QLatin1String("page") && entry->launch.value("page").toString() == QLatin1String("advanced"))
+                natives << entry->launch.value("focus").toString();
+            else
+                expected << entry->id;
+        }
+        QCOMPARE(expected.size() + natives.size(), 42);
+        QCOMPARE(placed.size(), QSet<QString>(placed.begin(), placed.end()).size());
+        placed.sort();
+        expected.sort();
+        QCOMPARE(placed, expected);
+        natives.sort();
+        QCOMPARE(natives, QStringList({"block.diagnostics", "block.history", "block.hooks"}));
+        QCOMPARE(blocks, QStringList({"history", "diagnostics", "hooks"}));
+        QCOMPARE(bySection.value("Config files").size(), 20);
+        QCOMPARE(bySection.value("Developer environment").size(), 9);
+        QCOMPARE(bySection.value("Learn").size(), 10);
+        // Every config row opens a file in the editor; the first look is five of them.
+        for (const auto &id : bySection.value("Config files"))
+            QCOMPARE(catalog.find(id)->launch.value("kind").toString(), QString("config"));
+        const QStringList preview = files.value("preview").toVariant().toStringList();
+        QCOMPARE(preview, QStringList({"setup.config.hyprland", "setup.input", "setup.keybindings", "config.shelljson", "config.shelltoml"}));
+        for (const auto &id : preview)
+            QVERIFY(bySection.value("Config files").contains(id));
+        QCOMPARE(catalog.page("advanced")->jumps, QStringList({"History", "Diagnostics", "Hooks", "Config files", "Developer tools", "Learn"}));
+    }
     void networkRefusesBadIds() {
         Sandbox s;
         s.command("nmcli", "exit 0");
@@ -4911,6 +4957,146 @@ esac)SH");
         QMetaObject::invokeMethod(dialog, "close");
         QTRY_VERIFY(!dialog->property("visible").toBool());
         QCOMPARE(s.calls().size(), before);
+    }
+
+    void theAdvancedPageShowsHistoryDiagnosticsAndTools() {
+        Sandbox s;
+        desktopFixture(s);
+        s.command("omarchy-launch-floating-terminal-with-presentation", "exit 0");
+        // Twelve records, every outcome among them, oldest first as the journal keeps them.
+        QByteArray journal;
+        auto add = [&](int i, const QString &setting, const QString &label, const QString &before, const QString &after, const QString &phase,
+                       const QString &message = {}, const QString &extra = {}) {
+            journal += QString(R"J({"id":"tx-%1","setting":"%2","label":"%3","kind":"setting","before":"%4","after":"%5","recovery":"","phase":"%6","message":"%7","at":"2026-11-0%8T12:%9:00Z"%10})J")
+                           .arg(i).arg(setting, label, before, after, phase, message).arg(i < 4 ? 5 : 6).arg(i, 2, 10, QChar('0')).arg(extra).toUtf8() + "\n";
+        };
+        add(1, "gone.one", "Window gaps", "5", "10", "committed");
+        add(2, "gone.two", "Repeat rate", "25", "40", "rolled-back", "Put back.");
+        add(3, "gone.three", "Scale", "1.25", "1.5", "partial");
+        add(4, "gone.four", "Font", "Iosevka", "Missing", "failed", "font not installed");
+        add(5, "gone.five", "Power profile", "balanced", "performance", "interrupted");
+        add(6, "gone.six", "Night light", "off", "on", "not-applied");
+        add(7, "gone.seven", "Theme", "Jade Horse", "Catppuccin", "committed", {}, R"J(,"undoneBy":"tx-8")J");
+        add(8, "gone.seven", "Theme", "Catppuccin", "Jade Horse", "committed");
+        add(9, "appearance.icons", "Icon pack", "pack:breeze", "follow-theme", "committed");
+        add(10, "appearance.icons", "Icon pack", "follow-theme", "pack:Yaru-blue", "committed");
+        add(11, "gone.eleven", "Mouse speed", "0", "0.5", "committed");
+        add(12, "gone.twelve", "Clock format", "24h", "12h", "committed");
+        writeFile(s.env.appStateDir + "/journal.jsonl", journal);
+        writeFile(s.env.configHome + "/omarchy/hooks/theme-set", "#!/bin/sh\n");
+        QFile::setPermissions(s.env.configHome + "/omarchy/hooks/theme-set", QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+        writeFile(s.env.configHome + "/omarchy/hooks/post-update.sample", "#!/bin/sh\n");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("advanced");
+
+        // A first look of nine, newest first, then all of them and back.
+        QTRY_COMPARE(page.named("historyRecord").size(), 9);
+        QCOMPARE(page.named("historyRecord").first()->property("recordId").toString(), QString("tx-12"));
+        QMetaObject::invokeMethod(page.named("historyShowAll").first(), "clicked");
+        QTRY_COMPARE(page.named("historyRecord").size(), 12);
+        QStringList outcomes;
+        for (QQuickItem *text : page.named("historyOutcome"))
+            outcomes << text->property("text").toString();
+        for (const char *expected : {"Done and confirmed", "Undone", "Failed, previous value restored", "Partly applied", "Not applied", "Interrupted; check the result"})
+            QVERIFY2(outcomes.contains(expected), expected);
+        // Undo only where the record allows it: not the undone one or those that did not land.
+        QCOMPARE(page.named("historyUndo").size(), 6);
+        QMetaObject::invokeMethod(page.named("historyShowAll").first(), "clicked");
+        QTRY_COMPARE(page.named("historyRecord").size(), 9);
+
+        // The filter reads labels, values as shown, and messages; the limit applies after it.
+        QQuickItem *filter = page.named("historyFilter").first();
+        filter->setProperty("text", "follow desktop");
+        QTRY_COMPARE(page.named("historyRecord").size(), 2);
+        filter->setProperty("text", "font not installed");
+        QTRY_COMPARE(page.named("historyRecord").size(), 1);
+        filter->setProperty("text", "nothing like this");
+        QTRY_COMPARE(page.named("historyRecord").size(), 0);
+        QCOMPARE(page.named("historyNoMatch").size(), 1);
+        QMetaObject::invokeMethod(page.named("historyClearFilter").first(), "clicked");
+        QTRY_COMPARE(page.named("historyRecord").size(), 9);
+
+        // Undo goes through the engine, which refuses a setting that no longer exists and says so.
+        QSignalSpy toasts(&page.backend, &Backend::toast);
+        QMetaObject::invokeMethod(page.named("historyUndo").first(), "clicked");
+        QTRY_VERIFY(!toasts.isEmpty());
+        QVERIFY(toasts.first().at(0).toString().contains("no longer exists"));
+        QTRY_VERIFY(page.named("historyUndo").first()->property("enabled").toBool());
+
+        // Four readings, two more inside the details, and a report kept on this computer.
+        QTRY_COMPARE(page.named("diagnosticsReading").size(), 4);
+        QMetaObject::invokeMethod(page.named("diagnosticsDetails").first(), "clicked");
+        QTRY_COMPARE(page.named("diagnosticsReading").size(), 6);
+        QVERIFY(page.named("compatWarning").isEmpty());
+        QMetaObject::invokeMethod(page.named("diagnosticsSave").first(), "clicked");
+        QTRY_VERIFY(s.calls().join('\n').contains("omarchy debug --no-sudo --print"));
+        QTRY_VERIFY(!page.named("diagnosticsSaved").isEmpty());
+        QVERIFY(page.named("diagnosticsSaved").first()->property("text").toString().contains("diagnostics-"));
+
+        // Config files: five first, the rest in place; the other sections closed with their counts.
+        QStringList rows = page.rowIds();
+        QCOMPARE(rows, QStringList({"setup.config.hyprland", "setup.input", "setup.keybindings", "config.shelljson", "config.shelltoml"}));
+        QCOMPARE(page.named("fileFolder").first()->property("text").toString(), QString("~/.config/hypr/"));
+        QMetaObject::invokeMethod(page.named("panelShowAll").first(), "clicked");
+        QTRY_COMPARE(page.rowIds().size(), 20);
+        QMetaObject::invokeMethod(page.named("panelShowAll").first(), "clicked");
+        QTRY_COMPARE(page.rowIds().size(), 5);
+
+        // Search lands in hidden places and lights the way there.
+        page.open("advanced", "config.uwsm");
+        QTRY_VERIFY(page.row("config.uwsm"));
+        QTRY_VERIFY(page.focusWithin(page.row("config.uwsm")));
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Config files"));
+        page.open("advanced", "terminal.herdr");
+        QTRY_VERIFY(page.row("terminal.herdr"));
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Developer tools"));
+        // A helper that is not installed says so, and its action waits.
+        QTRY_VERIFY(page.row("terminal.herdr")->property("unavailable").toBool());
+        page.open("advanced", "learn.bash");
+        QTRY_VERIFY(page.focusWithin(page.row("learn.bash")));
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Learn"));
+        page.open("advanced", "block.hooks");
+        QTRY_COMPARE(page.named("hookRow").size(), 1);
+        QCOMPARE(page.named("hookRow").first()->property("visible").toBool(), true);
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Hooks"));
+        page.open("advanced", "block.history");
+        QTRY_VERIFY(page.focusWithin(page.named("historyFilter").first()));
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("History"));
+
+        // The tools run their existing commands.
+        auto press = [&](const QString &id) {
+            for (QQuickItem *child : page.row(id)->findChildren<QQuickItem *>())
+                if (child->objectName() == "actionButton")
+                    QMetaObject::invokeMethod(child, "clicked");
+        };
+        page.open("advanced", "diagnostics.debug");
+        QTRY_VERIFY(page.row("diagnostics.debug"));
+        press("diagnostics.debug");
+        QTRY_VERIFY(s.calls().join('\n').contains("omarchy-debug --no-sudo --print"));
+        press("hook.install");
+        QTRY_VERIFY(s.calls().join('\n').contains("omarchy-hook-install --help"));
+    }
+    void theAdvancedPageHasNoHistoryOrHooksYetAndPausedCommands() {
+        Sandbox s;
+        s.env.enforceCompat = true;
+        desktopFixture(s);
+        // A Hyprland newer than the one tested pauses its overrides until accepted.
+        writeFile(s.bin("hyprctl"), readAll(s.bin("hyprctl")).replace("0.56.2", "0.57.0"));
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("advanced", "block.hooks");
+        QTRY_COMPARE(page.named("historyEmpty").size(), 1);
+        QVERIFY(page.named("historyFilter").isEmpty());
+        QTRY_COMPARE(page.named("hooksEmpty").size(), 1);
+        QTRY_COMPARE(page.named("compatWarning").size(), 1);
+        QCOMPARE(page.named("compatCommand").first()->property("text").toString(), QString("Hyprland 0.57.0"));
+        auto *dialog = page.window->findChild<QObject *>("confirmDialog");
+        QMetaObject::invokeMethod(page.named("compatResume").first(), "clicked");
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QVERIFY(!page.named("compatWarning").isEmpty());
+        QMetaObject::invokeMethod(dialog, "accept_");
+        QTRY_VERIFY(page.named("compatWarning").isEmpty());
     }
 
     void theBarEditorShowsTheModelItEdits() {

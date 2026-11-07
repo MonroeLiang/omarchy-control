@@ -16,7 +16,24 @@ Item {
     readonly property string title: qsTranslate("catalog", spec.title || section)
     readonly property string block: spec.block || ""
     readonly property var header: spec.header || null
-    readonly property var rows: spec.rows || []
+    readonly property var allRows: spec.rows || []
+    // A first look at a long list: the catalog's chosen few first, the rest on request.
+    readonly property var previewIds: spec.preview || []
+    property bool showAll: false
+    readonly property bool previewing: previewIds.length > 0 && !showAll && allRows.length > previewIds.length
+    readonly property var rows: {
+        if (!previewIds.length)
+            return allRows
+        var first = [], rest = []
+        for (var p = 0; p < previewIds.length; ++p)
+            for (var i = 0; i < allRows.length; ++i)
+                if (allRows[i].id === previewIds[p])
+                    first.push(allRows[i])
+        for (var j = 0; j < allRows.length; ++j)
+            if (previewIds.indexOf(allRows[j].id) < 0)
+                rest.push(allRows[j])
+        return previewing ? first : first.concat(rest)
+    }
     // Rows in runs: settings first, then actions, each split by the group it belongs
     // to, in the order the groups first appear, with a gap between runs.
     readonly property var runs: {
@@ -37,7 +54,8 @@ Item {
     readonly property bool inset: !!spec.inset
     // A long section can start closed behind its heading, with its size said there.
     readonly property bool collapsible: !!spec.collapsible
-    property bool expanded: !collapsible
+    // Some start open, still able to close, with their size said at the heading.
+    property bool expanded: !collapsible || !!spec.open
     readonly property var library: spec.library || []
     // Which library groups are open, by section name.
     property var open: ({})
@@ -53,8 +71,12 @@ Item {
     // can wait for the rows to be laid out before scrolling to one.
     function reveal(id) {
         var opened = false
-        if (collapsible && !expanded && rows.some(function (row) { return row.id === id })) {
+        if (collapsible && !expanded && allRows.some(function (row) { return row.id === id })) {
             expanded = true
+            opened = true
+        }
+        if (previewing && allRows.some(function (row) { return row.id === id }) && !rows.some(function (row) { return row.id === id })) {
+            showAll = true
             opened = true
         }
         for (var g = 0; g < library.length; ++g)
@@ -233,7 +255,7 @@ Item {
                     }
                     CountPill {
                         visible: root.collapsible
-                        count: root.rows.length
+                        count: root.allRows.length
                     }
                     AppIcon {
                         visible: root.collapsible
@@ -254,7 +276,7 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
                     Accessible.role: Accessible.Button
-                    Accessible.name: root.title + ", " + root.rows.length
+                    Accessible.name: root.title + ", " + root.allRows.length
                     Accessible.expandable: true
                     Accessible.expanded: root.expanded
                     onClicked: root.expanded = !root.expanded
@@ -348,9 +370,63 @@ Item {
                                         width: body.width
                                         entry: modelData
                                         rich: true
+                                        file: !!root.spec.files
                                         navigation: !!root.spec.navigation && modelData.type === "action"
-                                        last: parent.run === root.runs.length - 1 && index === runRows.count - 1
+                                        last: parent.run === root.runs.length - 1 && index === runRows.count - 1 && !root.previewIds.length
                                         highlighted: root.focusId === modelData.id
+                                    }
+                                }
+                            }
+                        }
+                        // The rest of a previewed list, in place.
+                        Item {
+                            visible: root.previewIds.length > 0 && root.allRows.length > root.previewIds.length
+                            width: parent.width
+                            height: visible ? moreButton.implicitHeight + 22 : 0
+                            AbstractButton {
+                                id: moreButton
+                                objectName: "panelShowAll"
+                                x: 14
+                                y: 10
+                                width: parent.width - 28
+                                implicitHeight: Math.max(Math.round(theme.fontSize * 2.8), moreRow.implicitHeight + 16)
+                                focusPolicy: Qt.StrongFocus
+                                hoverEnabled: true
+                                Accessible.role: Accessible.Button
+                                Accessible.name: moreLabel.text
+                                Accessible.expandable: true
+                                Accessible.expanded: root.showAll
+                                onClicked: root.showAll = !root.showAll
+                                background: Rectangle {
+                                    radius: theme.controlRadius
+                                    color: moreButton.hovered ? Qt.alpha(theme.foreground, 0.06) : Qt.alpha(theme.foreground, 0.025)
+                                    border.width: moreButton.visualFocus ? 2 : 1
+                                    border.color: moreButton.visualFocus ? theme.accent : theme.hairline
+                                }
+                                contentItem: Item {
+                                    RowLayout {
+                                        id: moreRow
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.leftMargin: 16
+                                        anchors.rightMargin: 14
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 12
+                                        AppText {
+                                            id: moreLabel
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.Wrap
+                                            text: root.spec.files
+                                                  ? (root.showAll ? qsTr("Show fewer files") : qsTr("Show all %1 files").arg(root.allRows.length))
+                                                  : (root.showAll ? qsTr("Show fewer") : qsTr("Show all %1").arg(root.allRows.length))
+                                        }
+                                        AppIcon {
+                                            name: "chevron"
+                                            size: 16
+                                            tint: theme.muted
+                                            rotation: root.showAll ? 180 : 0
+                                            Behavior on rotation { enabled: theme.animate; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                                        }
                                     }
                                 }
                             }

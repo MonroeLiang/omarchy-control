@@ -130,6 +130,8 @@ QVariantMap CatalogEntry::toVariant() const {
     m["launchKind"] = launch.value("kind").toString();
     m["linkPage"] = launch.value("page").toString();
     m["linkFocus"] = launch.value("focus").toString();
+    // The file a config editor opens, for rows that present it as a file.
+    m["file"] = launch.value("file").toString();
     // Technical details stay out of the row until someone expands them.
     QStringList details;
     if (launch.contains("command"))
