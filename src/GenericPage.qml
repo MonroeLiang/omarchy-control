@@ -225,10 +225,28 @@ ScrollView {
         }
         if (!target)
             return
+        // The section search landed in is the one lit, even where a taller neighbor beside
+        // it crosses the reading line first.
+        var holder = composed ? holderOf(target) : null
+        jumping = !!holder
         var y = target.mapToItem(column, 0, 0).y
         contentItem.contentY = Math.max(0, Math.min(y - 24, column.implicitHeight - availableHeight + 40))
-        if (target.takeFocus)
+        if (holder) {
+            pinnedTab = holder.jumpLabel
+            if (target.takeFocus)
+                target.takeFocus()
+            land(null)
+        } else if (target.takeFocus) {
             target.takeFocus()
+        }
+    }
+    function holderOf(item) {
+        var panels = panelItems()
+        for (var it = item; it; it = it.parent)
+            for (var i = 0; i < panels.length; ++i)
+                if (panels[i] === it)
+                    return panels[i].jumpTarget && panels[i].jumpLabel ? panels[i] : null
+        return null
     }
     onFocusIdChanged: settleTimer.restart()
     Timer {

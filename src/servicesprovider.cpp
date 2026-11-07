@@ -1,5 +1,7 @@
 #include "servicesprovider.h"
 
+#include "iconthemes.h"
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -177,14 +179,23 @@ QVariantList ServicesProvider::readStartup(const Env &env) {
             row["name"] = values.value("Name", existing.value("name", file.baseName()).toString());
             row["comment"] = values.value("Comment", existing.value("comment").toString());
             row["exec"] = values.value("Exec", existing.value("exec").toString());
+            row["iconName"] = values.value("Icon", existing.value("iconName").toString());
             row["enabled"] = values.value("Hidden") != QLatin1String("true") && values.value("X-GNOME-Autostart-enabled") != QLatin1String("false");
             row["source"] = user ? (existing.isEmpty() ? "user" : "override") : "system";
             rows.insert(file.fileName(), row);
         }
     }
     QVariantList list;
-    for (const auto &row : std::as_const(rows))
+    // Each entry's own icon from the desktop's icon theme, where it names one.
+    const QString theme = IconThemes::desktopDefault(env);
+    QHash<QString, QString> icons;
+    for (auto row : std::as_const(rows)) {
+        const QString name = row.value("iconName").toString();
+        if (!icons.contains(name))
+            icons.insert(name, name.isEmpty() ? QString() : IconThemes::appIconUrl(env, theme, {name}));
+        row["icon"] = icons.value(name);
         list << row;
+    }
     std::sort(list.begin(), list.end(), [](const QVariant &a, const QVariant &b) {
         return a.toMap().value("name").toString().localeAwareCompare(b.toMap().value("name").toString()) < 0;
     });
