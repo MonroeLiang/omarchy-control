@@ -27,6 +27,7 @@ struct Transaction {
     bool beforeWasDefault = false;
     QString undoneBy;
     QJsonObject files;  // path -> {before, after, backup}
+    QJsonObject extra;  // What a setting needs to go back that files cannot hold, such as GSettings.
 
     bool finished() const;
     bool undoable() const;
@@ -50,6 +51,9 @@ public:
         bool beforeWasDefault = false;
         QStringList files;
         QHash<QString, QString> expectedFingerprints;  // Reconcile instead of overwrite.
+        QJsonObject extra;  // Kept on the transaction, for undoing it later.
+        // For an action with no earlier value, where a failure has nothing to report but itself.
+        bool nothingToRestore = false;
         Step apply;
         Step verify;
         Step rollback;  // Beyond restoring `files`; optional.

@@ -28,7 +28,7 @@ private:
     void loadAccepted();
 
     Env m_env;
-    QHash<QString, QString> m_settingToBinary;
+    QHash<QString, QStringList> m_settingToBinaries;
     QHash<QString, QString> m_reviewed;
     QHash<QString, QString> m_accepted;
     QString m_baselineOmarchy, m_baselineHyprland;

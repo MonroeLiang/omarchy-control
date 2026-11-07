@@ -84,6 +84,65 @@ printf 'Discharging\n' >"$ROOT/sys-root/sys/class/power_supply/BAT0/status"
 printf '10\n' >"$ROOT/sys-root/sys/class/dmi/id/chassis_type"
 printf 'Example Laptop 14\n' >"$ROOT/sys-root/sys/class/dmi/id/product_name"
 printf 'Example\n' >"$ROOT/sys-root/sys/class/dmi/id/sys_vendor"
+# Fictional icon packs, drawn here, so the picker has something to show.
+python3 - "$ROOT/sys-root/usr/share/icons" <<'PY'
+import os, sys
+root = sys.argv[1]
+INDEX = """[Icon Theme]
+Name=%s
+Comment=A fictional pack for the sandbox
+Inherits=hicolor
+Directories=scalable/apps,scalable/places,scalable/mimetypes
+
+[scalable/apps]
+Size=48
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+[scalable/places]
+Size=48
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+[scalable/mimetypes]
+Size=48
+MinSize=8
+MaxSize=512
+Type=Scalable
+"""
+def folder(a, b, r):
+    return f'<rect x="4" y="12" width="40" height="30" rx="{r}" fill="{a}"/><path d="M4 16v-4a{r} {r} 0 0 1 {r}-{r}h12l5 5h-{17+r}z" fill="{b}"/>'
+def document(a, b, r):
+    return f'<rect x="10" y="4" width="28" height="40" rx="{r}" fill="#f4f1ea"/><rect x="15" y="13" width="18" height="3" fill="{a}"/><rect x="15" y="21" width="18" height="3" fill="{b}"/><rect x="15" y="29" width="11" height="3" fill="{b}"/>'
+def terminal(a, b, r):
+    return f'<rect x="4" y="8" width="40" height="32" rx="{r}" fill="#20232a"/><path d="M11 17l7 7-7 7" stroke="{a}" stroke-width="3" fill="none"/><rect x="22" y="29" width="12" height="3" fill="{b}"/>'
+def browser(a, b, r):
+    return f'<circle cx="24" cy="24" r="20" fill="{a}"/><path d="M4 24h40M24 4c8 6 8 34 0 40M24 4c-8 6-8 34 0 40" stroke="{b}" stroke-width="2.5" fill="none"/>'
+def write(pack, sub, name, body):
+    path = f"{root}/{pack}/scalable/{sub}"
+    os.makedirs(path, exist_ok=True)
+    open(f"{path}/{name}.svg", "w").write(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">{body}</svg>')
+for pack, name, a, b, r in [
+    ("Harbor", "Harbor", "#4a90d9", "#2c6cb0", 4),
+    ("Harbor-Dark", "Harbor Dark", "#5a6b86", "#3c4a60", 4),
+    ("Lantern", "Lantern", "#e8a33d", "#c07f1f", 8),
+    ("Moss", "Moss", "#7fa650", "#5b7f33", 2),
+    ("Plum", "Plum", "#9b6bc2", "#774a9c", 10),
+    ("Slate", "Slate", "#8894a3", "#677383", 0),
+    ("Yaru-blue", "Yaru-blue", "#3584e4", "#1c71d8", 6),
+]:
+    os.makedirs(f"{root}/{pack}", exist_ok=True)
+    open(f"{root}/{pack}/index.theme", "w").write(INDEX % name)
+    write(pack, "places", "folder", folder(a, b, r))
+    write(pack, "mimetypes", "text-x-generic", document(a, b, r))
+    write(pack, "apps", "utilities-terminal", terminal(a, b, r))
+    write(pack, "apps", "web-browser", browser(a, b, r))
+PY
+printf 'Yaru-blue' >"$H/.fake-icon-theme"
+cp "$HERE/fake-gsettings" "$ROOT/bin/gsettings"
+cp "$HERE/fake-dconf" "$ROOT/bin/dconf"
 cp "$HERE/fake-omarchy" "$ROOT/bin/omarchy"
 cp "$HERE/fake-hyprctl" "$ROOT/bin/hyprctl"
 for tool in pactl nmcli bluetoothctl systemctl timedatectl xdg-mime; do

@@ -1,6 +1,8 @@
 <RCC>
     <qresource prefix="/">
         <file alias="AppButton.qml">AppButton.qml</file>
+        <file alias="IconPackTiles.qml">IconPackTiles.qml</file>
+        <file alias="IconFolderDialog.qml">IconFolderDialog.qml</file>
         <file alias="AppCombo.qml">AppCombo.qml</file>
         <file alias="AppField.qml">AppField.qml</file>
         <file alias="AppIcon.qml">AppIcon.qml</file>

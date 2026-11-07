@@ -1,0 +1,5 @@
+#!/bin/bash
+# Says whether the sandbox's one key was ever set, the way `dconf read` does.
+state="$HOME/.fake-icon-theme"
+[ -f "$state" ] && printf "'%s'\n" "$(cat "$state")"
+exit 0

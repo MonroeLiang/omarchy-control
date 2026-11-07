@@ -1,0 +1,8 @@
+#!/bin/bash
+# The one GSettings key the sandbox has, in a file. Never touches the real session.
+state="$HOME/.fake-icon-theme"
+case "$1" in
+  get) if [ -f "$state" ]; then printf "'%s'\n" "$(cat "$state")"; else printf "'Adwaita'\n"; fi;;
+  set) printf '%s' "$4" >"$state";;
+  reset) rm -f "$state";;
+esac

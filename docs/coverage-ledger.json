@@ -1,7 +1,7 @@
 {
     "claimedCommands": 301,
     "claimedMenu": 356,
-    "entries": 493,
+    "entries": 495,
     "excludedCommands": 132,
     "excludedMenu": 0,
     "exclusions": {
@@ -470,6 +470,40 @@
             "supported_versions": "omarchy 4.5.x",
             "validation_evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
             "write_or_launch_method": "cmd"
+        },
+        {
+            "applicable_capability": [
+                "gsettings"
+            ],
+            "apply_restart_semantics": "Open apps may need reopening to show the new icons.",
+            "domain": "C01",
+            "id": "appearance.icons",
+            "implementation_status": "implemented",
+            "integration_mode": "native",
+            "known_limitation": "",
+            "read_method": "icons",
+            "recovery_class": "auto-undo",
+            "searchable_labels": [
+                "Icon pack",
+                "icon theme",
+                "icon set",
+                "icons",
+                "app icons",
+                "folder icons",
+                "file icons",
+                "gnome tweaks",
+                "papirus",
+                "yaru"
+            ],
+            "source_references": [
+                "gsettings get org.gnome.desktop.interface icon-theme",
+                "gsettings set org.gnome.desktop.interface icon-theme",
+                "omarchy-theme-set-gnome",
+                "appearance.icons"
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+            "write_or_launch_method": "icons"
         },
         {
             "applicable_capability": [
@@ -11800,12 +11834,37 @@
             "supported_versions": "omarchy 4.5.x",
             "validation_evidence": "route-reviewed",
             "write_or_launch_method": "url"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C01",
+            "id": "appearance.icons.import",
+            "implementation_status": "implemented",
+            "integration_mode": "native",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Import an icon pack",
+                "install icons",
+                "add icon pack",
+                "icon theme folder",
+                "drag and drop icons"
+            ],
+            "source_references": [
+                "omarchy-control icons import"
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "page"
         }
     ],
     "modes": {
         "advanced-config": 22,
         "external-helper": 19,
-        "native": 96,
+        "native": 98,
         "omarchy-panel": 22,
         "omarchy-wizard": 334
     },

@@ -25,11 +25,16 @@ Item {
     readonly property bool pinned: backend.pins.indexOf(entryId) >= 0
     readonly property bool hasDetails: (entry.details || []).length > 0
     readonly property bool actionsRevealed: hover.hovered || pinButton.activeFocus || detailsButton.activeFocus
-    readonly property bool tiles: rich && (entryId === "appearance.theme" || entryId === "appearance.background")
+    readonly property bool packTiles: rich && entryId === "appearance.icons"
+    readonly property bool tiles: rich && (entryId === "appearance.theme" || entryId === "appearance.background" || packTiles)
     readonly property string unitSuffix: !entry.unit ? "" : entry.unit === "%" ? "%" : " " + entry.unit
 
     // Search lands on a row and leaves the keyboard there, ready to change it.
     function takeFocus() {
+        if (root.packTiles && packLoader.item) {
+            packLoader.item.takeFocus()
+            return
+        }
         if (control.item && control.item.enabled && root.kind !== "slider" && root.kind !== "float" && root.kind !== "int")
             control.item.forceActiveFocus(Qt.TabFocusReason)
         else if (actionButton.visible && actionButton.enabled)
@@ -226,7 +231,7 @@ Item {
             Layout.fillWidth: true
             Layout.topMargin: 8
             Layout.bottomMargin: 4
-            active: root.tiles
+            active: root.tiles && !root.packTiles
             visible: active
             sourceComponent: ChoiceTiles {
                 enabled_: root.editable
@@ -242,10 +247,28 @@ Item {
             }
         }
 
+        Loader {
+            id: packLoader
+            Layout.fillWidth: true
+            Layout.topMargin: 8
+            Layout.bottomMargin: 4
+            active: root.packTiles
+            visible: active
+            sourceComponent: IconPackTiles {
+                enabled_: !!root.entry.editable && !root.unavailable && root.status !== "custom"
+                busy: root.busy
+                loading: root.status === "loading" || !!root.st.loading
+                current: root.st.value === undefined ? "" : root.st.value
+                choices: root.st.choices || []
+                details: root.st.extra || ({})
+                onPicked: function (value) { win.requestChange(root.entryId, value) }
+            }
+        }
+
         AppText {
             // Only worth a line when it explains something: an inherited value is the
             // normal case, and saying so on every row is noise.
-            visible: !root.compact && !!root.st.isOverride && root.entry.owned === true && root.status === "ok"
+            visible: !root.compact && !!root.st.isOverride && root.entry.owned === true && root.status === "ok" && !root.packTiles
             text: root.st.source || ""
             secondary: true
             scale_: 0.88

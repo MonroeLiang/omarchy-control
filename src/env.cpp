@@ -13,6 +13,16 @@ static QString envOr(const QProcessEnvironment &process, const char *key, const 
     return value.isEmpty() ? fallback : value;
 }
 
+// The base directory spec ignores relative paths, because they would mean something
+// different in every working directory.
+static QStringList absolutePaths(const QString &list) {
+    QStringList paths;
+    for (const QString &path : list.split(':', Qt::SkipEmptyParts))
+        if (QDir::isAbsolutePath(path) && !paths.contains(QDir::cleanPath(path)))
+            paths << QDir::cleanPath(path);
+    return paths;
+}
+
 Env Env::system() {
     Env env;
     env.process = QProcessEnvironment::systemEnvironment();
@@ -29,6 +39,11 @@ Env Env::system() {
     env.omarchyPath = envOr(env.process, "OMARCHY_PATH", "/usr/share/omarchy");
     env.process.insert("OMARCHY_PATH", env.omarchyPath);
     env.sysRoot = "/";
+    const QString dataHome = env.process.value("XDG_DATA_HOME");
+    env.dataHome = QDir::isAbsolutePath(dataHome) ? QDir::cleanPath(dataHome) : env.home + "/.local/share";
+    env.dataDirs = absolutePaths(env.process.value("XDG_DATA_DIRS"));
+    if (env.dataDirs.isEmpty())
+        env.dataDirs = QStringList{"/usr/local/share", "/usr/share"};
     env.selfBinary = QCoreApplication::applicationFilePath();
     env.enforceCompat = true;
     return env;
@@ -45,6 +60,8 @@ Env Env::sandbox(const QString &root, const QString &binDirectory) {
     env.runtimeDir = root + "/run";
     env.omarchyPath = root + "/omarchy";
     env.sysRoot = root + "/sys-root";
+    env.dataHome = env.home + "/.local/share";
+    env.dataDirs = QStringList{env.sysRoot + "/usr/local/share", env.sysRoot + "/usr/share"};
     env.selfBinary = QCoreApplication::applicationFilePath();
     for (const QString &dir : {env.configHome, env.stateHome, env.runtimeDir, env.omarchyPath, env.sysRoot, binDirectory})
         QDir().mkpath(dir);
@@ -55,6 +72,8 @@ Env Env::sandbox(const QString &root, const QString &binDirectory) {
     env.process.insert("XDG_RUNTIME_DIR", env.runtimeDir);
     env.process.insert("XDG_CONFIG_HOME", env.configHome);
     env.process.insert("XDG_STATE_HOME", env.stateHome);
+    env.process.insert("XDG_DATA_HOME", env.dataHome);
+    env.process.insert("XDG_DATA_DIRS", env.dataDirs.join(':'));
     env.process.insert("OMARCHY_PATH", env.omarchyPath);
     // Only plain file utilities come from the system, never anything that talks to
     // the session, so a test without a fake cannot reach the real desktop by accident.

@@ -8,12 +8,12 @@ Generated from the catalog by `bin/coverage` into the [ledger](coverage-ledger.j
 
 | Route | Count |
 | --- | --- |
-| Native typed settings and pages | 96 |
+| Native typed settings and pages | 98 |
 | Omarchy panels | 22 |
 | Guided setup routes | 334 |
 | Specialist apps and links | 19 |
 | Advanced config files | 22 |
-| **Total destinations** | **493** |
+| **Total destinations** | **495** |
 
 | Inventory | Routed | Excluded with a reason | Unclassified |
 | --- | --- | --- | --- |
@@ -22,10 +22,10 @@ Generated from the catalog by `bin/coverage` into the [ledger](coverage-ledger.j
 
 | Validation | Count |
 | --- | --- |
-| Writable settings verified on real Hyprland, the real shell, and real scripts, in an isolated nested session | 50 of 64 |
-| Settings with a live read on real hardware | 76 of 76 |
-| Routes resolved to an installed executable, none launched | 389 of 390 |
-| Writes performed on the real desktop session | 0; see [live checks](LIVE-CHECKS.md) |
+| Writable settings verified on real Hyprland, the real shell, and real scripts, in an isolated nested session | 50 of 65 |
+| Settings with a live read on real hardware | 77 of 77 |
+| Routes resolved to an installed executable, none launched | 391 of 392 |
+| Writes performed on the real desktop session by automated checks | 1 by accident, restored; see [live checks](LIVE-CHECKS.md) |
 
 The ledger only says `verified` for a recorded live write. Exclusions and their reasons are in `src/data/coverage-exclusions.json`. `omarchy-control coverage --live` re-reads Omarchy's commands, and a test fails on any new one with no destination.
 

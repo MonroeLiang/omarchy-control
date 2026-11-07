@@ -10,6 +10,7 @@
   "omarchy-dock": "48fe209d9ffcd6841e8175a4b25c285ab7500c0fe557a307886296173ccbe139",
   "omarchy-font-cjk": "8268aef6515ce8bbf0a155d1635eefe454eb21eb1c9f8f81ad25fa5f13d34a45",
   "omarchy-font-set": "cf84a00d9944c8e91703931f018bed564d185f798f0caec22d34f773e507ee17",
+  "omarchy-hook": "2fc588a8bffd9deaeec180b689f187fb207caf7fbff79c2cc9df57eb59cdb140",
   "omarchy-hyprland-corners": "f6295c50cbe17db18e191975bdfad87f510e875baec9d278516cf6cedf5fad76",
   "omarchy-hyprland-monitor-scaling": "a65db542eec9b4df022a1520f16d73b45cbe0e090702419980fa1ca0d378f696",
   "omarchy-hyprland-toggle": "458e3a8aba130d0579b7ed8757299c1ada03ec487fc2d442e49a0a7e668b6aca",
@@ -21,6 +22,7 @@
   "omarchy-shell": "fd1ac699c5d83846c8eb530ead22792be61b9704f68e64caa63f7243d170fa24",
   "omarchy-theme-bg-set": "865beafef7643dc4aac6f2eca06d68808c197d39fba7fedaba75892cfd050a1a",
   "omarchy-theme-set": "ab251f6cf6e07c6e07b0c4177220e4691d04a872c03694f2bdc606e17facd9da",
+  "omarchy-theme-set-gnome": "942bb8fd260387a39ef664c3b172d1fe1baff265a2592a26d8efe118f35a19aa",
   "omarchy-toggle-animations": "911377069712ade3cded671a0a3d9ee118c10c23702e266486d330e6cf83f49e",
   "omarchy-toggle-bar": "936660563a3f853eb8aa6094ae45c7a4800024226465393d5c1848319fd31e30",
   "omarchy-toggle-crash-capture": "673b86c866c60bcb182ee0b03b74747beb55fda2cf1f42dc182f4dd8ccb9ad93",
@@ -42,6 +44,11 @@
   "appearance.font": "omarchy-font-set",
   "appearance.fontcjk": "omarchy-font-cjk",
   "appearance.gaps": "omarchy-hyprland-toggle",
+  "appearance.icons": [
+   "omarchy-hook",
+   "omarchy-theme-set",
+   "omarchy-theme-set-gnome"
+  ],
   "appearance.singlewindow": "omarchy-hyprland-toggle",
   "appearance.textsize": "omarchy-display-text-size",
   "appearance.theme": "omarchy-theme-set",

@@ -47,6 +47,9 @@
 #include "helperlauncher.h"
 #include "hypromodule.h"
 #include "iconprovider.h"
+#include "iconthemeimporter.h"
+#include "iconthemeprovider.h"
+#include "iconthemes.h"
 #include "networkprovider.h"
 #include "pluginsprovider.h"
 #include "servicesprovider.h"
@@ -123,6 +126,55 @@ QStringList argvOf(const QJsonObject &action) {
     for (const auto &part : action.value("argv").toArray())
         out << part.toString();
     return out;
+}
+
+const char kSvg[] = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 48 48\"><rect width=\"48\" height=\"48\" fill=\"#ff0000\"/></svg>";
+
+// A pack on disk, shaped as the spec describes. `icons` are placed in its scalable folder.
+void addPack(const QString &root, const QString &id, const QStringList &icons = {"folder", "text-x-generic", "utilities-terminal", "web-browser"},
+             const QString &inherits = {}, const QByteArray &extra = {}) {
+    QByteArray index = "[Icon Theme]\nName=" + id.toUtf8() + "\n" + extra;
+    if (!inherits.isEmpty())
+        index += "Inherits=" + inherits.toUtf8() + "\n";
+    index += "Directories=48x48/apps,scalable/apps\n\n[48x48/apps]\nSize=48\nType=Fixed\n\n[scalable/apps]\nSize=48\nMinSize=8\nMaxSize=512\nType=Scalable\n";
+    writeFile(root + "/" + id + "/index.theme", index);
+    QDir().mkpath(root + "/" + id + "/48x48/apps");
+    for (const QString &icon : icons)
+        writeFile(root + "/" + id + "/scalable/apps/" + icon + ".svg", kSvg);
+}
+
+// Icon packs and a fake session. Yaru-blue is what Omarchy's fallback names.
+struct IconDesk {
+    Sandbox &s;
+    QString user, system;
+    explicit IconDesk(Sandbox &sandbox) : s(sandbox), user(sandbox.env.dataHome + "/icons"), system(sandbox.env.dataDirs.last() + "/icons") {
+        s.command("gsettings", kFakeGsettings);
+        s.command("dconf", kFakeDconf);
+        addPack(system, "Yaru-blue");
+        addPack(system, "Papirus");
+        addPack(system, "Numix");
+    }
+    QString effective() const { return QString::fromUtf8(readAll(s.env.home + "/.fake-icon-theme")); }
+    void setEffective(const QString &value) const { writeFile(s.env.home + "/.fake-icon-theme", value.toUtf8()); }
+    bool isUnset() const { return !QFile::exists(s.env.home + "/.fake-icon-theme"); }
+    void themeAsks(const QString &id) const { writeFile(s.env.stateHome + "/omarchy/current/theme/icons.theme", id.toUtf8() + "\n"); }
+    QString policy() const { return s.env.appConfigDir + "/icons.json"; }
+    QString hook() const { return s.env.configHome + "/omarchy/hooks/theme-set.d/90-omarchy-control-icons"; }
+    int writes() const {
+        int count = 0;
+        for (const QString &call : s.calls())
+            if (call.startsWith("gsettings set") || call.startsWith("gsettings reset"))
+                ++count;
+        return count;
+    }
+};
+
+QString importPack(IconThemeImporter &importer, const QString &folder) {
+    QSignalSpy finished(&importer, &IconThemeImporter::finished);
+    importer.choosePath(folder);
+    if (importer.busy())
+        finished.wait(30000);
+    return importer.state();
 }
 
 }  // namespace
@@ -3546,6 +3598,1132 @@ private:
         s.command("df", "exit 0");
         writeFile(s.env.configHome + "/omarchy/shell.json", "{}");
     }
+
+private slots:
+    // --- Icon packs ---
+
+    void iconPacksComeFromEveryRootWithHiddenAndCursorOnesLeftOut() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(s.env.home + "/.icons", "Legacy");
+        addPack(desk.user, "Mine");
+        addPack(desk.system, "Secret", {"folder"}, {}, "Hidden=true\n");
+        addPack(desk.system, "follow-theme");
+        writeFile(desk.system + "/CursorOnly/index.theme", "[Icon Theme]\nName=Pointers\nInherits=Adwaita\n");
+        writeFile(desk.system + "/LooseIcons/some.png", "x");
+        writeFile(desk.system + "/Broken/index.theme", "no group here\n");
+        QStringList ids;
+        for (const IconPack &pack : IconThemes::discover(s.env))
+            ids << pack.id;
+        QCOMPARE(ids, QStringList({"follow-theme", "Legacy", "Mine", "Numix", "Papirus", "Yaru-blue"}));
+
+        // What is in use stays visible, hidden or not, and a pack's name is not a mode.
+        QVERIFY(std::any_of(IconThemes::discover(s.env, "Secret").cbegin(), IconThemes::discover(s.env, "Secret").cend(), [](const IconPack &p) { return p.id == "Secret"; }));
+        AppCore core(s.env);
+        QCOMPARE(core.engine.plan("appearance.icons", "follow-theme", {{QVariantMap{{"value", "pack:follow-theme"}}}, {QVariantMap{{"value", "follow-theme"}}}}).normalized, QString("follow-theme"));
+        QCOMPARE(IconThemeProvider::normalizeChoice("follow-theme"), QString("follow-theme"));
+        QCOMPARE(IconThemeProvider::normalizeChoice("pack:follow-theme"), QString("pack:follow-theme"));
+        QCOMPARE(IconThemeProvider::normalizeChoice("Papirus"), QString("pack:Papirus"));
+    }
+
+    void aThemeSpreadAcrossRootsIsOneTheme() {
+        Sandbox s;
+        IconDesk desk(s);
+        // The user's copy of a descriptor wins, and the system copy's folders still count.
+        addPack(desk.user, "Papirus", {"folder"}, {}, "Comment=Mine\n");
+        const IconPack pack = IconThemes::load(s.env, "Papirus");
+        QCOMPARE(pack.comment, QString("Mine"));
+        QCOMPARE(pack.locations.size(), 2);
+        QVERIFY(pack.indexPath.startsWith(desk.user));
+        QString from;
+        QVERIFY(IconThemes::findIcon(s.env, "Papirus", {"utilities-terminal"}, 48, &from).startsWith(desk.system));
+        QVERIFY(IconThemes::findIcon(s.env, "Papirus", {"folder"}, 48, &from).startsWith(desk.user));
+        int seen = 0;
+        for (const IconPack &each : IconThemes::discover(s.env))
+            seen += each.id == "Papirus" ? 1 : 0;
+        QCOMPARE(seen, 1);
+    }
+
+    void aPackNameIsTranslatedButItsIdIsNot() {
+        const IconPack pack = IconThemes::parseIndex("[Icon Theme]\nName=Blue\nName[de]=Blau\nName[pt_BR]=Azul\nDirectories=a\n[a]\nSize=48\n", "the-id", "de_DE");
+        QCOMPARE(pack.name, QString("Blau"));
+        QCOMPARE(pack.id, QString("the-id"));
+        QCOMPARE(IconThemes::parseIndex("[Icon Theme]\nName=Blue\nName[pt_BR]=Azul\n", "x", "pt_BR").name, QString("Azul"));
+        QCOMPARE(IconThemes::parseIndex("[Icon Theme]\nName=Blue\n", "x", "fr_FR").name, QString("Blue"));
+        QVERIFY(!IconThemes::parseIndex("Name=Blue\n", "x").found);
+        // A pack does not get to point lookups outside itself.
+        QVERIFY(IconThemes::parseIndex("[Icon Theme]\nDirectories=../../etc,/etc\n[../../etc]\nSize=48\n[/etc]\nSize=48\n", "x").directories.isEmpty());
+    }
+
+    void dataRootsFollowTheEnvironmentAndIgnoreRelativePaths() {
+        const QByteArray home = qgetenv("XDG_DATA_HOME"), dirs = qgetenv("XDG_DATA_DIRS");
+        qputenv("XDG_DATA_HOME", "/custom/data");
+        qputenv("XDG_DATA_DIRS", "/a:relative/b:/c:/a");
+        Env env = Env::system();
+        QCOMPARE(env.dataHome, QString("/custom/data"));
+        QCOMPARE(env.dataDirs, QStringList({"/a", "/c"}));
+        QCOMPARE(IconThemes::searchRoots(env).first(), QString("/custom/data/icons"));
+        qputenv("XDG_DATA_HOME", "not/absolute");
+        qunsetenv("XDG_DATA_DIRS");
+        env = Env::system();
+        QCOMPARE(env.dataHome, env.home + "/.local/share");
+        QCOMPARE(env.dataDirs, QStringList({"/usr/local/share", "/usr/share"}));
+        home.isNull() ? qunsetenv("XDG_DATA_HOME") : qputenv("XDG_DATA_HOME", home);
+        dirs.isNull() ? qunsetenv("XDG_DATA_DIRS") : qputenv("XDG_DATA_DIRS", dirs);
+    }
+
+    void aPreviewOnlyEverShowsThatPacksOwnChain() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(desk.system, "Parent", {"folder", "web-browser"});
+        addPack(desk.system, "Child", {"folder"}, "Parent");
+        addPack(desk.system, "Unrelated", {"secret-icon"});
+        addPack(desk.system, "hicolor", {"last-resort"});
+        QString from;
+        QVERIFY(IconThemes::findIcon(s.env, "Child", {"folder"}, 48, &from).contains("/Child/"));
+        QCOMPARE(from, QString("Child"));
+        QVERIFY(IconThemes::findIcon(s.env, "Child", {"web-browser"}, 48, &from).contains("/Parent/"));
+        QCOMPARE(from, QString("Parent"));
+        QVERIFY(IconThemes::findIcon(s.env, "Child", {"secret-icon"}, 48, &from).isEmpty());
+        QVERIFY(IconThemes::findIcon(s.env, "Child", {"last-resort"}, 48, &from).contains("/hicolor/"));
+
+        // A family that inherits in a circle, or from something missing, still ends.
+        addPack(desk.system, "LoopA", {"a"}, "LoopB,NotInstalled");
+        addPack(desk.system, "LoopB", {"b"}, "LoopA");
+        QVERIFY(IconThemes::findIcon(s.env, "LoopA", {"nothing"}, 48).isEmpty());
+        QVERIFY(IconThemes::findIcon(s.env, "LoopA", {"b"}, 48).contains("/LoopB/"));
+        QVERIFY(IconThemes::findIcon(s.env, "../Unrelated", {"secret-icon"}, 48).isEmpty());
+
+        // The tile says so when nothing shown is really the pack's own.
+        addPack(desk.system, "Sparse", {"unrelated"}, "Parent");
+        AppCore core(s.env);
+        QCOMPARE(core.icons.samples("Sparse").value("borrowedFrom").toString(), QString("Parent"));
+        QCOMPARE(core.icons.samples("Child").value("borrowedFrom").toString(), QString());
+        const auto samples = core.icons.samples("Child").value("samples").toList();
+        QCOMPARE(samples.size(), 4);
+        QVERIFY(samples.first().toMap().value("url").toString().startsWith("image://iconpacks/Child/folder/"));
+    }
+
+    void previewsDrawBoundedAndNeverTouchTheThemeInUse() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(desk.system, "A Pack With Spaces");
+        IconPackImageProvider provider(s.env);
+        QVERIFY(provider.flags() & QQmlImageProviderBase::ForceAsynchronousImageLoading);
+        QSize size;
+        QImage image = provider.requestImage("A%20Pack%20With%20Spaces/folder/1", &size, QSize(64, 64));
+        QCOMPARE(size, QSize(64, 64));
+        QCOMPARE(image.pixelColor(32, 32), QColor("#ff0000"));
+        // An absurd request is limited, and a missing sample is an empty square, not a failure.
+        QCOMPARE(provider.requestImage("Papirus/folder/1", &size, QSize(9000, 9000)).size(), QSize(192, 192));
+        QCOMPARE(provider.requestImage("Papirus/nonsense/1", &size, QSize(32, 32)).pixelColor(16, 16).alpha(), 0);
+        QCOMPARE(provider.requestImage("NotInstalled/folder/1", &size, QSize(32, 32)).pixelColor(16, 16).alpha(), 0);
+        QByteArray huge = kSvg;
+        huge.append(QByteArray(3 * 1024 * 1024, ' '));
+        writeFile(desk.system + "/Papirus/scalable/apps/web-browser.svg", huge);
+        QCOMPARE(provider.requestImage("Papirus/browser/1", &size, QSize(32, 32)).pixelColor(16, 16).alpha(), 0);
+        QCOMPARE(desk.writes(), 0);
+    }
+
+    void gsettingsOutputIsReadAsAGVariantString() {
+        bool ok = false;
+        QCOMPARE(IconThemes::parseGVariantString("'Yaru-blue'\n", &ok), QString("Yaru-blue"));
+        QVERIFY(ok);
+        QCOMPARE(IconThemes::parseGVariantString("\"a b'c\"\n", &ok), QString("a b'c"));
+        QVERIFY(ok);
+        QCOMPARE(IconThemes::parseGVariantString("'it\\'s'", &ok), QString("it's"));
+        QVERIFY(ok);
+        IconThemes::parseGVariantString("@ms nothing", &ok);
+        QVERIFY(!ok);
+    }
+
+    void iniEditsTouchOnlyTheValue() {
+        QByteArray doc = "# keep me\r\n[Other]\ngtk-icon-theme-name = untouched\n\n[Settings]\ngtk-theme-name=X\n  gtk-icon-theme-name  =  Old Name  \r\n; gtk-icon-theme-name=comment\n";
+        const auto read = FileOps::iniGet(doc, "Settings", "gtk-icon-theme-name");
+        QVERIFY(read.found && !read.ambiguous);
+        QCOMPARE(read.value, QString("Old Name"));
+        QVERIFY(FileOps::iniSet(&doc, "Settings", "gtk-icon-theme-name", "New"));
+        QCOMPARE(doc, QByteArray("# keep me\r\n[Other]\ngtk-icon-theme-name = untouched\n\n[Settings]\ngtk-theme-name=X\n  gtk-icon-theme-name  =  New  \r\n; gtk-icon-theme-name=comment\n"));
+        QString error;
+        QVERIFY(!FileOps::iniSet(&doc, "Settings", "absent", "x", &error));
+        QVERIFY(!error.isEmpty());
+        QVERIFY(!FileOps::iniSet(&doc, "NoGroup", "gtk-theme-name", "x"));
+        QByteArray twice = "[A]\nk=1\nk=2\n";
+        QVERIFY(FileOps::iniGet(twice, "A", "k").ambiguous);
+        QVERIFY(!FileOps::iniSet(&twice, "A", "k", "3"));
+        QCOMPARE(twice, QByteArray("[A]\nk=1\nk=2\n"));
+    }
+
+    void openingAppearanceChangesNothing() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Papirus");
+        AppCore core(s.env);
+        const ReadResult read = readSetting(core.engine, "appearance.icons");
+        QCOMPARE(read.status, QString("ok"));
+        QCOMPARE(read.value, QString("pack:Papirus"));
+        QCOMPARE(read.extra.value("mode").toString(), QString("unmanaged"));
+        QVERIFY(read.reason.isEmpty());
+        QCOMPARE(desk.writes(), 0);
+        QVERIFY(!QFile::exists(desk.policy()));
+        QVERIFY(!QFile::exists(desk.hook()));
+
+        // With no choice saved, Omarchy's own value is simply following the theme.
+        desk.setEffective("Yaru-blue");
+        QCOMPARE(readSetting(core.engine, "appearance.icons").value, QString("follow-theme"));
+        desk.themeAsks("Numix");
+        QCOMPARE(readSetting(core.engine, "appearance.icons").value, QString("pack:Yaru-blue"));
+
+        // A pack that is not installed is shown as it is, and not adopted or replaced.
+        desk.setEffective("Yaru-gray");
+        const ReadResult missing = readSetting(core.engine, "appearance.icons");
+        QCOMPARE(missing.value, QString("pack:Yaru-gray"));
+        QVERIFY(missing.reason.contains("not installed"));
+        QCOMPARE(desk.writes(), 0);
+    }
+
+    void choosingAPackSavesAHookAndGoesBackExactly() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QVERIFY(desk.isUnset());
+        const ChangePlan plan = core.engine.plan("appearance.icons", "Papirus", {QVariantMap{{"value", "pack:Papirus"}}});
+        QVERIFY(plan.ok);
+        QCOMPARE(plan.normalized, QString("pack:Papirus"));
+        QVERIFY(plan.files.contains(desk.hook()));
+        QVERIFY(plan.effects.join(' ').contains("hook"));
+        QVERIFY(!QFile::exists(desk.hook()));
+
+        const Transaction tx = applySetting(core.engine, "appearance.icons", "pack:Papirus");
+        QCOMPARE(tx.phase, QString("committed"));
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        QCOMPARE(QJsonDocument::fromJson(readAll(desk.policy())).object().value("theme").toString(), QString("Papirus"));
+        QCOMPARE(readAll(desk.hook()), IconThemeProvider::hookScript());
+        QVERIFY(readAll(desk.hook()).contains("omarchy-control icons reapply"));
+        QVERIFY(tx.undoable());
+        const ReadResult after = readSetting(core.engine, "appearance.icons");
+        QCOMPARE(after.value, QString("pack:Papirus"));
+        QCOMPARE(after.extra.value("mode").toString(), QString("fixed"));
+
+        // A second choice leaves the hook alone, and undoing it returns to the first.
+        const Transaction second = applySetting(core.engine, "appearance.icons", "Numix");
+        QCOMPARE(second.phase, QString("committed"));
+        QCOMPARE(undoTx(core.engine, second.id).phase, QString("committed"));
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        QVERIFY(QFile::exists(desk.hook()));
+
+        // Undoing the first goes back to a key no one ever set, and removes what it added.
+        const Transaction back = undoTx(core.engine, tx.id);
+        QCOMPARE(back.phase, QString("committed"));
+        QVERIFY(desk.isUnset());
+        QVERIFY(!QFile::exists(desk.policy()));
+        QVERIFY(!QFile::exists(desk.hook()));
+        QVERIFY(s.calls().contains("gsettings reset org.gnome.desktop.interface icon-theme"));
+        QCOMPARE(readSetting(core.engine, "appearance.icons").extra.value("mode").toString(), QString("unmanaged"));
+    }
+
+    void undoLeavesLaterChangesAlone() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Numix");
+        AppCore core(s.env);
+        const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        QCOMPARE(tx.phase, QString("committed"));
+
+        desk.setEffective("Yaru-blue");
+        const Transaction refused = undoTx(core.engine, tx.id);
+        QCOMPARE(refused.phase, QString("failed"));
+        QCOMPARE(desk.effective(), QString("Yaru-blue"));
+        QVERIFY(QFile::exists(desk.hook()));
+
+        // The saved choice was edited by someone: not this undo's to overwrite.
+        desk.setEffective("Papirus");
+        const QByteArray saved = readAll(desk.policy());
+        writeFile(desk.policy(), QJsonDocument(QJsonObject{{"version", 1}, {"mode", "fixed"}, {"theme", "Numix"}}).toJson());
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("failed"));
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        writeFile(desk.policy(), saved);
+
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QCOMPARE(desk.effective(), QString("Numix"));
+        QVERIFY(!QFile::exists(desk.hook()));
+    }
+
+    void anEditedHookDoesNotStopAnUndoAndIsKept() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Numix");
+        AppCore core(s.env);
+        const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        writeFile(desk.hook(), "#!/bin/bash\n# edited by hand\n");
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QCOMPARE(desk.effective(), QString("Numix"));
+        QCOMPARE(readAll(desk.hook()), QByteArray("#!/bin/bash\n# edited by hand\n"));
+        QVERIFY(!QFile::exists(desk.policy()));
+    }
+
+    void undoingBackToFollowingUsesTheThemeInUseNow() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.themeAsks("Numix");
+        desk.setEffective("Numix");
+        AppCore core(s.env);
+        const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        QCOMPARE(tx.before, QString("follow-theme"));
+        // A theme change later, the pack from before it would be the wrong one to go back to.
+        desk.themeAsks("Yaru-blue");
+        QString message;
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QCOMPARE(desk.effective(), QString("Yaru-blue"));
+        QCOMPARE(readSetting(core.engine, "appearance.icons").value, QString("follow-theme"));
+        QVERIFY(readSetting(core.engine, "appearance.icons").reason.isEmpty());
+    }
+
+    void aFailedRollbackStillRestoresEverythingElse() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Numix");
+        // Sorted first, so stopping at this file would leave the choice and the hook behind.
+        const QString gtk3 = s.env.configHome + "/gtk-3.0/settings.ini";
+        writeFile(gtk3, "[Settings]\ngtk-icon-theme-name=Old\n");
+        // GSettings ignores the write, so this fails after the file was already patched, and
+        // by then something else has rewritten the file.
+        writeFile(s.env.home + "/.fake-icon-theme-deaf", "");
+        s.command("gsettings", QByteArray(kFakeGsettings) + "\n[ \"$1\" = get ] && [ -f '" + gtk3.toUtf8() + "' ] && grep -q Papirus '" + gtk3.toUtf8() + "' && printf '[Settings]\\ngtk-icon-theme-name=TheirEdit\\n' > '" + gtk3.toUtf8() + "'\nexit 0\n");
+        AppCore core(s.env);
+        const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        QCOMPARE(tx.phase, QString("partial"));
+        QVERIFY(tx.message.contains("left as it is"));
+        QVERIFY(readAll(gtk3).contains("TheirEdit"));
+        QVERIFY(!QFile::exists(desk.policy()));
+        QVERIFY(!QFile::exists(desk.hook()));
+    }
+
+    void aChangeBetweenPlanningAndTheLockIsNotRecordedAsTheWayBack() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Numix");
+        AppCore core(s.env);
+        // Two picks in a row, the second planned before the first has run.
+        Transaction first, second;
+        bool firstDone = false, secondDone = false;
+        core.icons.submit("pack:Papirus", "set", "Icon pack", [&](const Transaction &tx) { first = tx; firstDone = true; });
+        core.icons.submit("pack:Yaru-blue", "set", "Icon pack", [&](const Transaction &tx) { second = tx; secondDone = true; });
+        QTRY_VERIFY(firstDone && secondDone);
+        const QStringList phases{first.phase, second.phase};
+        QVERIFY2(phases.count("committed") >= 1, qPrintable(phases.join(' ')));
+        // Whichever ran second, its way back is what was really there when it ran.
+        const Transaction &last = second.phase == QLatin1String("committed") ? second : first;
+        const QString wayBack = last.extra.value("gsettings").toObject().value("before").toString();
+        QVERIFY(first.phase != QLatin1String("committed") || second.phase != QLatin1String("committed") || wayBack == QLatin1String("Papirus"));
+        QCOMPARE(undoTx(core.engine, last.id).phase, QString("committed"));
+        QCOMPARE(desk.effective(), wayBack);
+    }
+
+    void aFailedPickKeepsAStandoffInPlace() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QString message;
+        for (int i = 0; i < 3; ++i) {
+            desk.setEffective("Their-Pack");
+            core.icons.reapply(&message);
+        }
+        QVERIFY(readSetting(core.engine, "appearance.icons").extra.value("suspended").toBool());
+        writeFile(s.env.home + "/.fake-icon-theme-deaf", "");
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Numix").phase, QString("rolled-back"));
+        QVERIFY(readSetting(core.engine, "appearance.icons").extra.value("suspended").toBool());
+    }
+
+    void anOlderSwitchsHookLeavesItToTheNewerOne() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        writeFile(s.env.stateHome + "/omarchy/current/theme.name", "newer\n");
+        desk.setEffective("Numix");
+        const int writes = desk.writes();
+        QString message;
+        // However often this happens it is not another icon manager, and it writes nothing.
+        for (int i = 0; i < 5; ++i)
+            QCOMPARE(core.icons.reapply(&message, "older"), 0);
+        QCOMPARE(desk.writes(), writes);
+        QVERIFY(!readSetting(core.engine, "appearance.icons").extra.value("suspended").toBool());
+        QVERIFY(readAll(IconThemeProvider(&core.runner, &core.coordinator).hookPath()).contains("reapply \"$1\""));
+        QCOMPARE(core.icons.reapply(&message, "newer"), 0);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+    }
+
+    void aThemeChangeLeavesAHandEditedConfigAlone() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString gtk3 = s.env.configHome + "/gtk-3.0/settings.ini";
+        writeFile(gtk3, "[Settings]\ngtk-icon-theme-name=Old\n");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QCOMPARE(readAll(gtk3), QByteArray("[Settings]\ngtk-icon-theme-name=Papirus\n"));
+        writeFile(gtk3, "[Settings]\ngtk-icon-theme-name=Mine\n");
+        desk.setEffective("Numix");
+        QString message;
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        QCOMPARE(readAll(gtk3), QByteArray("[Settings]\ngtk-icon-theme-name=Mine\n"));
+        QVERIFY(readSetting(core.engine, "appearance.icons").extra.value("mixed").toBool());
+        // A deliberate choice is what brings it back into line.
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QCOMPARE(readAll(gtk3), QByteArray("[Settings]\ngtk-icon-theme-name=Papirus\n"));
+    }
+
+    void anImportDoesNotHoldUpOtherChanges() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString source = s.dir.path() + "/in/Long";
+        addPack(s.dir.path() + "/in", "Long");
+        const QByteArray bulk(2 * 1024 * 1024, 'x');
+        for (int i = 0; i < 60; ++i)
+            writeFile(source + "/scalable/apps/bulk" + QString::number(i) + ".svg", bulk);
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QSignalSpy finished(&importer, &IconThemeImporter::finished);
+        importer.choosePath(source);
+        QVERIFY(importer.busy());
+        // The theme hook's lock is free the whole time, and a second import is told to wait.
+        QLockFile change(s.env.appStateDir + "/change.lock");
+        QVERIFY(change.tryLock(0));
+        change.unlock();
+        IconThemeImporter second(s.env, &core.coordinator);
+        addPack(s.dir.path() + "/in", "Second");
+        QCOMPARE(importPack(second, s.dir.path() + "/in/Second"), QString("failed"));
+        QVERIFY(second.message().contains("Another icon pack"));
+        // And a new window does not take a live staging folder for a leftover.
+        QVERIFY(second.recoverStaging().isEmpty());
+        QVERIFY(finished.count() || finished.wait(30000));
+        QCOMPARE(importer.state(), QString("imported"));
+        QVERIFY(QFile::exists(source + "/scalable/apps/bulk59.svg"));
+        QCOMPARE(QFileInfo(desk.user + "/Long/scalable/apps/bulk59.svg").size(), qint64(bulk.size()));
+    }
+
+    void aHiddenPackImportsButIsNotOfferedAsAChoice() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(s.dir.path() + "/in", "Base", {"folder"}, {}, "Hidden=true\n");
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QCOMPARE(importPack(importer, s.dir.path() + "/in/Base"), QString("imported"));
+        QVERIFY(!importer.usable());
+        QVERIFY(importer.message().contains("hidden"));
+        addPack(s.dir.path() + "/in", "Shown");
+        QCOMPARE(importPack(importer, s.dir.path() + "/in/Shown"), QString("imported"));
+        QVERIFY(importer.usable());
+    }
+
+    void anEditedHookIsKeptAndExplained() {
+        Sandbox s;
+        IconDesk desk(s);
+        writeFile(desk.hook(), "#!/bin/bash\n# mine\n");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QCOMPARE(readAll(desk.hook()), QByteArray("#!/bin/bash\n# mine\n"));
+        const ReadResult read = readSetting(core.engine, "appearance.icons");
+        QCOMPARE(read.extra.value("hook").toString(), QString("edited"));
+        QVERIFY(read.reason.contains("edited"));
+    }
+
+    void aFailedChangeLeavesEverythingAsItWas() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Numix");
+        AppCore core(s.env);
+
+        writeFile(s.env.home + "/.fake-icon-theme-broken", "");
+        Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        QCOMPARE(tx.phase, QString("rolled-back"));
+        QCOMPARE(desk.effective(), QString("Numix"));
+        QVERIFY(!QFile::exists(desk.policy()));
+        QVERIFY(!QFile::exists(desk.hook()));
+        QFile::remove(s.env.home + "/.fake-icon-theme-broken");
+
+        // A write that reports success without changing anything is caught by reading back.
+        writeFile(s.env.home + "/.fake-icon-theme-deaf", "");
+        tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        QCOMPARE(tx.phase, QString("rolled-back"));
+        QVERIFY(tx.message.contains("Numix"));
+        QVERIFY(!QFile::exists(desk.policy()));
+        QVERIFY(!QFile::exists(desk.hook()));
+        QFile::remove(s.env.home + "/.fake-icon-theme-deaf");
+
+        // A pack that is not on offer never reaches a write.
+        const int before = desk.writes();
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "pack:NotInstalled").phase, QString("failed"));
+        QCOMPARE(desk.writes(), before);
+    }
+
+    void aMissingCommandKeepsPreviewsButStopsChanges() {
+        Sandbox s;
+        IconDesk desk(s);
+        QFile::remove(s.bin("gsettings"));
+        AppCore core(s.env);
+        QCOMPARE(readSetting(core.engine, "appearance.icons").status, QString("unavailable"));
+        QVERIFY(!core.engine.plan("appearance.icons", "follow-theme").ok);
+        QCOMPARE(core.icons.samples("Papirus").value("samples").toList().size(), 4);
+    }
+
+    void configFilesAreOnlyTouchedWhenTheyAlreadyNameAnIconTheme() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString gtk3 = s.env.configHome + "/gtk-3.0/settings.ini";
+        const QString gtk4 = s.env.configHome + "/gtk-4.0/settings.ini";
+        const QString kde = s.env.configHome + "/kdeglobals";
+        const QString qt6 = s.env.configHome + "/qt6ct/qt6ct.conf";
+        const QByteArray gtk3Text = "# mine\n[Settings]\ngtk-icon-theme-name=Old\ngtk-theme-name=Adwaita\n";
+        const QByteArray gtk4Text = "[Settings]\ngtk-theme-name=Adwaita\n";
+        writeFile(gtk3, gtk3Text);
+        writeFile(gtk4, gtk4Text);
+        writeFile(kde, "[Icons]\nTheme=Old\n[General]\nName=x\n");
+        // Qt is on the gtk3 platform theme, as Omarchy sets it, so qt6ct has no say.
+        writeFile(qt6, "[Appearance]\nicon_theme=Old\n");
+        AppCore core(s.env);
+        desk.setEffective("Numix");
+        const ReadResult mixed = readSetting(core.engine, "appearance.icons");
+        QVERIFY(mixed.extra.value("mixed").toBool());
+        QVERIFY(mixed.extra.value("reconcile").toBool());
+        QVERIFY(mixed.reason.contains("GTK 3"));
+
+        const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        QCOMPARE(tx.phase, QString("committed"));
+        QCOMPARE(readAll(gtk3), QByteArray("# mine\n[Settings]\ngtk-icon-theme-name=Papirus\ngtk-theme-name=Adwaita\n"));
+        QCOMPARE(readAll(gtk4), gtk4Text);
+        QCOMPARE(readAll(kde), QByteArray("[Icons]\nTheme=Papirus\n[General]\nName=x\n"));
+        QCOMPARE(readAll(qt6), QByteArray("[Appearance]\nicon_theme=Old\n"));
+        QVERIFY(!QFile::exists(s.env.configHome + "/qt5ct/qt5ct.conf"));
+        QVERIFY(readSetting(core.engine, "appearance.icons").reason.isEmpty());
+
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QCOMPARE(readAll(gtk3), gtk3Text);
+        QCOMPARE(desk.effective(), QString("Numix"));
+
+        // When Qt is told to use it, it counts.
+        Env qtEnv = s.env;
+        qtEnv.process.insert("QT_QPA_PLATFORMTHEME", "qt6ct");
+        AppCore qtCore(qtEnv);
+        QCOMPARE(applySetting(qtCore.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QCOMPARE(readAll(qt6), QByteArray("[Appearance]\nicon_theme=Papirus\n"));
+    }
+
+    void anAmbiguousConfigIsReportedAndLeftAlone() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString gtk3 = s.env.configHome + "/gtk-3.0/settings.ini";
+        const QByteArray text = "[Settings]\ngtk-icon-theme-name=A\ngtk-icon-theme-name=B\n";
+        writeFile(gtk3, text);
+        AppCore core(s.env);
+        QVERIFY(core.engine.plan("appearance.icons", "follow-theme", {QVariantMap{{"value", "follow-theme"}}}).effects.join(' ').contains("more than once"));
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QCOMPARE(readAll(gtk3), text);
+    }
+
+    void aSymlinkedConfigStaysALink() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString target = s.env.home + "/dotfiles/settings.ini";
+        const QString link = s.env.configHome + "/gtk-3.0/settings.ini";
+        writeFile(target, "[Settings]\ngtk-icon-theme-name=Old\n");
+        QDir().mkpath(QFileInfo(link).absolutePath());
+        QFile::link(target, link);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QVERIFY(QFileInfo(link).isSymLink());
+        QCOMPARE(readAll(target), QByteArray("[Settings]\ngtk-icon-theme-name=Papirus\n"));
+    }
+
+    void changesElsewhereAreShownAndNeverForcedBack() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        const int writes = desk.writes();
+        desk.setEffective("Numix");
+        const ReadResult read = readSetting(core.engine, "appearance.icons");
+        QCOMPARE(read.value, QString("pack:Papirus"));
+        QVERIFY(read.extra.value("conflict").toBool());
+        QVERIFY(read.reason.contains("Numix"));
+        QCOMPARE(desk.effective(), QString("Numix"));
+        QCOMPARE(desk.writes(), writes);
+
+        // A chosen pack that goes away is remembered, and explained, not replaced.
+        QDir(desk.system + "/Papirus").removeRecursively();
+        const ReadResult gone = readSetting(core.engine, "appearance.icons");
+        QCOMPARE(gone.value, QString("pack:Papirus"));
+        QVERIFY(gone.reason.contains("not installed any more"));
+        QVERIFY(readAll(desk.policy()).contains("Papirus"));
+    }
+
+    void followingTheThemeClearsTheFixedChoice() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.themeAsks("Numix");
+        desk.setEffective("Numix");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        desk.themeAsks("Yaru-blue");
+        // Not the pack captured earlier, but what the theme in use asks for now.
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "follow-theme").phase, QString("committed"));
+        QCOMPARE(desk.effective(), QString("Yaru-blue"));
+        const QJsonObject policy = QJsonDocument::fromJson(readAll(desk.policy())).object();
+        QCOMPARE(policy.value("mode").toString(), QString("follow-theme"));
+        QVERIFY(!policy.contains("theme"));
+        QVERIFY(QFile::exists(desk.hook()));
+        QCOMPARE(readSetting(core.engine, "appearance.icons").value, QString("follow-theme"));
+
+        // Use default means the same thing here.
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        Transaction reset;
+        bool done = false;
+        core.engine.reset("appearance.icons", [&](const Transaction &tx) { reset = tx; done = true; });
+        QTRY_VERIFY(done);
+        QCOMPARE(reset.phase, QString("committed"));
+        QCOMPARE(reset.kind, QString("reset"));
+        QCOMPARE(desk.effective(), QString("Yaru-blue"));
+    }
+
+    void aThemeChangeKeepsAFixedChoiceWithNoWindowOpen() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        // Nothing chosen here: what Omarchy set stands, and nothing is even read.
+        QString message;
+        desk.setEffective("Numix");
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.effective(), QString("Numix"));
+        QCOMPARE(desk.writes(), 0);
+
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        // Omarchy's theme change writes the theme's pack, then runs the hook.
+        desk.themeAsks("Numix");
+        desk.setEffective("Numix");
+        QCOMPARE(Cli::run(s.env, {"icons", "reapply"}), 0);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+
+        // Already right: no write at all.
+        const int writes = desk.writes();
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.writes(), writes);
+
+        // A pack that was removed is left out of it, with the choice kept.
+        QDir(desk.system + "/Papirus").removeRecursively();
+        desk.setEffective("Numix");
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QVERIFY(message.contains("not installed"));
+        QCOMPARE(desk.effective(), QString("Numix"));
+        QVERIFY(readAll(desk.policy()).contains("Papirus"));
+    }
+
+    void followingKeepsUpWithTheThemeWithNoWindowOpen() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString gtk3 = s.env.configHome + "/gtk-3.0/settings.ini";
+        writeFile(gtk3, "[Settings]\ngtk-icon-theme-name=Old\n");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "follow-theme").phase, QString("committed"));
+        // Stock Omarchy does not update this file, which is what the hook is still there for.
+        desk.themeAsks("Numix");
+        desk.setEffective("Numix");
+        QString message;
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(readAll(gtk3), QByteArray("[Settings]\ngtk-icon-theme-name=Numix\n"));
+        QCOMPARE(desk.effective(), QString("Numix"));
+    }
+
+    void anotherIconManagerEndsAStandoffNotAFight() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QString message;
+        // The first two look like coincidence and are corrected.
+        for (int i = 0; i < 2; ++i) {
+            desk.setEffective("Their-Pack");
+            QCOMPARE(core.icons.reapply(&message), 0);
+            QCOMPARE(desk.effective(), QString("Papirus"));
+        }
+        const int writes = desk.writes();
+        desk.setEffective("Their-Pack");
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QVERIFY(message.contains("another icon manager"));
+        QCOMPARE(desk.effective(), QString("Their-Pack"));
+        QCOMPARE(desk.writes(), writes);
+        const ReadResult read = readSetting(core.engine, "appearance.icons");
+        QVERIFY(read.extra.value("suspended").toBool());
+        QVERIFY(read.reason.contains("no longer reapplied"));
+        // It stays out of it until someone chooses, and that settles it.
+        message.clear();
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.effective(), QString("Their-Pack"));
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QVERIFY(!readSetting(core.engine, "appearance.icons").extra.value("suspended").toBool());
+        desk.setEffective("Numix");
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+    }
+
+    void reapplyDoesNotRaceAChangeInProgress() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        desk.setEffective("Numix");
+        // Another process is mid-change. Its lock has a long wait, so a stale reader is
+        // what this guards against: the reapply reads the choice only once it has the lock.
+        writeFile(desk.policy(), QJsonDocument(QJsonObject{{"version", 1}, {"mode", "fixed"}, {"theme", "Yaru-blue"}}).toJson());
+        QString message;
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.effective(), QString("Yaru-blue"));
+    }
+
+    void removingTheIntegrationLeavesTheIconsAsTheyAre() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QCOMPARE(Cli::run(s.env, {"icons", "remove-integration"}), 0);
+        QVERIFY(!QFile::exists(desk.hook()));
+        QVERIFY(!QFile::exists(desk.policy()));
+        QCOMPARE(desk.effective(), QString("Papirus"));
+
+        writeFile(desk.hook(), "#!/bin/bash\n# mine\n");
+        QString message;
+        QCOMPARE(core.icons.removeIntegration(&message), 0);
+        QVERIFY(QFile::exists(desk.hook()));
+        QVERIFY(message.contains("edited"));
+    }
+
+    void aDamagedChoiceIsReportedAndIgnored() {
+        Sandbox s;
+        IconDesk desk(s);
+        for (const QByteArray &bad : {QByteArray("not json"), QByteArray("{\"version\":99,\"mode\":\"fixed\",\"theme\":\"X\"}"), QByteArray("{\"version\":1,\"mode\":\"fixed\",\"theme\":\"../x\"}")}) {
+            writeFile(desk.policy(), bad);
+            AppCore core(s.env);
+            desk.setEffective("Numix");
+            const ReadResult read = readSetting(core.engine, "appearance.icons");
+            QCOMPARE(read.extra.value("mode").toString(), QString("unmanaged"));
+            QVERIFY(read.reason.contains("could not be read"));
+            QString message;
+            QCOMPARE(core.icons.reapply(&message), 0);
+            QCOMPARE(desk.effective(), QString("Numix"));
+            QCOMPARE(readAll(desk.policy()), bad);
+        }
+    }
+
+    void aPausedOmarchyPausesTheHookToo() {
+        Sandbox s;
+        IconDesk desk(s);
+        {
+            AppCore core(s.env);
+            QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        }
+        writeFile(s.bin("omarchy-theme-set-gnome"), "#!/bin/bash\n# not what was reviewed\n");
+        QFile::setPermissions(s.bin("omarchy-theme-set-gnome"), QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+        desk.setEffective("Numix");
+        Env strict = s.env;
+        strict.enforceCompat = true;
+        AppCore core(strict);
+        const CatalogEntry *entry = core.catalog.find("appearance.icons");
+        QVERIFY(entry);
+        QCOMPARE(core.compat.changedFor(*entry, {}), QString("omarchy-theme-set-gnome"));
+        QVERIFY(!core.engine.plan("appearance.icons", "Papirus", {QVariantMap{{"value", "pack:Papirus"}}}).ok);
+        QCOMPARE(Cli::run(strict, {"icons", "reapply"}), 0);
+        QCOMPARE(desk.effective(), QString("Numix"));
+    }
+
+    void aStoppedChangeIsReportedAndNotBlindlyRestored() {
+        Sandbox s;
+        IconDesk desk(s);
+        QString firstId;
+        {
+            AppCore core(s.env);
+            const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+            QCOMPARE(tx.phase, QString("committed"));
+            firstId = tx.id;
+            QVERIFY(!tx.extra.isEmpty());
+        }
+        // The journal keeps what files cannot: whether the key had ever been set.
+        AppCore core(s.env);
+        QCOMPARE(core.coordinator.transaction(firstId).extra.value("gsettings").toObject().value("beforeUnset").toBool(), true);
+        Transaction stuck = core.coordinator.transaction(firstId);
+        stuck.id = "stoppedhere0";
+        stuck.phase = "applying";
+        QFile journal(core.coordinator.journalPath());
+        QVERIFY(journal.open(QIODevice::Append));
+        journal.write(QJsonDocument(stuck.toJson()).toJson(QJsonDocument::Compact) + "\n");
+        journal.close();
+        const int writes = desk.writes();
+        QCOMPARE(core.coordinator.recoverInterrupted().size(), 1);
+        QCOMPARE(core.coordinator.transaction("stoppedhere0").phase, QString("interrupted"));
+        QCOMPARE(desk.writes(), writes);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+
+        // A record with nothing to go back with says so instead of guessing.
+        Transaction old = core.coordinator.transaction(firstId);
+        old.id = "oldrecord000";
+        old.phase = "committed";
+        old.extra = {};
+        QVERIFY(journal.open(QIODevice::Append));
+        journal.write(QJsonDocument(old.toJson()).toJson(QJsonDocument::Compact) + "\n");
+        journal.close();
+        QCOMPARE(undoTx(core.engine, "oldrecord000").phase, QString("failed"));
+    }
+
+    void theCliGivesIconStateItsStructure() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(desk.system, "Orphan", {"folder"}, "NotInstalled");
+        AppCore core(s.env);
+        QStringList problems;
+        const QVariantList packs = core.icons.listJson(&problems);
+        QVERIFY(std::any_of(packs.cbegin(), packs.cend(), [](const QVariant &p) { return p.toMap().value("id") == "Papirus"; }));
+        QVERIFY(problems.join('\n').contains("Orphan: inherits NotInstalled"));
+        QCOMPARE(Cli::run(s.env, {"icons", "list", "--json"}), 0);
+        QCOMPARE(Cli::run(s.env, {"get", "appearance.icons", "--json"}), 0);
+        QCOMPARE(Cli::run(s.env, {"plan", "appearance.icons", "Papirus"}), 0);
+        QCOMPARE(Cli::run(s.env, {"apply", "appearance.icons", "Papirus"}), 0);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        QCOMPARE(Cli::run(s.env, {"apply", "appearance.icons", "NotInstalled"}), 1);
+        QCOMPARE(Cli::run(s.env, {"icons", "nonsense"}), 1);
+    }
+
+    // --- Importing a pack ---
+
+    void importingCopiesAPackAndLeavesTheSourceAlone() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString source = s.dir.path() + "/downloads/Fresh";
+        addPack(s.dir.path() + "/downloads", "Fresh");
+        writeFile(source + "/LICENSE", "free");
+        writeFile(source + "/install.sh", "#!/bin/sh\ntouch " + s.dir.path().toUtf8() + "/ran\n");
+        QFile::setPermissions(source + "/install.sh", QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+        writeFile(source + "/.git/config", "x");
+        QVERIFY(QFile::link("folder.svg", source + "/scalable/apps/inode-directory.svg"));
+        QDir().mkpath(source + "/scalable/places");
+        QVERIFY(QFile::link("../apps/folder.svg", source + "/scalable/places/folder.svg"));
+        const QStringList before = QDir(source).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot);
+
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QCOMPARE(importPack(importer, source), QString("imported"));
+        QCOMPARE(importer.themeId(), QString("Fresh"));
+        const QString copy = desk.user + "/Fresh";
+        QVERIFY(QFile::exists(copy + "/index.theme"));
+        QCOMPARE(readAll(copy + "/LICENSE"), QByteArray("free"));
+        QCOMPARE(readAll(copy + "/scalable/apps/folder.svg"), QByteArray(kSvg));
+        QVERIFY(QFileInfo(copy + "/scalable/places/folder.svg").isSymLink());
+        QCOMPARE(QFile::symLinkTarget(copy + "/scalable/places/folder.svg"), QFileInfo(copy + "/scalable/apps/folder.svg").absoluteFilePath());
+        QVERIFY(!QFile::exists(copy + "/.git"));
+        QVERIFY(!QFile::exists(copy + "/.omarchy-control-import.json"));
+        // Nothing from a pack can be run: not by the import, and not by accident later.
+        QVERIFY(!QFile::exists(s.dir.path() + "/ran"));
+        QVERIFY(!(QFile::permissions(copy + "/install.sh") & (QFile::ExeOwner | QFile::ExeGroup | QFile::ExeOther)));
+        QCOMPARE(QDir(source).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot), before);
+        QVERIFY(QFile::exists(source + "/.git/config"));
+        QCOMPARE(QDir(desk.user).entryList(QDir::AllDirs | QDir::Hidden | QDir::NoDotAndDotDot), QStringList({"Fresh"}));
+
+        // Importing never selects, and it is on record with no pretense of undo.
+        QCOMPARE(desk.writes(), 0);
+        QVERIFY(desk.isUnset());
+        const Transaction tx = core.coordinator.history(1).first();
+        QCOMPARE(tx.settingId, QString("appearance.icons.import"));
+        QCOMPARE(tx.phase, QString("committed"));
+        QVERIFY(!tx.undoable());
+        QVERIFY(std::any_of(IconThemes::discover(s.env).cbegin(), IconThemes::discover(s.env).cend(), [](const IconPack &p) { return p.id == "Fresh"; }));
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Fresh").phase, QString("committed"));
+    }
+
+    void badFoldersAreExplainedAndNothingIsCopied() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString in = s.dir.path() + "/in";
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        const auto refused = [&](const QString &path, const QString &words) {
+            const QString state = importPack(importer, path);
+            if (state != QLatin1String("failed") || !importer.message().contains(words)) {
+                qWarning() << path << state << importer.message();
+                return false;
+            }
+            return QDir(desk.user).entryList(QDir::AllDirs | QDir::Hidden | QDir::NoDotAndDotDot).isEmpty();
+        };
+
+        QVERIFY(refused(in + "/nothing-here", "could not be found"));
+        writeFile(in + "/pack.tar.gz", "x");
+        QVERIFY(refused(in + "/pack.tar.gz", "Extract it first"));
+        writeFile(in + "/file.txt", "x");
+        QVERIFY(refused(in + "/file.txt", "This is a file"));
+        QDir().mkpath(in + "/empty");
+        QVERIFY(refused(in + "/empty", "no index.theme"));
+        addPack(in + "/wrapper", "Inner");
+        QVERIFY(refused(in + "/wrapper", "Choose that folder instead"));
+        addPack(in + "/two", "One");
+        addPack(in + "/two", "Other");
+        QVERIFY(refused(in + "/two", "holds 2 packs"));
+        writeFile(in + "/Cursors/index.theme", "[Icon Theme]\nName=Cursors\nInherits=x\n");
+        QVERIFY(refused(in + "/Cursors", "cursor theme"));
+        writeFile(in + "/Bad/index.theme", "garbage\n");
+        QVERIFY(refused(in + "/Bad", "not valid"));
+        writeFile(in + "/Ghost/index.theme", "[Icon Theme]\nName=Ghost\nDirectories=a\n[a]\nSize=48\n");
+        QVERIFY(refused(in + "/Ghost", "would show no icons"));
+
+        addPack(in, "Escape");
+        QVERIFY(QFile::link("../../../../../../etc/passwd", in + "/Escape/scalable/apps/passwd.svg"));
+        QVERIFY(refused(in + "/Escape", "points outside"));
+        addPack(in, "Absolute");
+        QVERIFY(QFile::link("/etc/passwd", in + "/Absolute/scalable/apps/passwd.svg"));
+        QVERIFY(refused(in + "/Absolute", "points outside"));
+        addPack(in, "Loop");
+        QVERIFY(QFile::link("b.svg", in + "/Loop/scalable/apps/a.svg"));
+        QVERIFY(QFile::link("a.svg", in + "/Loop/scalable/apps/b.svg"));
+        QVERIFY(refused(in + "/Loop", "in a circle"));
+        addPack(in, "Ancestor");
+        QVERIFY(QFile::link("..", in + "/Ancestor/scalable/apps/up"));
+        QVERIFY(refused(in + "/Ancestor", "in a circle"));
+        // Only following the links shows this one leaves: its text alone stays inside.
+        addPack(in, "Sneaky");
+        QDir().mkpath(in + "/Sneaky/deep/er");
+        QDir().mkpath(in + "/Sneaky/other");
+        QVERIFY(QFile::link("../../other", in + "/Sneaky/deep/er/hop"));
+        QVERIFY(QFile::link("hop/../..", in + "/Sneaky/deep/er/out"));
+        QVERIFY(refused(in + "/Sneaky", "points outside"));
+        addPack(in, "Device");
+        QCOMPARE(QProcess::execute("mkfifo", {in + "/Device/pipe"}), 0);
+        QVERIFY(refused(in + "/Device", "device or socket"));
+
+        // The source and the active choice are untouched by any of that.
+        QVERIFY(QFile::exists(in + "/Escape/index.theme"));
+        QCOMPARE(desk.writes(), 0);
+    }
+
+    void anOccupiedDestinationIsNeverReplaced() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(desk.user, "Taken", {"mine"});
+        addPack(s.dir.path() + "/in", "Taken", {"theirs"});
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QCOMPARE(importPack(importer, s.dir.path() + "/in/Taken"), QString("failed"));
+        QVERIFY(importer.message().contains("already in your icons folder"));
+        QVERIFY(QFile::exists(desk.user + "/Taken/scalable/apps/mine.svg"));
+        QVERIFY(!QFile::exists(desk.user + "/Taken/scalable/apps/theirs.svg"));
+    }
+
+    void hidingAnotherCopyOfAPackAsksFirst() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(s.dir.path() + "/in", "Papirus", {"mine"}, "NotInstalled");
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QCOMPARE(importPack(importer, s.dir.path() + "/in/Papirus"), QString("confirm"));
+        QVERIFY(importer.message().contains(desk.system + "/Papirus"));
+        QVERIFY(!QFile::exists(desk.user + "/Papirus"));
+        importer.cancel();
+        QCOMPARE(importer.state(), QString("idle"));
+
+        QCOMPARE(importPack(importer, s.dir.path() + "/in/Papirus"), QString("confirm"));
+        QSignalSpy finished(&importer, &IconThemeImporter::finished);
+        importer.confirm();
+        QVERIFY(finished.wait(20000));
+        QCOMPARE(importer.state(), QString("imported"));
+        QVERIFY(QFile::exists(desk.user + "/Papirus/scalable/apps/mine.svg"));
+        // What it needs is named, and not fetched from anywhere.
+        QVERIFY(importer.message().contains("NotInstalled"));
+        QVERIFY(QDir(desk.system + "/Papirus").exists());
+
+        addPack(s.dir.path() + "/in", "Numix");
+        QCOMPARE(Cli::run(s.env, {"icons", "import", s.dir.path() + "/in/Numix"}), 1);
+        QVERIFY(!QFile::exists(desk.user + "/Numix"));
+        QCOMPARE(Cli::run(s.env, {"icons", "import", s.dir.path() + "/in/Numix", "--yes"}), 0);
+        QVERIFY(QFile::exists(desk.user + "/Numix/index.theme"));
+    }
+
+    void aCancelledImportLeavesNoTrace() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString source = s.dir.path() + "/in/Big";
+        addPack(s.dir.path() + "/in", "Big");
+        const QByteArray bulk(2 * 1024 * 1024, 'x');
+        for (int i = 0; i < 40; ++i)
+            writeFile(source + "/scalable/apps/bulk" + QString::number(i) + ".svg", bulk);
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QSignalSpy finished(&importer, &IconThemeImporter::finished);
+        importer.choosePath(source);
+        QVERIFY(importer.busy());
+        // A second folder while copying is not a second import.
+        importer.choosePath(s.dir.path() + "/elsewhere");
+        QVERIFY(importer.busy());
+        importer.cancel();
+        QVERIFY(finished.count() || finished.wait(20000));
+        QCOMPARE(finished.first().first().toBool(), false);
+        QCOMPARE(importer.state(), QString("idle"));
+        QVERIFY(importer.message().contains("cancelled"));
+        QVERIFY(QDir(desk.user).entryList(QDir::AllDirs | QDir::Hidden | QDir::NoDotAndDotDot).isEmpty());
+        QVERIFY(QFile::exists(source + "/scalable/apps/bulk0.svg"));
+        // Nothing changed, so there is nothing for History to say.
+        QVERIFY(core.coordinator.history(1).isEmpty());
+    }
+
+    void aSourceThatChangesMidCopyIsNotImported() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(s.dir.path() + "/in", "Moving");
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QSignalSpy finished(&importer, &IconThemeImporter::finished);
+        const QString source = s.dir.path() + "/in/Moving";
+        const QByteArray bulk(2 * 1024 * 1024, 'x');
+        for (int i = 0; i < 40; ++i)
+            writeFile(source + "/scalable/apps/bulk" + QString::number(i) + ".svg", bulk);
+        importer.choosePath(source);
+        QVERIFY(importer.busy());
+        writeFile(source + "/added-during-copy.svg", "x");
+        QVERIFY(finished.count() || finished.wait(30000));
+        if (importer.state() == QLatin1String("failed")) {
+            QVERIFY(importer.message().contains("changed while"));
+            QVERIFY(QDir(desk.user).entryList(QDir::AllDirs | QDir::Hidden | QDir::NoDotAndDotDot).isEmpty());
+        } else {
+            // The copy finished before the file landed, in which case it is an exact one.
+            QCOMPARE(importer.state(), QString("imported"));
+            QVERIFY(QFile::exists(desk.user + "/Moving/index.theme"));
+        }
+    }
+
+    void leftoversFromAStoppedImportAreSortedOutSafely() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        const auto leftover = [&](const QString &name, const QJsonObject &paths) {
+            const QString folder = desk.user + "/.omarchy-control-import-" + name;
+            writeFile(folder + "/.omarchy-control-import.json", QJsonDocument(QJsonObject{{"paths", paths}}).toJson());
+            return folder;
+        };
+        const QString clean = leftover("clean", {{"index.theme", 4}, {"sub", 0}, {"sub/a.svg", 10}});
+        writeFile(clean + "/index.theme", "abcd");
+        writeFile(clean + "/sub/a.svg", "partial");
+        const QString touched = leftover("touched", {{"index.theme", 4}});
+        writeFile(touched + "/index.theme", "abcd");
+        writeFile(touched + "/somebody-elses.txt", "keep me");
+        const QString unowned = desk.user + "/.omarchy-control-import-unowned";
+        writeFile(unowned + "/precious.txt", "keep me");
+
+        IconThemeImporter importer(s.env, &core.coordinator);
+        // Never while something else may be doing an import.
+        {
+            QLockFile lock(s.env.appStateDir + "/icon-import.lock");
+            QVERIFY(lock.tryLock(0));
+            QVERIFY(importer.recoverStaging().isEmpty());
+            QVERIFY(QDir(clean).exists());
+        }
+        const QStringList messages = importer.recoverStaging();
+        QCOMPARE(messages.size(), 3);
+        QVERIFY(!QDir(clean).exists());
+        QVERIFY(QFile::exists(touched + "/somebody-elses.txt"));
+        QVERIFY(QFile::exists(unowned + "/precious.txt"));
+        QVERIFY(messages.join('\n').contains(touched));
+        QVERIFY(IconThemes::discover(s.env).size() == 3);
+    }
+
+    void appearanceShowsPacksAndChoosingOneWorks() {
+        Sandbox s;
+        fakeDesktop(s);
+        IconDesk desk(s);
+        addPack(desk.system, "A Very Long Icon Pack Name That Has To Be Cut Off Somewhere Sensible");
+        for (int i = 0; i < 12; ++i)
+            addPack(desk.system, "Extra" + QString::number(i));
+        desk.setEffective("Yaru-blue");
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.addImageProvider("iconpacks", new IconPackImageProvider(s.env));
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        window->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window, 3000));
+        QAccessible::setActive(true);
+        QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "appearance"), Q_ARG(QVariant, "appearance.icons"));
+        const auto named = [&](const QString &objectName) {
+            QList<QQuickItem *> found;
+            std::function<void(QQuickItem *)> search = [&](QQuickItem *item) {
+                if (item->objectName() == objectName && item->isVisible())
+                    found << item;
+                for (QQuickItem *child : item->childItems())
+                    search(child);
+            };
+            search(window->contentItem());
+            return found;
+        };
+        const auto tile = [&](const QString &name) -> QQuickItem * {
+            for (QQuickItem *item : named("iconPackTile")) {
+                QAccessibleInterface *accessible = QAccessible::queryAccessibleInterface(item);
+                if (accessible && accessible->text(QAccessible::Name).startsWith(name))
+                    return item;
+            }
+            return nullptr;
+        };
+        QTRY_VERIFY(tile("Follow desktop theme"));
+        // Omarchy's own value counts as following it, and the tile names the pack it means.
+        QTRY_VERIFY(tile("Follow desktop theme")->property("selected").toBool());
+        QVERIFY(QAccessible::queryAccessibleInterface(tile("Follow desktop theme"))->text(QAccessible::Name).contains("Yaru-blue"));
+        // Search lands on the pack in use, ready to change it.
+        QTRY_VERIFY(window->activeFocusItem() == tile("Follow desktop theme"));
+        QVERIFY(named("iconPackSample").size() >= 4);
+        QVERIFY(!named("iconImportButton").isEmpty());
+        QVERIFY(!named("iconPackSearch").isEmpty());
+        QCOMPARE(desk.writes(), 0);
+
+        // Searching narrows the list and keeps what is in use on screen.
+        named("iconPackSearch").first()->setProperty("text", "numix");
+        QTRY_VERIFY(tile("Numix"));
+        QVERIFY(!tile("Papirus"));
+        QVERIFY(tile("Follow desktop theme"));
+        QTest::qWait(50);  // The keyboard goes back to its pack on the next tick.
+
+        // Choosing confirms through a read back, and focus stays where it was.
+        QQuickItem *numix = tile("Numix");
+        numix->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(window, Qt::Key_Space);
+        QTRY_COMPARE(desk.effective(), QString("Numix"));
+        QTRY_VERIFY(tile("Numix") && tile("Numix")->property("selected").toBool());
+        QTRY_VERIFY(!backend.states()->value(Backend::stateKey("appearance.icons")).toMap().value("busy").toBool());
+        QTRY_VERIFY(window->activeFocusItem() == tile("Numix"));
+        named("iconPackSearch").first()->setProperty("text", "");
+
+        // A dropped folder goes through the importer, and using it is a separate step.
+        addPack(s.dir.path() + "/downloads", "Dropped");
+        backend.iconImporter()->choose(QUrl::fromLocalFile(s.dir.path() + "/downloads/Dropped"));
+        QTRY_COMPARE(backend.iconImporter()->state(), QString("imported"));
+        QCOMPARE(desk.effective(), QString("Numix"));
+        QTRY_VERIFY(!named("iconUseImported").isEmpty());
+        QMetaObject::invokeMethod(named("iconUseImported").first(), "clicked");
+        QTRY_COMPARE(desk.effective(), QString("Dropped"));
+        QCOMPARE(backend.iconImporter()->state(), QString("idle"));
+        // The button that was pressed has gone, and the keyboard did not go with it.
+        QTRY_VERIFY(window->activeFocusItem() == named("iconImportButton").first());
+
+        // The chooser loads and opens, whichever kind this platform provides.
+        QMetaObject::invokeMethod(named("iconImportButton").first(), "clicked");
+        QTest::qWait(100);
+        QAccessible::setActive(false);
+    }
+
 };
 
 int main(int argc, char *argv[]) {

@@ -118,4 +118,21 @@ const char kScript16[] = R"SH(case "$*" in
 esac)SH";
 const char kScript17[] = R"SH(case "$*" in *json*) echo '[]';; esac)SH";
 
+
+// GSettings with one key, kept in a file. A file that does not exist is a key no one set.
+// "-deaf" accepts a write and ignores it; "-broken" refuses it.
+const char kFakeGsettings[] = R"SH(
+state="$HOME/.fake-icon-theme"
+case "$1" in
+  get) if [ -f "$state" ]; then printf "'%s'\n" "$(cat "$state")"; else printf "'Adwaita'\n"; fi;;
+  set) [ -f "$state-broken" ] && { echo "refused" >&2; exit 1; }; [ -f "$state-deaf" ] && exit 0; printf '%s' "$4" > "$state";;
+  reset) rm -f "$state";;
+esac
+)SH";
+const char kFakeDconf[] = R"SH(
+state="$HOME/.fake-icon-theme"
+[ -f "$state" ] && printf "'%s'\n" "$(cat "$state")"
+exit 0
+)SH";
+
 }  // namespace

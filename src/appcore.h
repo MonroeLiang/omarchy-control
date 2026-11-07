@@ -6,6 +6,7 @@
 #include "commandrunner.h"
 #include "compat.h"
 #include "env.h"
+#include "iconthemeprovider.h"
 #include "settingsengine.h"
 
 // The reviewed backend, shared by the window and the headless CLI so both apply
@@ -17,6 +18,7 @@ struct AppCore {
     Capabilities capabilities;
     ChangeCoordinator coordinator;
     Compat compat;
+    IconThemeProvider icons;
     SettingsEngine engine;
 
     explicit AppCore(const Env &environment, const QString &catalogDirectory = QStringLiteral(":/data"))
@@ -26,5 +28,8 @@ struct AppCore {
           capabilities(&runner),
           coordinator(env),
           compat(env, catalogDirectory),
-          engine(&catalog, &runner, &capabilities, &coordinator, &compat) {}
+          icons(&runner, &coordinator),
+          engine(&catalog, &runner, &capabilities, &coordinator, &compat) {
+        engine.setIconThemes(&icons);
+    }
 };

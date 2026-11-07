@@ -18,6 +18,7 @@
 #include "hypromodule.h"
 #include "pluginsprovider.h"
 #include "shortcutsprovider.h"
+#include "iconthemeimporter.h"
 #include "updater.h"
 #include "windowrulesprovider.h"
 
@@ -66,6 +67,10 @@ const char Usage[] =
     "  integrate menu [--remove]             Add this app to the Omarchy menu\n"
     "  selftest display                      Prove display recovery on this machine\n"
     "  skill install                         Install the agent skill\n"
+    "  icons list [--json]                   List installed icon packs, and any problems reading them\n"
+    "  icons import <folder> [--yes] [--json]  Copy an extracted icon pack into your icons folder\n"
+    "  icons reapply [theme]                 Reapply your icon pack choice; the theme hook runs this\n"
+    "  icons remove-integration              Remove the theme hook and saved choice, leaving the icons\n"
     "  update [check] [--json]               Check GitHub for a newer version\n"
     "  update install [--yes]                Download, verify, and install it with pacman\n";
 
@@ -237,6 +242,8 @@ int cmdGet(AppCore &core, const QString &id, bool json) {
         row["source"] = result.source;
     if (!result.reason.isEmpty())
         row["reason"] = result.reason;
+    if (!result.extra.isEmpty())
+        row["details"] = QJsonObject::fromVariantMap(result.extra);
     if (json)
         printJson(row);
     else if (result.status == QLatin1String("ok"))
@@ -685,6 +692,83 @@ int cmdLaunch(AppCore &core, const QString &id, bool yes, bool json) {
     return outcome.opened ? 0 : 1;
 }
 
+int cmdIcons(AppCore &core, const QStringList &args, bool yes, bool json) {
+    const QString action = args.value(1);
+    if (action == QLatin1String("list")) {
+        QStringList diagnostics;
+        const QVariantList packs = core.icons.listJson(&diagnostics);
+        if (json) {
+            QJsonObject row;
+            row["packs"] = QJsonArray::fromVariantList(packs);
+            row["problems"] = QJsonArray::fromStringList(diagnostics);
+            printJson(row);
+            return 0;
+        }
+        for (const auto &pack : packs)
+            out() << pack.toMap().value("id").toString() << "\t" << pack.toMap().value("name").toString() << "\n";
+        for (const auto &problem : diagnostics)
+            err() << problem << "\n";
+        return 0;
+    }
+    if (action == QLatin1String("reapply")) {
+        // Runs from a hook with no one watching, so a changed Omarchy pauses it just as it
+        // pauses the setting in the window.
+        if (const CatalogEntry *entry = core.catalog.find("appearance.icons")) {
+            const QString changed = core.compat.changedFor(*entry, {});
+            if (!changed.isEmpty()) {
+                err() << "Not reapplying: Omarchy's " << changed << " changed since this was tested.\n";
+                return 0;
+            }
+        }
+        QString message;
+        const int code = core.icons.reapply(&message, args.value(2));
+        if (!message.isEmpty())
+            err() << message << "\n";
+        return code;
+    }
+    if (action == QLatin1String("remove-integration")) {
+        QString message;
+        const int code = core.icons.removeIntegration(&message);
+        out() << message << "\n";
+        return code;
+    }
+    if (action == QLatin1String("import") && args.size() >= 3) {
+        for (const auto &message : core.coordinator.recoverInterrupted())
+            err() << message << "\n";
+        IconThemeImporter importer(core.env, &core.coordinator);
+        for (const auto &message : importer.recoverStaging())
+            err() << message << "\n";
+        QEventLoop loop;
+        QObject::connect(&importer, &IconThemeImporter::finished, &loop, &QEventLoop::quit);
+        importer.choosePath(args[2]);
+        if (importer.state() == QLatin1String("confirm")) {
+            if (!yes) {
+                err() << importer.message() << "\nRe-run with --yes to go ahead.\n";
+                return 1;
+            }
+            importer.confirm();
+        }
+        if (importer.busy())
+            loop.exec();
+        const bool ok = importer.state() == QLatin1String("imported");
+        if (json) {
+            QJsonObject row;
+            row["ok"] = ok;
+            row["id"] = importer.themeId();
+            row["name"] = importer.themeName();
+            row["message"] = importer.message();
+            printJson(row);
+        } else if (ok) {
+            out() << importer.message() << "\n";
+        } else {
+            err() << importer.message() << "\n";
+        }
+        return ok ? 0 : 1;
+    }
+    err() << Usage;
+    return 1;
+}
+
 int cmdSkillInstall(AppCore &core) {
     QByteArray skill;
     if (!FileOps::readFile(":/data/skill.md", &skill)) {
@@ -706,7 +790,7 @@ int cmdSkillInstall(AppCore &core) {
 namespace Cli {
 
 bool isCliCommand(const QString &command) {
-    static const QStringList commands{"catalog", "search", "get", "plan", "apply", "reset", "history", "undo", "doctor", "coverage", "compat", "shortcut", "rule", "display", "plugin", "widget", "launch", "integrate", "selftest", "skill", "display-watchdog", "help", "--help", "-h", "--version"};
+    static const QStringList commands{"catalog", "search", "get", "plan", "apply", "reset", "history", "undo", "doctor", "coverage", "compat", "shortcut", "rule", "display", "plugin", "widget", "launch", "integrate", "selftest", "skill", "display-watchdog", "icons", "help", "--help", "-h", "--version"};
     return commands.contains(command);
 }
 
@@ -746,6 +830,8 @@ int run(const Env &env, const QStringList &arguments) {
         return cmdIntegrateMenu(core, args.contains("--remove"));
     if (command == QLatin1String("compat"))
         return cmdCompat(core, args, json);
+    if (command == QLatin1String("icons"))
+        return cmdIcons(core, args, yes, json);
     if (command == QLatin1String("plugin"))
         return cmdPlugin(core, args, json);
     if (command == QLatin1String("widget"))

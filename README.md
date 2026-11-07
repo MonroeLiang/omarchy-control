@@ -56,6 +56,7 @@ omarchy-control update install    # Download, verify, and install it
 
 ```sh
 omarchy-control integrate menu --remove   # If you added it to the menu
+omarchy-control icons remove-integration  # If you chose an icon pack; keeps the icons as they are
 sudo pacman -R omarchy-control
 ```
 
@@ -79,7 +80,7 @@ Packages are built for x86_64 by [a public workflow](.github/workflows/release.y
 <td width="50%" valign="top">
 <img src="docs/screens/appearance.png" alt="The Appearance page, choosing a theme from tiles"><br><br>
 <b>See a theme before you pick it</b><br>
-Themes and backgrounds are tiles, not filenames. The same live, verified settings cover fonts, windows, the bar and dock, idle timers, power profiles, input, DNS, and language.
+Themes, backgrounds, and icon packs are tiles, not filenames. Import a pack you downloaded by dropping its folder in. The same live, verified settings cover fonts, windows, the bar and dock, idle timers, power profiles, input, DNS, and language.
 </td>
 <td width="50%" valign="top">
 <img src="docs/screens/sound.png" alt="The Sound and devices page"><br><br>
@@ -107,7 +108,7 @@ The window follows your theme and language live, works by keyboard alone, and mi
 
 ### Coverage
 
-| 96 | 22 | 334 | 19 | 22 |
+| 98 | 22 | 334 | 19 | 22 |
 | :---: | :---: | :---: | :---: | :---: |
 | native settings and pages | Omarchy panels | guided routes | specialist apps | config files |
 
@@ -124,10 +125,11 @@ Every public Omarchy command and menu row in the 4.5 inventory has a destination
 - **Wi-Fi switches can roll back.** They run under a NetworkManager checkpoint where polkit allows one.
 - **Omarchy can change underneath it.** If a command behind a setting changes, that setting keeps reading but pauses writing until you review it. `omarchy-control compat` shows what changed.
 - **Packages wait their turn.** Package work waits for pacman, and a restore keeps a copy of whatever it replaces.
+- **Icon packs are copied, never run.** An import only reads the folder you chose, builds the copy to one side, and moves it into place all at once. Nothing it contains is run or made executable, and no pack is ever replaced.
 - **Passwords are never collected.** Joining a secured network goes to Omarchy's panel, and installing an update leaves the password prompt to `sudo`.
 
 > [!NOTE]
-> **Version 0.1.3, built against Omarchy 4.5 and Hyprland 0.56.** 50 of 64 writable settings, display recovery, and the real window are verified against real Hyprland, the real shell, and real Omarchy scripts in an isolated nested session, and every setting reads correctly on real hardware. The checklist of changes on a real desktop session is still open. [What has and has not been verified](docs/LIVE-CHECKS.md) has the details.
+> **Version 0.1.3, built against Omarchy 4.5 and Hyprland 0.56.** 50 of 65 writable settings, display recovery, and the real window are verified against real Hyprland, the real shell, and real Omarchy scripts in an isolated nested session, and every setting reads correctly on real hardware. The checklist of changes on a real desktop session is still open. [What has and has not been verified](docs/LIVE-CHECKS.md) has the details.
 
 ## Keyboard shortcuts
 
@@ -171,6 +173,8 @@ omarchy-control shortcut add "SUPER + ALT + Y" "My tool" my-tool
 omarchy-control rule add firefox float
 omarchy-control display preview DP-1 1920 0 --keep
 omarchy-control launch panel.network
+omarchy-control icons list
+omarchy-control icons import ~/Downloads/SomePack
 omarchy-control update check
 omarchy-control skill install
 ```
@@ -184,7 +188,7 @@ Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wa
 ```sh
 bin/build                  # build/omarchy-control
 bin/install                # Build the Arch package from this checkout and install it
-bin/test                   # 269 tests; never touches the real desktop
+bin/test                   # 314 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
 tools/installer-check.sh   # install.sh against real release files in a disposable root

@@ -466,4 +466,66 @@ QString tomlGet(const QByteArray &document, const QString &section, const QStrin
     return {};
 }
 
+namespace {
+
+// Where one occurrence of the key's value sits in the document.
+struct IniSpan {
+    qsizetype start = 0;
+    qsizetype length = 0;
+};
+
+QList<IniSpan> iniSpans(const QByteArray &document, const QByteArray &group, const QByteArray &key) {
+    QList<IniSpan> spans;
+    QByteArray current;
+    qsizetype position = 0;
+    while (position < document.size()) {
+        qsizetype end = document.indexOf('\n', position);
+        if (end < 0)
+            end = document.size();
+        const QByteArray line = document.mid(position, end - position);
+        const QByteArray trimmed = line.trimmed();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            current = trimmed.mid(1, trimmed.size() - 2).trimmed();
+        } else if (current == group && !trimmed.startsWith('#') && !trimmed.startsWith(';')) {
+            const qsizetype equals = line.indexOf('=');
+            if (equals > 0 && line.left(equals).trimmed() == key) {
+                // The value, without the spaces around it or a CRLF's carriage return.
+                qsizetype start = equals + 1;
+                qsizetype stop = line.size();
+                while (start < stop && (line[start] == ' ' || line[start] == '\t'))
+                    ++start;
+                while (stop > start && (line[stop - 1] == ' ' || line[stop - 1] == '\t' || line[stop - 1] == '\r'))
+                    --stop;
+                spans << IniSpan{position + start, stop - start};
+            }
+        }
+        position = end + 1;
+    }
+    return spans;
+}
+
+}  // namespace
+
+IniValue iniGet(const QByteArray &document, const QString &group, const QString &key) {
+    const QList<IniSpan> spans = iniSpans(document, group.toUtf8(), key.toUtf8());
+    IniValue result;
+    result.found = !spans.isEmpty();
+    result.ambiguous = spans.size() > 1;
+    if (!spans.isEmpty())
+        result.value = QString::fromUtf8(document.mid(spans.first().start, spans.first().length));
+    return result;
+}
+
+bool iniSet(QByteArray *document, const QString &group, const QString &key, const QString &value, QString *error) {
+    const QList<IniSpan> spans = iniSpans(*document, group.toUtf8(), key.toUtf8());
+    if (spans.size() != 1) {
+        if (error)
+            *error = spans.isEmpty() ? QStringLiteral("The key %1 is not in this file.").arg(key)
+                                     : QStringLiteral("The key %1 appears more than once in this file.").arg(key);
+        return false;
+    }
+    document->replace(spans.first().start, spans.first().length, value.toUtf8());
+    return true;
+}
+
 }  // namespace FileOps

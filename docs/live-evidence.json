@@ -51,6 +51,10 @@
   "evidence": "apply, read back, and undo with real Omarchy scripts and real Hyprland in an isolated nested session, 2026-11-06 (tools/nested-check.py)",
   "status": "verified"
  },
+ "appearance.icons": {
+  "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
+  "status": "implemented"
+ },
  "appearance.plymouth": {
   "evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
   "status": "implemented"

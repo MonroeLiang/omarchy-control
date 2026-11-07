@@ -43,6 +43,8 @@ QJsonObject Transaction::toJson() const {
         o["undoneBy"] = undoneBy;
     if (!files.isEmpty())
         o["files"] = files;
+    if (!extra.isEmpty())
+        o["extra"] = extra;
     return o;
 }
 
@@ -61,6 +63,7 @@ Transaction Transaction::fromJson(const QJsonObject &o) {
     tx.beforeWasDefault = o.value("beforeWasDefault").toBool();
     tx.undoneBy = o.value("undoneBy").toString();
     tx.files = o.value("files").toObject();
+    tx.extra = o.value("extra").toObject();
     return tx;
 }
 
@@ -189,6 +192,9 @@ void ChangeCoordinator::saveReplaced(const Transaction &tx, const QString &path)
 }
 
 bool ChangeCoordinator::restoreFiles(const Transaction &tx, QString *error) {
+    // One file someone edited is no reason to leave the rest of this change in place, so
+    // every file gets its turn and the first problem is what gets reported.
+    QString first;
     for (auto it = tx.files.begin(); it != tx.files.end(); ++it) {
         const auto entry = it.value().toObject();
         const QString current = FileOps::fingerprint(it.key());
@@ -197,9 +203,9 @@ bool ChangeCoordinator::restoreFiles(const Transaction &tx, QString *error) {
         // Once a result is on record, anything else in the file is somebody's later
         // edit, and a restore must not overwrite it.
         if (entry.contains("after") && current != entry.value("after").toString()) {
-            if (error)
-                *error = tr("%1 was edited in the meantime, so it was left as it is.").arg(QFileInfo(it.key()).fileName());
-            return false;
+            if (first.isEmpty())
+                first = tr("%1 was edited in the meantime, so it was left as it is.").arg(QFileInfo(it.key()).fileName());
+            continue;
         }
         if (entry.value("before").toString() == QLatin1String("missing")) {
             saveReplaced(tx, it.key());
@@ -207,15 +213,21 @@ bool ChangeCoordinator::restoreFiles(const Transaction &tx, QString *error) {
             continue;
         }
         QByteArray contents;
-        if (!FileOps::readFile(entry.value("backup").toString(), &contents, error))
-            return false;
+        QString problem;
+        if (!FileOps::readFile(entry.value("backup").toString(), &contents, &problem)) {
+            if (first.isEmpty())
+                first = problem;
+            continue;
+        }
         // Before a result is on record, a concurrent edit cannot be told apart from
         // this change's own work. So what gets replaced is kept, and nothing is lost.
         saveReplaced(tx, it.key());
-        if (!FileOps::atomicWrite(it.key(), contents, error))
-            return false;
+        if (!FileOps::atomicWrite(it.key(), contents, &problem) && first.isEmpty())
+            first = problem;
     }
-    return true;
+    if (!first.isEmpty() && error)
+        *error = first;
+    return first.isEmpty();
 }
 
 void ChangeCoordinator::finish(Queued &item, Transaction tx) {
@@ -248,6 +260,7 @@ void ChangeCoordinator::run(Queued item) {
     tx.after = item.request.after;
     tx.recovery = item.request.recovery;
     tx.beforeWasDefault = item.request.beforeWasDefault;
+    tx.extra = item.request.extra;
     tx.at = QDateTime::currentDateTimeUtc();
 
     // A second window or the CLI must not interleave with this change.
@@ -281,6 +294,12 @@ void ChangeCoordinator::run(Queued item) {
     auto state = std::make_shared<Transaction>(tx);
 
     auto concludeFailure = [this, shared, state](const QString &error) {
+        if (shared->request.nothingToRestore) {
+            state->phase = "failed";
+            state->message = error;
+            finish(*shared, *state);
+            return;
+        }
         // Restore what can be restored, then say exactly what happened.
         QString restoreError;
         const bool restored = state->files.isEmpty() || restoreFiles(*state, &restoreError);
