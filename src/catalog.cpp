@@ -155,6 +155,7 @@ QVariantMap CatalogEntry::toVariant() const {
     m["multiDescription"] = multiDescription;
     m["group"] = group;
     m["tone"] = tone;
+    m["link"] = link.toVariantMap();
     return m;
 }
 
@@ -242,6 +243,7 @@ void Catalog::load(const QString &path) {
         e.multiDescription = o.value("multiDescription").toString();
         e.group = o.value("group").toString();
         e.tone = o.value("tone").toString();
+        e.link = o.value("link").toObject();
         m_index.insert(e.id, m_entries.size());
         m_entries << e;
     }
@@ -312,7 +314,10 @@ QJsonArray Catalog::panelLayout(const QString &pageId) const {
         panel["title"] = spec.value("title").toString(section);
         QJsonArray rows;
         QString headerId;
+        // A library claims its sections item by item, below, not as one section.
         for (const auto *e : std::as_const(entries)) {
+            if (spec.contains("library"))
+                break;
             if (placed.contains(e->id) || e->section != section)
                 continue;
             if (group.isEmpty() ? dedicated.value(section).contains(e->group) : e->group != group)
@@ -322,6 +327,29 @@ QJsonArray Catalog::panelLayout(const QString &pageId) const {
                 headerId = e->id;
             else
                 rows << e->id;
+        }
+        // A library: many sections, each its own collapsible group under a heading.
+        if (spec.contains("library")) {
+            QJsonArray groups;
+            for (const auto &groupValue : spec.value("library").toArray()) {
+                QJsonObject heading = groupValue.toObject();
+                QJsonArray items;
+                for (const auto &itemValue : heading.value("items").toArray()) {
+                    QJsonObject item = itemValue.toObject();
+                    QJsonArray ids;
+                    for (const auto *e : std::as_const(entries))
+                        if (!placed.contains(e->id) && e->section == item.value("section").toString()) {
+                            placed.insert(e->id);
+                            ids << e->id;
+                            rows << e->id;
+                        }
+                    item["rows"] = ids;
+                    items << item;
+                }
+                heading["items"] = items;
+                groups << heading;
+            }
+            panel["library"] = groups;
         }
         panel["header"] = headerId;
         panel["rows"] = rows;
@@ -341,11 +369,47 @@ QJsonArray Catalog::panelLayout(const QString &pageId) const {
         row["columns"] = columns;
         out << row;
     }
-    // Whatever no panel claimed, a section at a time, across the full width.
+    // Whatever no panel claimed, a section at a time: into the page's library if it has
+    // one, so a new category of software lands with the rest, or else across the full width.
     QStringList leftover;
     for (const auto *e : std::as_const(entries))
         if (!placed.contains(e->id) && !leftover.contains(e->section))
             leftover << e->section;
+    for (int r = 0; r < out.size() && !leftover.isEmpty(); ++r) {
+        QJsonObject row = out[r].toObject();
+        QJsonArray columns = row.value("columns").toArray();
+        for (int c = 0; c < columns.size() && !leftover.isEmpty(); ++c) {
+            QJsonArray panels = columns[c].toArray();
+            for (int p = 0; p < panels.size() && !leftover.isEmpty(); ++p) {
+                QJsonObject panel = panels[p].toObject();
+                QJsonArray groups = panel.value("library").toArray();
+                if (groups.isEmpty())
+                    continue;
+                QJsonObject last = groups.last().toObject();
+                QJsonArray items = last.value("items").toArray();
+                QJsonArray rows = panel.value("rows").toArray();
+                for (const auto &section : std::as_const(leftover)) {
+                    QJsonArray ids;
+                    for (const auto *e : std::as_const(entries))
+                        if (!placed.contains(e->id) && e->section == section) {
+                            placed.insert(e->id);
+                            ids << e->id;
+                            rows << e->id;
+                        }
+                    items << QJsonObject{{"section", section}, {"label", section}, {"icon", "list"}, {"rows", ids}};
+                }
+                leftover.clear();
+                last["items"] = items;
+                groups[groups.size() - 1] = last;
+                panel["library"] = groups;
+                panel["rows"] = rows;
+                panels[p] = panel;
+            }
+            columns[c] = panels;
+        }
+        row["columns"] = columns;
+        out[r] = row;
+    }
     for (const auto &section : std::as_const(leftover)) {
         QJsonArray rows;
         for (const auto *e : std::as_const(entries))

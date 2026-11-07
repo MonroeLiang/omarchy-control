@@ -56,6 +56,9 @@ QString findIcon(const Env &env, const QString &id, const QStringList &names, in
 
 // What the current Omarchy theme asks for, with the same fallback omarchy-theme-set-gnome uses.
 QString desktopDefault(const Env &env);
+// An app's icon as a file URL: an absolute path as it is, else the first name the theme or
+// its fallbacks have, else the old pixmaps folders no theme covers. Empty if none.
+QString appIconUrl(const Env &env, const QString &theme, const QStringList &icons, int size = 48);
 
 // The samples a pack is recognized by, in the order they are drawn.
 QStringList sampleKeys();

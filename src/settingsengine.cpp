@@ -328,7 +328,10 @@ void SettingsEngine::readChoices(const QString &id, ChoicesCallback callback) {
         // not a choice here; installing stays a separate, explicit action.
         if (o.contains("requiresCommand") && !m_capabilities->hasCommand(o.value("requiresCommand").toString()))
             continue;
-        choices << QVariantMap{{"value", o.value("value").toString()}, {"label", o.value("label").toString()}};
+        QVariantMap choice{{"value", o.value("value").toString()}, {"label", o.value("label").toString()}};
+        if (o.contains("icons"))
+            choice["icons"] = o.value("icons").toVariant();
+        choices << choice;
     }
     const QString kind = entry->choicesFrom.value("kind").toString();
     if (kind == QLatin1String("icons")) {

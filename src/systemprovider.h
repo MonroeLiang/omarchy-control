@@ -53,5 +53,6 @@ private:
     Capabilities *m_capabilities;
     ChangeCoordinator *m_coordinator;
     QVariantMap m_machine, m_battery;
+    QHash<QString, QString> m_iconUrls;
     QVariantList m_storage, m_apps, m_associations, m_hooks;
 };

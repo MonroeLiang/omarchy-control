@@ -44,7 +44,17 @@ timedatectl)
     *Timezone*) echo Europe/Amsterdam;;
     *NTP*) echo yes;;
   esac;;
-xdg-mime) case "$2" in text/plain) echo code.desktop;; application/pdf) echo org.gnome.Evince.desktop;; *) echo;; esac;;
+xdg-mime)
+  # Mail goes to an app that is not installed here, so its id shows as configured.
+  case "$3" in
+    text/plain) echo org.example.TextEditor.desktop;;
+    application/pdf) echo org.example.Documents.desktop;;
+    image/png) echo org.example.Images.desktop;;
+    video/mp4|audio/mpeg) echo org.example.Media.desktop;;
+    inode/directory) echo org.gnome.Nautilus.desktop;;
+    x-scheme-handler/mailto) echo hey.desktop;;
+    *) echo;;
+  esac;;
 omarchy)
   case "$*" in
     version) echo 4.5.0-3;;

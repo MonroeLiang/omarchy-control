@@ -1801,5 +1801,22 @@
  "Removes the swap file and boot resume settings. Needs administrator access.": "Fjerner swapfilen og indstillingerne for genoptagelse ved opstart. Kræver administratoradgang.",
  "Start screensaver": "Start pauseskærm",
  "Stay awake is on · Idle timers paused": "Hold vågen er slået til · Inaktivitetstimere er sat på pause",
- "Voxtype": "Voxtype"
+ "Voxtype": "Voxtype",
+ "Browse and open installed applications.": "Gennemse og åbn installerede programmer.",
+ "Looking up which apps open your files…": "Finder ud af, hvilke apps der åbner dine filer…",
+ "Manage in %1": "Administrer i %1",
+ "No app matches that.": "Ingen app matcher det.",
+ "Open %1": "Åbn %1",
+ "AI apps": "AI-apps",
+ "AI tools": "AI-værktøjer",
+ "Browsers": "Browsere",
+ "Choosing an agent sets it as default and starts it. It may install it first.": "Når du vælger en agent, bliver den standard og startes. Den installeres måske først.",
+ "Defaults": "Standarder",
+ "Development tools": "Udviklingsværktøjer",
+ "Editors": "Editorer",
+ "Fonts & themes": "Skrifttyper og temaer",
+ "Games": "Spil",
+ "Software": "Software",
+ "Terminals": "Terminaler",
+ "Web apps & TUIs": "Webapps og TUI'er"
 }

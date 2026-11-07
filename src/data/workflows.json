@@ -9222,7 +9222,7 @@
   "launch": {
    "kind": "page",
    "page": "apps",
-   "focus": "block.apps"
+   "focus": "block.installedApps"
   }
  },
  {
@@ -9245,7 +9245,7 @@
   "launch": {
    "kind": "page",
    "page": "apps",
-   "focus": "block.apps"
+   "focus": "block.associations"
   }
  },
  {

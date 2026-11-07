@@ -1699,6 +1699,71 @@ esac)SH");
                 ++tiles;
         QCOMPARE(tiles, 7);
     }
+    void everyAppsEntryIsReachable() {
+        Catalog catalog;
+        QStringList placed, blocks;
+        QHash<QString, int> library;
+        int agents = 0;
+        bool agentsCollapsible = false;
+        for (const auto &row : catalog.panelLayout("apps"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    if (!panel.value("block").toString().isEmpty())
+                        blocks << panel.value("block").toString();
+                    for (const auto &id : panel.value("rows").toArray())
+                        placed << id.toString();
+                    if (panel.value("section").toString() == "AI agents") {
+                        agents = panel.value("rows").toArray().size();
+                        agentsCollapsible = panel.value("collapsible").toBool();
+                    }
+                    for (const auto &group : panel.value("library").toArray())
+                        for (const auto &item : group.toObject().value("items").toArray())
+                            library.insert(group.toObject().value("heading").toString() + "/" + item.toObject().value("section").toString(), item.toObject().value("rows").toArray().size());
+                }
+        // Two native destinations stand for their sections; everything else is a control,
+        // a row in a closed panel, or a row in a library group, each exactly once.
+        QStringList expected, natives;
+        for (const auto *entry : catalog.entriesForPage("apps")) {
+            if (entry->launch.value("kind").toString() == QLatin1String("page") && entry->launch.value("page").toString() == QLatin1String("apps"))
+                natives << entry->launch.value("focus").toString();
+            else
+                expected << entry->id;
+        }
+        QCOMPARE(expected.size() + natives.size(), 194);
+        QCOMPARE(placed.size(), QSet<QString>(placed.begin(), placed.end()).size());
+        placed.sort();
+        expected.sort();
+        QCOMPARE(placed, expected);
+        natives.sort();
+        QCOMPARE(natives, QStringList({"block.associations", "block.installedApps"}));
+        QCOMPARE(blocks, QStringList({"associations", "installedApps"}));
+        QCOMPARE(agents, 26);
+        QVERIFY(agentsCollapsible);
+        // Sixteen categories, counted from the catalog.
+        QCOMPARE(library.size(), 16);
+        QCOMPARE(library.value("/Packages"), 8);
+        QCOMPARE(library.value("/Web apps and TUIs"), 5);
+        QCOMPARE(library.value("Install/Install development tools"), 21);
+        QCOMPARE(library.value("Remove/Remove dictation"), 2);
+        // Two entries that run one command stay two.
+        QVERIFY(placed.contains("install.package") && placed.contains("install.app.generic"));
+    }
+    void aNewSoftwareSectionJoinsTheLibrary() {
+        Sandbox s;
+        const QString dir = s.dir.path() + "/catalog";
+        writeFile(dir + "/pages.json", R"([{"id":"p","label":"P","icon":"x","description":"","sections":["A"],"panels":[{"columns":[[{"section":"Library","library":[{"heading":"","items":[{"section":"A","label":"A","icon":"x"}]}]}]]}]}])");
+        writeFile(dir + "/settings.json", "[]");
+        writeFile(dir + "/workflows.json", R"([{"id":"a.one","page":"p","section":"A","label":"One","type":"action","launch":{"kind":"exec","argv":["true"]}},{"id":"b.new","page":"p","section":"Install robots","label":"Robots","type":"action","launch":{"kind":"exec","argv":["true"]}}])");
+        Catalog catalog(dir);
+        const QJsonArray layout = catalog.panelLayout("p");
+        QCOMPARE(layout.size(), 1);
+        const auto panel = layout[0].toObject().value("columns").toArray()[0].toArray()[0].toObject();
+        const auto items = panel.value("library").toArray()[0].toObject().value("items").toArray();
+        QCOMPARE(items.size(), 2);
+        QCOMPARE(items[1].toObject().value("section").toString(), QString("Install robots"));
+        QCOMPARE(panel.value("rows").toArray().size(), 2);
+    }
     void networkRefusesBadIds() {
         Sandbox s;
         s.command("nmcli", "exit 0");
@@ -4552,6 +4617,59 @@ exit 0)SH");
         QVERIFY(page.named("batterySummary").isEmpty());
         QVERIFY(page.named("sectionLink_Battery").isEmpty());
         QVERIFY(!page.named("sectionLink_Power").isEmpty());
+    }
+
+    void theAppsPageOpensWhatSearchFindsAndRunsItsTools() {
+        Sandbox s;
+        desktopFixture(s);
+        const QString apps = s.env.dataDirs.last() + "/applications/";
+        writeFile(apps + "org.example.Docs.desktop", "[Desktop Entry]\nType=Application\nName=Docs\nMimeType=application/pdf;\n");
+        writeFile(apps + "secret.desktop", "[Desktop Entry]\nType=Application\nName=Secret\nNoDisplay=true\n");
+        // One association set elsewhere to an app that is not installed.
+        s.command("xdg-mime", R"SH(case "$3" in application/pdf) echo org.example.Docs.desktop;; x-scheme-handler/mailto) echo hey.desktop;; *) echo;; esac)SH");
+        s.command("omarchy-launch-floating-terminal-with-presentation", "exit 0");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("apps");
+        QTRY_COMPARE(page.named("associationRow").size(), 7);
+        // The unknown handler keeps its id; the known one shows its app's name.
+        QStringList shown;
+        for (QQuickItem *choice : page.named("associationChoice"))
+            shown << choice->property("displayText").toString();
+        QVERIFY(shown.contains("Docs"));
+        QVERIFY(shown.contains("hey.desktop"));
+        // Closed until asked: no agent rows, no library rows yet.
+        QVERIFY(!page.row("setup.default.agent.claude"));
+        QVERIFY(!page.row("install.gaming.retroarch"));
+        QVERIFY(page.row("agent.account.copy"));
+        // Search opens what holds the entry and lands on it.
+        page.open("apps", "setup.default.agent.claude");
+        QTRY_VERIFY(page.row("setup.default.agent.claude"));
+        QTRY_VERIFY(page.focusWithin(page.row("setup.default.agent.claude")));
+        page.open("apps", "install.gaming.retroarch");
+        QTRY_VERIFY(page.row("install.gaming.retroarch"));
+        QTRY_VERIFY(page.focusWithin(page.row("install.gaming.retroarch")));
+        // Installed apps opens for its search destination, without hidden entries.
+        page.open("apps", "block.installedApps");
+        int listed = 0;
+        bool secretListed = false;
+        for (const auto &app : SystemProvider::readApps(s.env)) {
+            listed += app.toMap().value("hidden").toBool() ? 0 : 1;
+            secretListed = secretListed || app.toMap().value("name").toString() == "Secret";
+        }
+        QVERIFY(secretListed);
+        QTRY_COMPARE(page.named("installedApp").size(), listed);
+        QTRY_VERIFY(page.focusWithin(page.named("installedAppsFilter").first()));
+        // The tools run their existing workflows.
+        auto press = [&](const QString &id) {
+            for (QQuickItem *child : page.row(id)->findChildren<QQuickItem *>())
+                if (child->objectName() == "actionButton")
+                    QMetaObject::invokeMethod(child, "clicked");
+        };
+        press("agent.account.copy");
+        QTRY_VERIFY(s.calls().join('\n').contains("omarchy-launch-floating-terminal-with-presentation"));
+        press("install.gaming.retroarch");
+        QTRY_VERIFY(s.calls().filter("omarchy-launch-floating-terminal-with-presentation").size() >= 2);
     }
 
     void theBarEditorShowsTheModelItEdits() {

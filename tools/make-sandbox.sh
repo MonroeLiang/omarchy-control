@@ -145,9 +145,12 @@ PY
 printf 'Yaru-blue' >"$H/.fake-icon-theme"
 A="$ROOT/sys-root/usr/share/applications"
 mkdir -p "$A"
-for app in "firefox:Firefox:web-browser" "foot:Foot:utilities-terminal" "org.gnome.Nautilus:Files:folder" "omacalc:Omacalc:text-x-generic"; do
-  IFS=: read -r id name icon <<<"$app"
-  printf '[Desktop Entry]\nType=Application\nName=%s\nIcon=%s\nExec=%s\n' "$name" "$icon" "$id" >"$A/$id.desktop"
+for app in "firefox:Firefox:web-browser:x-scheme-handler/http;text/html" "foot:Foot:utilities-terminal:" "org.gnome.Nautilus:Files:folder:inode/directory" \
+           "omacalc:Omacalc:text-x-generic:" "org.example.TextEditor:Text Editor:text-x-generic:text/plain" \
+           "org.example.Documents:Document Viewer:text-x-generic:application/pdf" "org.example.Images:Image Viewer:text-x-generic:image/png" \
+           "org.example.Media:Media Player:text-x-generic:video/mp4;audio/mpeg"; do
+  IFS=: read -r id name icon mimes <<<"$app"
+  printf '[Desktop Entry]\nType=Application\nName=%s\nIcon=%s\nExec=%s\nMimeType=%s\n' "$name" "$icon" "$id" "$mimes" >"$A/$id.desktop"
 done
 cp "$HERE/fake-gsettings" "$ROOT/bin/gsettings"
 cp "$HERE/fake-dconf" "$ROOT/bin/dconf"
@@ -158,4 +161,4 @@ for tool in pactl nmcli bluetoothctl systemctl timedatectl xdg-mime; do
 done
 printf '#!/bin/sh\nprintf "Filesystem Type Size Used Avail Use%% Mounted\n/dev/nvme0n1p2 btrfs 1000000000000 420000000000 580000000000 42%% /\n/dev/nvme0n1p1 vfat 2000000000 400000000 1600000000 20%% /boot\n"\n' >"$ROOT/bin/df"
 chmod +x "$ROOT"/bin/*
-for tool in powerprofilesctl; do printf '#!/bin/sh\nexit 0\n' >"$ROOT/bin/$tool"; chmod +x "$ROOT/bin/$tool"; done
+for tool in powerprofilesctl firefox ghostty foot nvim code; do printf '#!/bin/sh\nexit 0\n' >"$ROOT/bin/$tool"; chmod +x "$ROOT/bin/$tool"; done

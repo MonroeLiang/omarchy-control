@@ -29,12 +29,15 @@ def strings():
         for row in page.get("panels", []):
             for column in row.get("columns", []):
                 for panel in column:
-                    catalog.update(filter(None, [panel.get("title"), panel.get("footnote"), (panel.get("notice") or {}).get("text")]))
+                    catalog.update(filter(None, [panel.get("title"), panel.get("footnote"), (panel.get("notice") or {}).get("text"), panel.get("description")]))
+                    for group in panel.get("library", []):
+                        catalog.update(filter(None, [group.get("heading")] + [item.get("label") for item in group.get("items", [])]))
     for name in ("settings", "workflows"):
         for entry in json.load(open(f"{SRC}/data/{name}.json", encoding="utf-8")):
             catalog.update(filter(None, [entry["label"], entry.get("description"), entry.get("section"), entry.get("confirmText"), entry.get("confirmAlways"), entry.get("placeholder"), entry.get("restart"),
                                          entry.get("multiLabel"), entry.get("multiDescription"), (entry.get("read") or {}).get("unsupported")]))
             catalog.update(entry.get("effects", []))
+            catalog.update(filter(None, [(entry.get("link") or {}).get("label")]))
             catalog.update(c["label"] for c in entry.get("choices", []))
             catalog.update(entry.get("map", {}).values() if isinstance(entry.get("map"), dict) else [])
     return sorted(ui - plural), sorted(plural), sorted(catalog - ui - plural)

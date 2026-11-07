@@ -144,6 +144,7 @@ private:
     IconThemeImporter m_iconImporter;
     StateMap m_states;
     QHash<QString, QVariantList> m_choices;
+    QHash<QString, QString> m_iconUrls;
     QStringList m_pins;
     QStringList m_pendingRestarts;
     QString m_currentPage = "overview";

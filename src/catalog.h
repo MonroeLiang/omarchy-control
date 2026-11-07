@@ -30,6 +30,8 @@ struct CatalogEntry {
     QString group;
     // How an action reads when drawn as a tile: "danger" for one that ends the session.
     QString tone;
+    // Where a status row's link leads: {label, page, focus}.
+    QJsonObject link;
 
     bool isAction() const { return type == QLatin1String("action"); }
     bool isSetting() const { return !isAction(); }

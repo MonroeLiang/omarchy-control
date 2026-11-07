@@ -120,11 +120,21 @@ ScrollView {
         if (pinnedTab.length && Math.abs(y - pinnedY) > 4)
             pinnedTab = ""
         var panels = panelItems()
-        var current = ""
-        for (var i = 0; i < panels.length; ++i)
-            if (panels[i].jumpTarget && panels[i].mapToItem(column, 0, 0).y <= y + Math.max(24, root.availableHeight * 0.25))
-                current = panels[i].jumpLabel
-        spyTab = current
+        var line = y + Math.max(24, root.availableHeight * 0.25)
+        var current = "", spanning = ""
+        for (var i = 0; i < panels.length; ++i) {
+            if (!panels[i].jumpTarget)
+                continue
+            var top = panels[i].mapToItem(column, 0, 0).y
+            if (top > line)
+                continue
+            current = panels[i].jumpLabel
+            // Side by side, the first panel the reading line runs through wins over a
+            // neighbor whose top merely passed it too.
+            if (!spanning && top + panels[i].height > line)
+                spanning = panels[i].jumpLabel
+        }
+        spyTab = spanning || current
     }
     Connections {
         target: root.contentItem
@@ -171,7 +181,15 @@ ScrollView {
         if (!focusId.length)
             return
         var target = null
-        if (focusId.indexOf("block.") === 0) {
+        if (focusId.indexOf("panel:") === 0) {
+            // A whole section, opened if it starts closed.
+            target = panelFor(focusId.substring(6))
+            if (target && target.collapsible && !target.expanded) {
+                target.expanded = true
+                settleTimer.restart()
+                return
+            }
+        } else if (focusId.indexOf("block.") === 0) {
             var name = focusId.substring(6)
             for (var i = 0; i < blockRepeater.count; ++i) {
                 var loader = blockRepeater.itemAt(i)
@@ -188,6 +206,14 @@ ScrollView {
                 target = folded.reveal(name)
         } else if (composed) {
             var panels = panelItems()
+            // Whatever holds the entry opens first; its rows are found once laid out.
+            var opened = false
+            for (var o = 0; o < panels.length; ++o)
+                opened = (panels[o].reveal && panels[o].reveal(focusId)) || opened
+            if (opened) {
+                settleTimer.restart()
+                return
+            }
             for (var p = 0; p < panels.length && !target; ++p)
                 target = panels[p].rowItem(focusId)
         } else {
