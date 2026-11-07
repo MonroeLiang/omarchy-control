@@ -154,6 +154,7 @@ QVariantMap CatalogEntry::toVariant() const {
     m["multiLabel"] = multiLabel;
     m["multiDescription"] = multiDescription;
     m["group"] = group;
+    m["tone"] = tone;
     return m;
 }
 
@@ -240,6 +241,7 @@ void Catalog::load(const QString &path) {
         e.multiLabel = o.value("multiLabel").toString();
         e.multiDescription = o.value("multiDescription").toString();
         e.group = o.value("group").toString();
+        e.tone = o.value("tone").toString();
         m_index.insert(e.id, m_entries.size());
         m_entries << e;
     }

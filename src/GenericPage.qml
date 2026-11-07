@@ -54,7 +54,8 @@ ScrollView {
                 for (var p = 0; p < panelRows[r].columns[c].length; ++p) {
                     var spec = panelRows[r].columns[c][p]
                     var label = spec.jump === false ? "" : typeof spec.jump === "string" ? spec.jump : spec.section
-                    if (label && found.indexOf(label) < 0)
+                    // Only sections on screen: a panel can leave, as Battery does without a battery.
+                    if (label && found.indexOf(label) < 0 && specShown(spec))
                         found.push(label)
                 }
         var order = (page.jumps && page.jumps.length) ? page.jumps : (page.sections || [])
@@ -63,6 +64,22 @@ ScrollView {
                     .concat(found.filter(function (label) { return order.indexOf(label) < 0 }))
     }
 
+    // Blocks that have left the page, as reported by their panels. Plain data, so what
+    // depends on it never reads back the visibility it decides.
+    property var hiddenBlocks: ({})
+    function setBlockHidden(name, hidden) {
+        if (!name || !!hiddenBlocks[name] === hidden)
+            return
+        var next = Object.assign({}, hiddenBlocks)
+        if (hidden)
+            next[name] = true
+        else
+            delete next[name]
+        hiddenBlocks = next
+    }
+    function specShown(spec) {
+        return !spec.block || !hiddenBlocks[spec.block]
+    }
     // Panels in reading order, top to bottom, then along the line.
     function panelItems() {
         var found = []
@@ -356,6 +373,8 @@ ScrollView {
                     }
                     readonly property real free: Math.max(0, panelGrid.width - columnSpacing * (count - 1))
                     Layout.fillWidth: true
+                    // A row whose panels have all left takes no room, spacing included.
+                    visible: modelData.columns.some(function (column) { return column.some(root.specShown) })
                     columns: root.wide ? count : 1
                     columnSpacing: 20
                     rowSpacing: 20
@@ -380,6 +399,8 @@ ScrollView {
                                     Layout.fillHeight: root.wide && panelRow.stretch && index === panelColumn.panels.length - 1
                                     spec: modelData
                                     focusId: root.focusId
+                                    Component.onCompleted: root.setBlockHidden(modelData.block, !wanted)
+                                    onWantedChanged: root.setBlockHidden(modelData.block, !wanted)
                                 }
                             }
                         }

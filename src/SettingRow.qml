@@ -74,6 +74,12 @@ Item {
         color: root.highlighted ? Qt.alpha(theme.accent, 0.14) : hover.hovered ? Qt.alpha(theme.foreground, 0.04) : "transparent"
         Behavior on color { enabled: theme.animate; ColorAnimation { duration: 200 } }
     }
+    // For sizing a dropdown to its longest choice, in the font dropdowns use for values.
+    FontMetrics {
+        id: choiceMetrics
+        font.family: "monospace"
+        font.pixelSize: theme.fontSize
+    }
     HoverHandler {
         id: hover
         cursorShape: root.navigation && !root.unavailable ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -406,7 +412,15 @@ Item {
             enabled: root.editable
             textRole: "label"
             valueRole: "value"
-            implicitWidth: root.compact ? 220 : Math.min(320, Math.max(255, root.width * 0.4))
+            // As wide as its longest choice needs, within reason, so a short list leaves
+            // the description its room and a long label is not cut off.
+            readonly property real longest: {
+                var widest = 0, list = model || []
+                for (var i = 0; i < list.length; ++i)
+                    widest = Math.max(widest, choiceMetrics.advanceWidth(list[i].label))
+                return widest
+            }
+            implicitWidth: root.compact ? 220 : Math.min(320, root.width * 0.55, Math.max(170, longest + 60))
             readonly property string current: root.st.value === undefined ? "" : root.st.value
             // A value set outside the app may not be in the list; show it as it is
             // rather than pretending it is one of the choices.
@@ -424,6 +438,9 @@ Item {
                 return list
             }
             function sync() {
+                // Called while the row is still being built, before the list exists.
+                if (!model)
+                    return
                 for (var i = 0; i < model.length; ++i)
                     if (model[i].value === current) {
                         currentIndex = i
@@ -539,12 +556,22 @@ Item {
     }
     Component {
         id: statusControl
-        AppText {
-            text: root.status === "unknown" ? qsTr("Unknown") : (root.st.display || "")
-            secondary: true
-            mono: true
-            horizontalAlignment: Text.AlignRight
-            Layout.maximumWidth: root.width * 0.5
+        RowLayout {
+            spacing: 8
+            // A yes-or-no status says yes with a mark as well as a word.
+            AppIcon {
+                visible: root.rich && root.st.value === "true"
+                name: "checkcircle"
+                size: Math.round(theme.fontSize * 1.3)
+                tint: theme.goodText
+            }
+            AppText {
+                text: root.status === "unknown" ? qsTr("Unknown") : (root.st.display || "")
+                secondary: !(root.rich && root.st.value === "true")
+                mono: !(root.rich && (root.st.value === "true" || root.st.value === "false"))
+                horizontalAlignment: Text.AlignRight
+                Layout.maximumWidth: root.width * 0.5
+            }
         }
     }
 }

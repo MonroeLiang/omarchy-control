@@ -1844,5 +1844,14 @@
   "few": "العودة إلى الاتصال السابق خلال %n ثوانٍ.",
   "many": "العودة إلى الاتصال السابق خلال %n ثانية.",
   "other": "العودة إلى الاتصال السابق خلال %n ثانية."
- }
+ },
+ "Charging": "قيد الشحن",
+ "Full": "ممتلئة",
+ "On battery": "على البطارية",
+ "Plugged in, not charging": "موصولة، لا تشحن",
+ "Log out, Reboot, and Shut down close your open apps first.": "تغلق إجراءات تسجيل الخروج وإعادة التشغيل وإيقاف التشغيل تطبيقاتك المفتوحة أولًا.",
+ "Removes the swap file and boot resume settings. Needs administrator access.": "يزيل ملف التبديل وإعدادات الاستئناف عند الإقلاع. يتطلب صلاحيات المسؤول.",
+ "Start screensaver": "تشغيل حافظ الشاشة",
+ "Stay awake is on · Idle timers paused": "البقاء مستيقظًا مفعّل · مؤقتات الخمول متوقفة مؤقتًا",
+ "Voxtype": "Voxtype"
 }

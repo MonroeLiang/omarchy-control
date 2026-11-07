@@ -1661,6 +1661,44 @@ esac)SH");
         QVERIFY(placed.contains("setup.network.qr") && placed.contains("share.qr.note"));
         QCOMPARE(catalog.find("native.wifi")->launch.value("focus").toString(), QString("block.wifi"));
     }
+    void powerPanelsPlaceEveryEntryOnce() {
+        Catalog catalog;
+        QStringList placed, blocks;
+        QHash<QString, QStringList> byPanel;
+        for (const auto &row : catalog.panelLayout("power"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    if (!panel.value("block").toString().isEmpty())
+                        blocks << panel.value("block").toString();
+                    for (const auto &id : panel.value("rows").toArray()) {
+                        placed << id.toString();
+                        byPanel[panel.value("title").toString()] << id.toString();
+                    }
+                }
+        QStringList expected;
+        for (const auto *entry : catalog.entriesForPage("power"))
+            if (entry->id != QLatin1String("native.battery"))
+                expected << entry->id;
+        // Twenty entries: the battery summary stands for Battery status, the rest are placed once.
+        QCOMPARE(expected.size() + 1, 20);
+        QStringList sorted = placed, sortedExpected = expected;
+        sorted.sort();
+        sortedExpected.sort();
+        QCOMPARE(sorted, sortedExpected);
+        QCOMPARE(blocks, QStringList{"battery"});
+        QCOMPARE(catalog.find("native.battery")->launch.value("focus").toString(), QString("block.battery"));
+        QCOMPARE(byPanel.value("Power").size(), 4);
+        QCOMPARE(byPanel.value("Lock and screensaver").size(), 4);
+        QCOMPARE(byPanel.value("Session").size(), 8);
+        QCOMPARE(byPanel.value("Hibernation"), QStringList({"power.hibernation", "hibernation.setup", "hibernation.remove"}));
+        // The seven session actions are the panel's tiles.
+        int tiles = 0;
+        for (const auto &id : byPanel.value("Session"))
+            if (catalog.find(id)->group == QLatin1String("Session actions"))
+                ++tiles;
+        QCOMPARE(tiles, 7);
+    }
     void networkRefusesBadIds() {
         Sandbox s;
         s.command("nmcli", "exit 0");
@@ -4171,6 +4209,7 @@ private:
                     return item;
             return nullptr;
         }
+        QObject *backend_() { return &backend; }
         QQuickItem *pageView() const {
             const auto pages = named("pageLoader");
             return pages.isEmpty() ? nullptr : qvariant_cast<QQuickItem *>(pages.first()->property("item"));
@@ -4443,6 +4482,76 @@ esac)SH");
         QTRY_VERIFY(page.focusWithin(page.row("remove.sunshine")));
         QMetaObject::invokeMethod(page.named("sectionLink_Tools").first(), "clicked");
         QTRY_VERIFY(page.focusWithin(page.row("trigger.tests.network-speedtest")));
+    }
+
+    void thePowerPageRunsEachTileAndFollowsItsState() {
+        Sandbox s;
+        desktopFixture(s);
+        writeFile(s.env.sys("/sys/class/power_supply/BAT0/type"), "Battery\n");
+        writeFile(s.env.sys("/sys/class/power_supply/BAT0/capacity"), "100\n");
+        writeFile(s.env.sys("/sys/class/power_supply/BAT0/status"), "Full\n");
+        writeFile(s.env.sys("/sys/class/power_supply/BAT0/cycle_count"), "8\n");
+        const QString awake = s.env.stateHome + "/omarchy/indicators/stay-awake";
+        writeFile(awake, "");
+        s.omarchy(R"SH(
+case "$*" in
+  "toggle idle status") if [ -f "$HOME/.local/state/omarchy/indicators/stay-awake" ]; then echo '{"enabled":true}'; else echo '{"enabled":false}'; fi;;
+  "hibernation available") exit 0;;
+esac
+exit 0)SH");
+        s.command("omarchy-system-lock", "exit 0");
+        s.command("omarchy-system", "exit 0");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("power");
+        QTRY_COMPARE(page.named("actionTile").size(), 7);
+        QStringList tiles;
+        for (QQuickItem *tile : page.named("actionTile"))
+            tiles << tile->property("entryId").toString();
+        QCOMPARE(tiles, QStringList({"system.screensaver", "system.lock", "system.suspend", "system.hibernate", "system.logout", "system.reboot", "system.shutdown"}));
+        // The rest of the twenty are rows, each once.
+        QStringList rows = page.rowIds();
+        QCOMPARE(rows.size(), 12);
+        QCOMPARE(QSet<QString>(rows.begin(), rows.end()).size(), 12);
+        QTRY_VERIFY(!page.named("batterySummary").isEmpty());
+        // Idle timers paused is said while Stay awake is on, and only then.
+        QTRY_COMPARE(page.named("panelNotice").size(), 1);
+        QFile::remove(awake);
+        QMetaObject::invokeMethod(page.backend_(), "refresh", Q_ARG(QString, "power.stayawake"));
+        QTRY_COMPARE(page.named("panelNotice").size(), 0);
+        // A tile runs exactly what its row would.
+        QQuickItem *lock = nullptr, *shutdown = nullptr;
+        for (QQuickItem *tile : page.named("actionTile")) {
+            if (tile->property("entryId").toString() == "system.lock")
+                lock = tile;
+            if (tile->property("entryId").toString() == "system.shutdown")
+                shutdown = tile;
+        }
+        QMetaObject::invokeMethod(lock, "clicked");
+        QTRY_VERIFY(s.calls().contains("omarchy-system-lock "));
+        // Shut down asks first, and runs only once accepted.
+        auto *dialog = page.window->findChild<QObject *>("confirmDialog");
+        QMetaObject::invokeMethod(shutdown, "clicked");
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QVERIFY(!s.calls().join('\n').contains("omarchy-system shutdown"));
+        QMetaObject::invokeMethod(dialog, "accept_");
+        QTRY_VERIFY(s.calls().join('\n').contains("omarchy-system shutdown"));
+        // Search lands on a tile, and on the battery summary.
+        page.open("power", "system.reboot");
+        QTRY_VERIFY(page.window->activeFocusItem() && page.window->activeFocusItem()->property("entryId").toString() == "system.reboot");
+        page.open("power", "block.battery");
+        QTRY_VERIFY(page.focusWithin(page.named("batterySummary").first()));
+    }
+    void aComputerWithoutABatteryHasNoBatterySection() {
+        Sandbox s;
+        desktopFixture(s);
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("power");
+        QTRY_COMPARE(page.named("actionTile").size(), 7);
+        QVERIFY(page.named("batterySummary").isEmpty());
+        QVERIFY(page.named("sectionLink_Battery").isEmpty());
+        QVERIFY(!page.named("sectionLink_Power").isEmpty());
     }
 
     void theBarEditorShowsTheModelItEdits() {

@@ -3071,7 +3071,8 @@
   "map": {
    "true": "Available",
    "false": "Not set up"
-  }
+  },
+  "group": "Hibernation"
  },
  {
   "id": "apps.default.browser",

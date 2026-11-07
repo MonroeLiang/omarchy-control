@@ -1792,5 +1792,14 @@
  "Going back to the previous one in %n second(s).": {
   "one": "Går tilbage til den forrige om %n sekund.",
   "other": "Går tilbage til den forrige om %n sekunder."
- }
+ },
+ "Charging": "Oplader",
+ "Full": "Fuld",
+ "On battery": "På batteri",
+ "Plugged in, not charging": "Tilsluttet, oplader ikke",
+ "Log out, Reboot, and Shut down close your open apps first.": "Log ud, Genstart og Luk ned lukker først dine åbne apps.",
+ "Removes the swap file and boot resume settings. Needs administrator access.": "Fjerner swapfilen og indstillingerne for genoptagelse ved opstart. Kræver administratoradgang.",
+ "Start screensaver": "Start pauseskærm",
+ "Stay awake is on · Idle timers paused": "Hold vågen er slået til · Inaktivitetstimere er sat på pause",
+ "Voxtype": "Voxtype"
 }
