@@ -406,7 +406,7 @@ Item {
             enabled: root.editable
             textRole: "label"
             valueRole: "value"
-            implicitWidth: root.compact ? 220 : Math.min(320, Math.max(200, root.width * 0.32))
+            implicitWidth: root.compact ? 220 : Math.min(320, Math.max(255, root.width * 0.4))
             readonly property string current: root.st.value === undefined ? "" : root.st.value
             // A value set outside the app may not be in the list; show it as it is
             // rather than pretending it is one of the choices.

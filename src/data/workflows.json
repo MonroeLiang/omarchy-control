@@ -964,7 +964,7 @@
   "type": "action",
   "domain": "C11",
   "integration": "omarchy-wizard",
-  "description": "Share clipboard, files, or folders with LocalSend",
+  "description": "",
   "keywords": [
    "clipboard"
   ],
@@ -978,7 +978,9 @@
     "omarchy-menu-share",
     "clipboard"
    ]
-  }
+  },
+  "group": "LocalSend",
+  "icon": "clipboard"
  },
  {
   "id": "trigger.share.file",
@@ -988,7 +990,7 @@
   "type": "action",
   "domain": "C11",
   "integration": "omarchy-wizard",
-  "description": "Share clipboard, files, or folders with LocalSend",
+  "description": "",
   "keywords": [
    "file"
   ],
@@ -1002,7 +1004,9 @@
     "omarchy-menu-share",
     "file"
    ]
-  }
+  },
+  "group": "LocalSend",
+  "icon": "file"
  },
  {
   "id": "trigger.share.folder",
@@ -1012,7 +1016,7 @@
   "type": "action",
   "domain": "C11",
   "integration": "omarchy-wizard",
-  "description": "Share clipboard, files, or folders with LocalSend",
+  "description": "",
   "keywords": [
    "folder"
   ],
@@ -1026,7 +1030,9 @@
     "omarchy-menu-share",
     "folder"
    ]
-  }
+  },
+  "group": "LocalSend",
+  "icon": "folder"
  },
  {
   "id": "trigger.tests.network-speedtest",
@@ -1048,7 +1054,8 @@
    "kind": "panel",
    "target": "omarchy.speedtest",
    "verb": "summon"
-  }
+  },
+  "icon": "gauge"
  },
  {
   "id": "trigger.tests.disk-speedtest",
@@ -1201,7 +1208,9 @@
    "kind": "panel",
    "target": "omarchy.wifiqr",
    "verb": "summon"
-  }
+  },
+  "group": "Wi-Fi details",
+  "icon": "qr"
  },
  {
   "id": "setup.default.agent.amp",
@@ -6176,7 +6185,9 @@
   },
   "requiresCommands": [
    "localsend"
-  ]
+  ],
+  "group": "LocalSend",
+  "icon": "download"
  },
  {
   "id": "apps.launcher",
@@ -6274,7 +6285,8 @@
   },
   "requiresCaps": [
    "shell"
-  ]
+  ],
+  "icon": "wifi"
  },
  {
   "id": "helper.nmtui",
@@ -6298,7 +6310,8 @@
   },
   "requiresCommands": [
    "nmtui"
-  ]
+  ],
+  "icon": "terminal"
  },
  {
   "id": "network.captive",
@@ -6325,7 +6338,8 @@
     "captive",
     "portal"
    ]
-  }
+  },
+  "icon": "lock"
  },
  {
   "id": "panel.tailscale",
@@ -6348,7 +6362,9 @@
   },
   "requiresCommands": [
    "tailscale"
-  ]
+  ],
+  "group": "Tailscale",
+  "icon": "laptop"
  },
  {
   "id": "tailscale.send",
@@ -6375,7 +6391,9 @@
   },
   "requiresCommands": [
    "tailscale"
-  ]
+  ],
+  "group": "Tailscale",
+  "icon": "upload"
  },
  {
   "id": "tailscale.receive",
@@ -6400,7 +6418,9 @@
   },
   "requiresCommands": [
    "tailscale"
-  ]
+  ],
+  "group": "Tailscale",
+  "icon": "download"
  },
  {
   "id": "install.sunshine",
@@ -6421,7 +6441,9 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-install-service-sunshine"
-  }
+  },
+  "group": "Sunshine",
+  "icon": "gamepad"
  },
  {
   "id": "remove.sunshine",
@@ -6441,7 +6463,9 @@
    "command": "omarchy-remove-service-sunshine"
   },
   "confirm": "destructive",
-  "confirmText": "Removes Sunshine and closes the streaming ports Omarchy opened."
+  "confirmText": "Removes Sunshine and closes the streaming ports Omarchy opened.",
+  "group": "Sunshine",
+  "icon": "trash"
  },
  {
   "id": "panel.audio",
@@ -7123,7 +7147,9 @@
     "omarchy-menu-share",
     "file"
    ]
-  }
+  },
+  "group": "LocalSend",
+  "icon": "network"
  },
  {
   "id": "calendar.config",
@@ -8469,7 +8495,9 @@
   },
   "requiresHardware": [
    "wifi"
-  ]
+  ],
+  "group": "Wi-Fi details",
+  "icon": "printer"
  },
  {
   "id": "diagnostics.debug",
@@ -9003,7 +9031,7 @@
   "launch": {
    "kind": "page",
    "page": "network",
-   "focus": "block.network"
+   "focus": "block.wifi"
   }
  },
  {

@@ -414,14 +414,6 @@
   "many": "فشلت %n خدمة.",
   "other": "فشلت %n خدمة."
  },
- "Keep this connection? Going back to the previous one in %n second(s).": {
-  "zero": "الإبقاء على هذا الاتصال؟ سيتم الرجوع إلى الاتصال السابق خلال %n ثانية.",
-  "one": "الإبقاء على هذا الاتصال؟ سيتم الرجوع إلى الاتصال السابق خلال ثانية واحدة.",
-  "two": "الإبقاء على هذا الاتصال؟ سيتم الرجوع إلى الاتصال السابق خلال ثانيتين.",
-  "few": "الإبقاء على هذا الاتصال؟ سيتم الرجوع إلى الاتصال السابق خلال %n ثوانٍ.",
-  "many": "الإبقاء على هذا الاتصال؟ سيتم الرجوع إلى الاتصال السابق خلال %n ثانية.",
-  "other": "الإبقاء على هذا الاتصال؟ سيتم الرجوع إلى الاتصال السابق خلال %n ثانية."
- },
  "Show %n": {
   "zero": "إظهار %n",
   "one": "إظهار %n",
@@ -1826,5 +1818,31 @@
   "few": "%n أجهزة مقترنة",
   "many": "%n جهازًا مقترنًا",
   "other": "%n جهاز مقترن"
+ },
+ "%1 did not become the active connection.": "لم يصبح %1 الاتصال النشط.",
+ "%1 is still connected.": "لا يزال %1 متصلًا.",
+ "%1, signal %2%": "%1، الإشارة %2%",
+ "Connect to %1": "الاتصال بـ %1",
+ "External": "خارجي",
+ "Join %1 in the Omarchy panel": "الانضمام إلى %1 في لوحة Omarchy",
+ "Keep this connection?": "هل تريد الإبقاء على هذا الاتصال؟",
+ "Limited internet": "إنترنت محدود",
+ "Looking for connections…": "جارٍ البحث عن الاتصالات…",
+ "Looking for networks…": "جارٍ البحث عن الشبكات…",
+ "NetworkManager is not responding, so connections cannot be shown.": "لا يستجيب NetworkManager، لذا لا يمكن عرض الاتصالات.",
+ "NetworkManager is not responding, so networks cannot be shown.": "لا يستجيب NetworkManager، لذا لا يمكن عرض الشبكات.",
+ "No internet": "لا يوجد إنترنت",
+ "No network interfaces found.": "لم يُعثر على واجهات شبكة.",
+ "No networks found. Scan to look again.": "لم يُعثر على شبكات. افحص للبحث مجددًا.",
+ "Scanning for networks…": "جارٍ فحص الشبكات…",
+ "Sign-in needed for internet": "يلزم تسجيل الدخول للوصول إلى الإنترنت",
+ "Wi-Fi is off. Turn it on to see networks nearby.": "Wi-Fi متوقف. شغّله لرؤية الشبكات القريبة.",
+ "Going back to the previous one in %n second(s).": {
+  "zero": "العودة إلى الاتصال السابق الآن.",
+  "one": "العودة إلى الاتصال السابق خلال ثانية واحدة.",
+  "two": "العودة إلى الاتصال السابق خلال ثانيتين.",
+  "few": "العودة إلى الاتصال السابق خلال %n ثوانٍ.",
+  "many": "العودة إلى الاتصال السابق خلال %n ثانية.",
+  "other": "العودة إلى الاتصال السابق خلال %n ثانية."
  }
 }

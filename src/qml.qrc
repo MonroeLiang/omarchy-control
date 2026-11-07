@@ -29,7 +29,8 @@
         <file alias="BlockHeading.qml">BlockHeading.qml</file>
         <file alias="BlockHistory.qml">BlockHistory.qml</file>
         <file alias="BlockHooks.qml">BlockHooks.qml</file>
-        <file alias="BlockNetwork.qml">BlockNetwork.qml</file>
+        <file alias="BlockConnections.qml">BlockConnections.qml</file>
+        <file alias="BlockWifi.qml">BlockWifi.qml</file>
         <file alias="BlockPlugins.qml">BlockPlugins.qml</file>
         <file alias="BlockRules.qml">BlockRules.qml</file>
         <file alias="BlockServices.qml">BlockServices.qml</file>
@@ -105,6 +106,15 @@
         <file alias="icons/shield.svg">icons/shield.svg</file>
         <file alias="icons/sound.svg">icons/sound.svg</file>
         <file alias="icons/sun.svg">icons/sun.svg</file>
+        <file alias="icons/clipboard.svg">icons/clipboard.svg</file>
+        <file alias="icons/folder.svg">icons/folder.svg</file>
+        <file alias="icons/gamepad.svg">icons/gamepad.svg</file>
+        <file alias="icons/gauge.svg">icons/gauge.svg</file>
+        <file alias="icons/globe.svg">icons/globe.svg</file>
+        <file alias="icons/ethernet.svg">icons/ethernet.svg</file>
+        <file alias="icons/qr.svg">icons/qr.svg</file>
+        <file alias="icons/upload.svg">icons/upload.svg</file>
+        <file alias="icons/wrench.svg">icons/wrench.svg</file>
         <file alias="icons/camera.svg">icons/camera.svg</file>
         <file alias="icons/headphones.svg">icons/headphones.svg</file>
         <file alias="icons/sliders.svg">icons/sliders.svg</file>

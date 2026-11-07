@@ -18,7 +18,7 @@ nmcli)
   case "$*" in
     "-t -f WIFI,CONNECTIVITY general") echo "enabled:full";;
     "-t -f WIFI general") echo enabled;;
-    "-t -f DEVICE,TYPE,STATE,CONNECTION device") printf 'wlan0:wifi:connected:Home network\n';;
+    "-t -f DEVICE,TYPE,STATE,CONNECTION device") printf 'wlp0s20f3:wifi:connected:Home network\ntailscale0:tun:connected (externally):tailscale0\n';;
     "-t -f NAME,UUID,TYPE,ACTIVE connection show") printf 'Home network:11111111-1111-1111-1111-111111111111:802-11-wireless:yes\nCafe:22222222-2222-2222-2222-222222222222:802-11-wireless:no\n';;
     "-t -f IN-USE,SSID,SIGNAL,SECURITY device wifi list --rescan no") printf '*:Home network:82:WPA2\n :Cafe:54:WPA2\n :Neighbor:31:WPA3\n :Airport Free:22:\n';;
   esac;;
@@ -86,7 +86,7 @@ omarchy)
     "toggle nightlight --status") echo '{"enabled":false,"temperature":6500}';;
     "hibernation available") exit 1;;
     "dns") echo DHCP;;
-    "network band") echo auto;;
+    "network band") printf 'band\t5\navailable\t2.4 5\nselected\tauto\n';;
     "default browser") echo firefox;;
     "default terminal") echo foot;;
     "default editor") echo nvim;;

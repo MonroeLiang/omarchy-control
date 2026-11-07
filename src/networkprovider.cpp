@@ -7,6 +7,10 @@ static const QStringList ManagerCall{"busctl", "call", "org.freedesktop.NetworkM
 // Long enough to cover a slow connection attempt and still leave time to decide.
 static constexpr int CheckpointSeconds = 60;
 
+int NetworkProvider::keepTotal() const {
+    return CheckpointSeconds;
+}
+
 NetworkProvider::NetworkProvider(CommandRunner *runner, ChangeCoordinator *coordinator, QObject *parent)
     : QObject(parent), m_runner(runner), m_coordinator(coordinator) {
     m_keepTimer.setInterval(1000);
@@ -89,6 +93,8 @@ QVariantList NetworkProvider::parseDevices(const QByteArray &text) {
         row["state"] = fields[2];
         row["connection"] = fields[3];
         row["connected"] = fields[2].startsWith("connected");
+        // Set up by something else, such as Tailscale: shown, never driven from here.
+        row["external"] = fields[2].contains("externally");
         rows << row;
     }
     return rows;
@@ -146,12 +152,14 @@ void NetworkProvider::refresh() {
 }
 
 void NetworkProvider::rescan() {
-    m_busy = true;
+    if (m_scanning)
+        return;
+    m_scanning = true;
     emit changed();
     CommandOptions options;
     options.timeoutMs = 15000;
     m_runner->run({"nmcli", "device", "wifi", "rescan"}, options, this, [this](const CommandResult &) {
-        m_busy = false;
+        m_scanning = false;
         refresh();
     });
 }
@@ -193,31 +201,44 @@ void NetworkProvider::activate(const QString &uuid, const QString &name) {
         return;
     }
     m_busy = true;
+    m_pending.insert(name, "connect");
+    m_failures.remove(name);
     emit changed();
     auto start = [this, uuid, name] {
         CommandOptions options;
         options.mutation = true;
         options.timeoutMs = 30000;
-        m_runner->run({"nmcli", "connection", "up", "uuid", uuid}, options, this, [this, name](const CommandResult &result) {
-            m_busy = false;
-            emit changed();
-            if (!result.ok()) {
-                emit message(tr("Could not connect to %1: %2").arg(name, result.describe("nmcli")), true);
+        m_runner->run({"nmcli", "connection", "up", "uuid", uuid}, options, this, [this, uuid, name](const CommandResult &result) {
+            auto fail = [this, name](const QString &text) {
+                m_busy = false;
+                m_pending.remove(name);
+                m_failures.insert(name, text);
+                emit changed();
+                emit message(text, true);
                 if (!m_checkpoint.isEmpty())
                     revertConnection();
                 refresh();
+            };
+            if (!result.ok()) {
+                fail(tr("Could not connect to %1: %2").arg(name, result.describe("nmcli")));
                 return;
             }
-            if (m_checkpoint.isEmpty())
-                emit message(tr("Connected to %1").arg(name), false);
-            else {
-                // The rollback timer started with the checkpoint, not with this line, so
-                // the countdown shows what is really left.
-                m_keepSeconds = qMax<qint64>(1, (m_checkpointDeadline - QDateTime::currentMSecsSinceEpoch()) / 1000);
-                m_keepTimer.start();
-                emit keepChanged();
-            }
-            refresh();
+            // nmcli returning is not the connection being up: NetworkManager has to list
+            // the profile as active before this says so.
+            m_runner->run({"nmcli", "-t", "-f", "NAME,UUID,TYPE,ACTIVE", "connection", "show"}, CommandOptions{4000}, this, [this, uuid, name, fail](const CommandResult &check) {
+                bool active = false;
+                for (const auto &row : parseSaved(check.out))
+                    if (row.toMap().value("uuid").toString() == uuid)
+                        active = row.toMap().value("active").toBool();
+                if (!active) {
+                    fail(tr("%1 did not become the active connection.").arg(name));
+                    return;
+                }
+                m_busy = false;
+                m_pending.remove(name);
+                emit changed();
+                connected(name);
+            });
         });
     };
     // A checkpoint is protection, not a prerequisite: where polkit declines one,
@@ -230,6 +251,19 @@ void NetworkProvider::activate(const QString &uuid, const QString &name) {
         m_checkpointDeadline = created + CheckpointSeconds * 1000LL;
         start();
     });
+}
+
+void NetworkProvider::connected(const QString &name) {
+    if (m_checkpoint.isEmpty()) {
+        emit message(tr("Connected to %1").arg(name), false);
+    } else {
+        // The rollback timer started with the checkpoint, not with this line, so the
+        // countdown shows what is really left.
+        m_keepSeconds = qMax<qint64>(1, (m_checkpointDeadline - QDateTime::currentMSecsSinceEpoch()) / 1000);
+        m_keepTimer.start();
+        emit keepChanged();
+    }
+    refresh();
 }
 
 void NetworkProvider::keepConnection() {
@@ -279,9 +313,30 @@ void NetworkProvider::deactivate(const QString &device) {
         return;
     CommandOptions options;
     options.mutation = true;
-    m_runner->run({"nmcli", "device", "disconnect", device}, options, this, [this](const CommandResult &result) {
-        if (!result.ok())
-            emit message(result.describe("nmcli"), true);
-        refresh();
+    m_pending.insert(device, "disconnect");
+    m_failures.remove(device);
+    emit changed();
+    m_runner->run({"nmcli", "device", "disconnect", device}, options, this, [this, device](const CommandResult &result) {
+        auto finish = [this, device](const QString &failure) {
+            m_pending.remove(device);
+            if (!failure.isEmpty()) {
+                m_failures.insert(device, failure);
+                emit message(failure, true);
+            }
+            emit changed();
+            refresh();
+        };
+        if (!result.ok()) {
+            finish(result.describe("nmcli"));
+            return;
+        }
+        // Disconnected is what NetworkManager reports afterwards, not what the command said.
+        m_runner->run({"nmcli", "-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"}, CommandOptions{4000}, this, [this, device, finish](const CommandResult &check) {
+            bool still = false;
+            for (const auto &row : parseDevices(check.out))
+                if (row.toMap().value("device").toString() == device)
+                    still = row.toMap().value("connected").toBool();
+            finish(still ? tr("%1 is still connected.").arg(device) : QString());
+        });
     });
 }

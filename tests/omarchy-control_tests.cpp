@@ -1545,7 +1545,7 @@ esac)SH");
     void networkSwitchUsesACheckpointAndRollsBack() {
         Sandbox s;
         s.command("busctl", kScript7);
-        s.command("nmcli", "exit 0");
+        s.command("nmcli", kNmcliBringsUpCafe);
         ChangeCoordinator coordinator(s.env);
         CommandRunner runner(s.env);
         NetworkProvider network(&runner, &coordinator);
@@ -1560,7 +1560,7 @@ esac)SH");
     void networkKeepDestroysTheCheckpoint() {
         Sandbox s;
         s.command("busctl", kScript8);
-        s.command("nmcli", "exit 0");
+        s.command("nmcli", kNmcliBringsUpCafe);
         ChangeCoordinator coordinator(s.env);
         CommandRunner runner(s.env);
         NetworkProvider network(&runner, &coordinator);
@@ -1583,7 +1583,7 @@ esac)SH");
     void networkWorksWithoutACheckpoint() {
         Sandbox s;
         s.command("busctl", "echo denied >&2; exit 1");
-        s.command("nmcli", "exit 0");
+        s.command("nmcli", kNmcliBringsUpCafe);
         ChangeCoordinator coordinator(s.env);
         CommandRunner runner(s.env);
         NetworkProvider network(&runner, &coordinator);
@@ -1592,6 +1592,74 @@ esac)SH");
         QTRY_VERIFY_WITH_TIMEOUT(messages.count() >= 1, 5000);
         QVERIFY(!network.awaitingKeep());
         QVERIFY(!messages.first().at(1).toBool());
+    }
+    void networkKnowsWhatItDoesNotManage() {
+        const auto rows = NetworkProvider::parseDevices("wlp0s20f3:wifi:connected:Home\ntailscale0:tun:connected (externally):tailscale0\nenp1s0:ethernet:unavailable:\n");
+        QCOMPARE(rows.size(), 3);
+        QVERIFY(!rows[0].toMap().value("external").toBool());
+        QVERIFY(rows[1].toMap().value("external").toBool());
+        QVERIFY(rows[1].toMap().value("connected").toBool());
+        QVERIFY(!rows[2].toMap().value("connected").toBool());
+    }
+    void aConnectionIsOnlyUpWhenNetworkManagerSaysSo() {
+        Sandbox s;
+        s.command("busctl", "echo denied >&2; exit 1");
+        // nmcli says yes, and then the profile is not active.
+        s.command("nmcli", "exit 0");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        NetworkProvider network(&runner, &coordinator);
+        QSignalSpy messages(&network, &NetworkProvider::message);
+        network.activate("11111111-1111-1111-1111-111111111111", "Cafe");
+        QCOMPARE(network.pending().value("Cafe").toString(), QString("connect"));
+        QTRY_VERIFY_WITH_TIMEOUT(messages.count() >= 1, 5000);
+        QVERIFY(messages.first().at(1).toBool());
+        QVERIFY(messages.first().at(0).toString().contains("did not become"));
+        QVERIFY(network.pending().isEmpty());
+        QVERIFY(network.failures().contains("Cafe"));
+        QVERIFY(!network.busy());
+    }
+    void aDisconnectIsCheckedAfterwards() {
+        Sandbox s;
+        s.command("nmcli", R"SH(case "$*" in *"DEVICE,TYPE,STATE,CONNECTION device"*) echo 'wlan0:wifi:connected:Home';; esac; exit 0)SH");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        NetworkProvider network(&runner, &coordinator);
+        QSignalSpy messages(&network, &NetworkProvider::message);
+        network.deactivate("wlan0");
+        QCOMPARE(network.pending().value("wlan0").toString(), QString("disconnect"));
+        QTRY_VERIFY_WITH_TIMEOUT(messages.count() >= 1, 5000);
+        QVERIFY(messages.first().at(0).toString().contains("still connected"));
+        QVERIFY(network.failures().contains("wlan0"));
+        QVERIFY(network.pending().isEmpty());
+    }
+    void networkPanelsPlaceEveryEntryOnce() {
+        Catalog catalog;
+        QStringList placed, wifiRows;
+        for (const auto &row : catalog.panelLayout("network"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    for (const auto &id : panel.value("rows").toArray()) {
+                        placed << id.toString();
+                        if (panel.value("block").toString() == "wifi")
+                            wifiRows << id.toString();
+                    }
+                }
+        QCOMPARE(placed.size(), 18);
+        QCOMPARE(QSet<QString>(placed.begin(), placed.end()).size(), 18);
+        QStringList expected;
+        for (const auto *entry : catalog.entriesForPage("network"))
+            if (entry->id != QLatin1String("native.wifi"))
+                expected << entry->id;
+        placed.sort();
+        expected.sort();
+        QCOMPARE(placed, expected);
+        // The band lives in the Wi-Fi card, and two entries that run one command stay two.
+        QCOMPARE(wifiRows, QStringList{"network.band"});
+        QVERIFY(placed.contains("share.localsend") && placed.contains("trigger.share.file"));
+        QVERIFY(placed.contains("setup.network.qr") && placed.contains("share.qr.note"));
+        QCOMPARE(catalog.find("native.wifi")->launch.value("focus").toString(), QString("block.wifi"));
     }
     void networkRefusesBadIds() {
         Sandbox s;
@@ -2531,7 +2599,7 @@ esac
     void networkRefusesAnOverlappingSwitch() {
         Sandbox s;
         s.command("busctl", "case \"$*\" in *CheckpointCreate*) echo 'o \"/org/freedesktop/NetworkManager/Checkpoint/7\"';; esac");
-        s.command("nmcli", "exit 0");
+        s.command("nmcli", kNmcliBringsUpCafe);
         ChangeCoordinator coordinator(s.env);
         CommandRunner runner(s.env);
         NetworkProvider network(&runner, &coordinator);
@@ -2547,7 +2615,8 @@ esac
         // The timer starts when the checkpoint does, not when the connection comes up.
         Sandbox s;
         s.command("busctl", "case \"$*\" in *CheckpointCreate*) echo 'o \"/org/freedesktop/NetworkManager/Checkpoint/7\"';; esac");
-        s.command("nmcli", "case \"$*\" in *'connection up'*) sleep 2;; esac");
+        s.command("nmcli", kNmcliBringsUpCafe);
+        writeFile(s.dir.path() + "/slow", "");
         ChangeCoordinator coordinator(s.env);
         CommandRunner runner(s.env);
         NetworkProvider network(&runner, &coordinator);
@@ -2558,7 +2627,7 @@ esac
     void aFailedKeepIsNotReportedAsKept() {
         Sandbox s;
         s.command("busctl", "case \"$*\" in *CheckpointCreate*) echo 'o \"/org/freedesktop/NetworkManager/Checkpoint/7\"';; *CheckpointDestroy*) exit 1;; esac");
-        s.command("nmcli", "exit 0");
+        s.command("nmcli", kNmcliBringsUpCafe);
         ChangeCoordinator coordinator(s.env);
         CommandRunner runner(s.env);
         NetworkProvider network(&runner, &coordinator);
@@ -4339,6 +4408,41 @@ esac)SH");
         // The Tools link leads to the sound tools.
         QMetaObject::invokeMethod(page.named("sectionLink_Tools").first(), "clicked");
         QTRY_VERIFY(page.focusWithin(page.row("panel.audio")));
+    }
+
+    void theNetworkPageShowsEveryConnectionAndLandsOnEachPart() {
+        Sandbox s;
+        desktopFixture(s);
+        writeFile(s.env.sys("/sys/class/net/wlan0/wireless/x"), "");
+        s.command("nmcli", R"SH(
+case "$*" in
+  "-t -f WIFI,CONNECTIVITY general") echo "enabled:full";;
+  "-t -f DEVICE,TYPE,STATE,CONNECTION device") printf 'wlan0:wifi:connected:Home\ntailscale0:tun:connected (externally):tailscale0\nenp1s0:ethernet:unavailable:\n';;
+  "-t -f NAME,UUID,TYPE,ACTIVE connection show") printf 'Home:11111111-1111-1111-1111-111111111111:802-11-wireless:yes\nCafe:22222222-2222-2222-2222-222222222222:802-11-wireless:no\n';;
+  *"wifi list"*) printf '*:Home:57:WPA2\n :Cafe:40:WPA2\n :Airport:20:\n';;
+esac)SH");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("network");
+        QTRY_COMPARE(page.named("connectionRow").size(), 3);
+        QTRY_COMPARE(page.named("wifiNetwork").size(), 3);
+        // Every catalog entry once, the band among them.
+        QStringList rows = page.rowIds();
+        QCOMPARE(rows.size(), 18);
+        QCOMPARE(QSet<QString>(rows.begin(), rows.end()).size(), 18);
+        QStringList links;
+        for (QQuickItem *flow : page.named("sectionLinks"))
+            for (QQuickItem *child : flow->childItems())
+                if (child->objectName().startsWith("sectionLink_"))
+                    links << child->objectName().mid(12);
+        QCOMPARE(links, QStringList({"Connections", "Wi-Fi", "DNS", "Remote access", "Sharing", "Tools"}));
+        // Search lands on the band inside the Wi-Fi card, and on a tool far down.
+        page.open("network", "network.band");
+        QTRY_VERIFY(page.row("network.band")->property("highlighted").toBool());
+        page.open("network", "remove.sunshine");
+        QTRY_VERIFY(page.focusWithin(page.row("remove.sunshine")));
+        QMetaObject::invokeMethod(page.named("sectionLink_Tools").first(), "clicked");
+        QTRY_VERIFY(page.focusWithin(page.row("trigger.tests.network-speedtest")));
     }
 
     void theBarEditorShowsTheModelItEdits() {
