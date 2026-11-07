@@ -1046,6 +1046,46 @@ private slots:
         QVERIFY(tx.message.contains("Another part"));
         QVERIFY(!QFile::exists(s.env.configHome + "/hypr/omarchy-control.lua"));
     }
+    void focusFollowsMouseKnowsOmarchysFloatingWorkspaces() {
+        Sandbox s;
+        s.minimalHyprland();
+        // Omarchy forces click focus on a floating workspace, so Hyprland reports 0 there
+        // whatever is configured.
+        writeFile(s.dir.path() + "/hypr-input_follow_mouse", "{\"int\":0}");
+        writeFile(s.dir.path() + "/layout", "floating");
+        s.command("omarchy-hyprland-workspace-layout-current", "cat '" + s.dir.path().toUtf8() + "/layout'");
+        writeFile(s.env.omarchyPath + "/default/hypr/input.lua", "o.config({\n  input = {\n    follow_mouse = 1,\n  },\n})\n");
+        AppCore core(s.env);
+        core.capabilities.scanServicesBlocking();
+
+        // The configured value, Omarchy's here, with why Hyprland says otherwise.
+        ReadResult read = readSetting(core.engine, "input.follow_mouse");
+        QCOMPARE(read.status, QString("ok"));
+        QCOMPARE(read.value, QString("1"));
+        QVERIFY(read.reason.contains("Floating workspaces focus on click"));
+        QVERIFY(read.extra.value("floatingWorkspace").toBool());
+        // The user's own uncommented value wins over Omarchy's; a commented one does not count.
+        writeFile(s.env.configHome + "/hypr/input.lua", "-- follow_mouse = 3,\no.config({ input = {\n  follow_mouse = 2, -- mine\n} })\n");
+        QCOMPARE(readSetting(core.engine, "input.follow_mouse").value, QString("2"));
+
+        // A change from a floating workspace lands in the file and a clean reload confirms it,
+        // though Hyprland still reports Omarchy's 0.
+        Transaction tx = applySetting(core.engine, "input.follow_mouse", "3");
+        QCOMPARE(tx.phase, QString("committed"));
+        QVERIFY(readAll(s.env.configHome + "/hypr/omarchy-control.lua").contains("follow_mouse = 3"));
+        read = readSetting(core.engine, "input.follow_mouse");
+        QCOMPARE(read.value, QString("3"));
+        QVERIFY(read.isOverride);
+
+        // On a tiled workspace Hyprland's own answer decides, as for any other setting.
+        writeFile(s.dir.path() + "/layout", "dwindle");
+        read = readSetting(core.engine, "input.follow_mouse");
+        QCOMPARE(read.value, QString("0"));
+        QVERIFY(read.reason.isEmpty());
+        tx = applySetting(core.engine, "input.follow_mouse", "2");
+        QCOMPARE(tx.phase, QString("rolled-back"));
+        QVERIFY(readAll(s.env.configHome + "/hypr/omarchy-control.lua").contains("follow_mouse = 3"));
+    }
     void handEditedModulePausesChanges() {
         Sandbox s;
         s.minimalHyprland();
@@ -4624,9 +4664,10 @@ esac)SH");
         QCOMPARE(titles, QStringList({"HD Audio Speaker", "HDMI / DisplayPort 1"}));
         // Two streams from one app, one of them on an output that cannot be told.
         QTRY_COMPARE(page.named("streamOutput").size(), 2);
-        QCOMPARE(page.named("streamOutput").at(0)->property("currentIndex").toInt(), 0);
-        QCOMPARE(page.named("streamOutput").at(1)->property("currentIndex").toInt(), -1);
-        QCOMPARE(page.named("streamOutput").at(1)->property("displayText").toString(), QString());
+        // The selection is put back after the list fills, a moment later.
+        QTRY_COMPARE(page.named("streamOutput").at(0)->property("currentIndex").toInt(), 0);
+        QTRY_COMPARE(page.named("streamOutput").at(1)->property("currentIndex").toInt(), -1);
+        QTRY_COMPARE(page.named("streamOutput").at(1)->property("displayText").toString(), QString());
         // Two devices with one name, both shown.
         QTRY_COMPARE(page.named("bluetoothDevice").size(), 2);
         // Muted says so in what is read aloud as well.

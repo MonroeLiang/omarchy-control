@@ -1870,5 +1870,8 @@
  "History": "Historik",
  "Manuals, keybindings, and community.": "Manualer, tastaturgenveje og fællesskab.",
  "Tools, sessions, hooks, and debugging.": "Værktøjer, sessioner, hooks og fejlsøgning.",
- "Installed": "Installeret"
+ "Installed": "Installeret",
+ "Floating workspaces focus on click. This applies on tiled workspaces.": "Svævende arbejdsområder fokuserer ved klik. Dette gælder for fliselagte arbejdsområder.",
+ "Floating workspaces set this themselves. This applies on tiled workspaces.": "Svævende arbejdsområder bestemmer dette selv. Dette gælder for fliselagte arbejdsområder.",
+ "Your config": "Din konfiguration"
 }

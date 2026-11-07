@@ -1922,5 +1922,8 @@
  "History": "السجل",
  "Manuals, keybindings, and community.": "الأدلة واختصارات لوحة المفاتيح والمجتمع.",
  "Tools, sessions, hooks, and debugging.": "الأدوات والجلسات والخطافات وتصحيح الأخطاء.",
- "Installed": "المثبّت"
+ "Installed": "المثبّت",
+ "Floating workspaces focus on click. This applies on tiled workspaces.": "مساحات العمل العائمة تركّز عند النقر. ينطبق هذا على مساحات العمل المتجانبة.",
+ "Floating workspaces set this themselves. This applies on tiled workspaces.": "تحدد مساحات العمل العائمة هذا بنفسها. ينطبق هذا على مساحات العمل المتجانبة.",
+ "Your config": "إعداداتك"
 }
