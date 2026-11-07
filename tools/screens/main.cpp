@@ -69,7 +69,16 @@ static void runSteps(QQuickWindow *window, Backend &backend, const QString &home
                 if (item->objectName() == value && item->isVisible())
                     QMetaObject::invokeMethod(item, "click");
             });
-        else if (name == QLatin1String("text"))
+        else if (name == QLatin1String("focus")) {
+            // The first visible item of that name, as Tab would reach it.
+            bool done = false;
+            visit(window->contentItem(), [&](QQuickItem *item) {
+                if (!done && item->objectName() == value && item->isVisible()) {
+                    item->forceActiveFocus(Qt::TabFocusReason);
+                    done = true;
+                }
+            });
+        } else if (name == QLatin1String("text"))
             visit(window->contentItem(), [&](QQuickItem *item) {
                 if (item->objectName() == value.section('/', 0, 0) && item->isVisible())
                     item->setProperty("text", value.section('/', 1));

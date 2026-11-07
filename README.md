@@ -188,7 +188,7 @@ Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wa
 ```sh
 bin/build                  # build/omarchy-control
 bin/install                # Build the Arch package from this checkout and install it
-bin/test                   # 359 tests; never touches the real desktop
+bin/test                   # 360 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
 tools/installer-check.sh   # install.sh against real release files in a disposable root

@@ -173,6 +173,11 @@ Item {
             active: root.block.length > 0
             visible: active
             source: active ? "qrc:/Block" + root.block.charAt(0).toUpperCase() + root.block.slice(1) + ".qml" : ""
+            // Side by side, a block can ask to reach its neighbor's line, as a card does.
+            Binding on height {
+                when: !!root.spec.fill
+                value: Math.max(blockLoader.implicitHeight, root.height)
+            }
             // A block can take the catalog rows its panel claims and draw them in its own card.
             onLoaded: {
                 if (item.panelRows !== undefined)
@@ -371,6 +376,7 @@ Item {
                                         entry: modelData
                                         rich: true
                                         file: !!root.spec.files
+                                        prominent: !!root.spec.prominent
                                         navigation: !!root.spec.navigation && modelData.type === "action"
                                         last: parent.run === root.runs.length - 1 && index === runRows.count - 1 && !root.previewIds.length
                                         highlighted: root.focusId === modelData.id

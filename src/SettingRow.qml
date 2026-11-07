@@ -22,6 +22,8 @@ Item {
     property bool navigation: false
     // A config file, shown as its file: the name, the folder it is in, then what it is for.
     property bool file: false
+    // A short list of destinations given more room, as a page's few links are.
+    property bool prominent: false
     readonly property string filePath: file ? (entry.file || "") : ""
     readonly property string fileName: filePath.replace(/\/+$/, "").split("/").pop()
     readonly property string fileFolder: filePath.slice(0, filePath.length - fileName.length)
@@ -72,7 +74,7 @@ Item {
             pinButton.forceActiveFocus(Qt.TabFocusReason)
     }
 
-    implicitHeight: Math.max(body.implicitHeight + 18, root.compact ? Math.round(theme.fontSize * 3.2) : theme.rowHeight) + (last ? 0 : 1)
+    implicitHeight: Math.max(body.implicitHeight + (root.prominent ? 30 : 18), root.compact ? Math.round(theme.fontSize * 3.2) : theme.rowHeight) + (last ? 0 : 1)
     width: parent ? parent.width : 400
 
     // Inset, so it never pokes past the corners of a rounded panel.
@@ -103,7 +105,7 @@ Item {
         id: icon
         visible: root.rich && name.length > 0
         name: root.headingIcon || (root.file ? "file" : root.entry.icon || "")
-        size: Math.round(theme.fontSize * (root.headingTitle.length ? 1.75 : root.file ? 1.3 : 1.55))
+        size: Math.round(theme.fontSize * (root.headingTitle.length ? 1.75 : root.file ? 1.3 : root.prominent ? 2 : 1.55))
         tint: root.unavailable ? theme.muted : root.tone === "good" ? theme.goodText : root.tone === "danger" ? theme.dangerText : theme.foreground
         // Something that takes away, marked on its icon as well as its button.
         AppIcon {
@@ -115,7 +117,7 @@ Item {
             y: parent.height - height * 0.55
         }
         anchors.left: parent.left
-        anchors.leftMargin: 18
+        anchors.leftMargin: root.prominent ? 24 : 18
         anchors.verticalCenter: parent.verticalCenter
     }
     Rectangle {
@@ -134,8 +136,8 @@ Item {
         anchors.left: icon.visible ? icon.right : parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: icon.visible ? 16 : 14
-        anchors.rightMargin: 14
+        anchors.leftMargin: icon.visible ? (root.prominent ? 26 : 16) : 14
+        anchors.rightMargin: root.prominent ? 18 : 14
         spacing: 3
 
         RowLayout {
@@ -167,8 +169,8 @@ Item {
                             mono: root.file && root.fileName.length > 0
                             // A long or translated name gets a second line rather than losing its end.
                             wrapMode: root.file ? Text.WrapAnywhere : Text.Wrap
-                            scale_: root.headingTitle.length ? 1.45 : 1
-                            font.weight: root.headingTitle.length ? Font.DemiBold : Font.Normal
+                            scale_: root.headingTitle.length ? 1.45 : root.prominent ? 1.1 : 1
+                            font.weight: root.headingTitle.length ? Font.DemiBold : root.prominent ? Font.DemiBold : Font.Normal
                             Accessible.role: root.headingTitle.length ? Accessible.Heading : Accessible.StaticText
                             opacity: root.unavailable ? 0.6 : 1
                         }
@@ -245,7 +247,7 @@ Item {
                     text: root.file ? [root.fileNamed ? "" : root.labelText, root.descriptionText].filter(function (part) { return part.length > 0 }).join(" · ")
                                     : root.descriptionText
                     secondary: true
-                    scale_: 0.88
+                    scale_: root.prominent ? 0.98 : 0.88
                     wrapMode: Text.Wrap
                 }
                 // State that needs words: why it is unavailable, what it is set by, what failed.

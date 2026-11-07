@@ -5099,6 +5099,69 @@ esac)SH");
         QTRY_VERIFY(page.named("compatWarning").isEmpty());
     }
 
+    void theAboutPageShowsEveryUpdateState() {
+        QCoreApplication::setApplicationVersion("0.1.0");
+        Sandbox s;
+        desktopFixture(s);
+        // The answer GitHub gives is whatever this file says, so each state is one write away.
+        writeFile(s.dir.path() + "/answer", "{}\n503");
+        s.command("curl", "sleep \"$(cat '" + s.dir.path().toUtf8() + "/delay' 2>/dev/null || echo 0)\"; cat '" + s.dir.path().toUtf8() + "/answer'");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("about");
+        auto text = [&](const QString &name) { return page.named(name).isEmpty() ? QString() : page.named(name).first()->property("text").toString(); };
+        auto shown = [&](const QString &name) { return !page.named(name).isEmpty(); };
+        QTRY_VERIFY(shown("aboutVersion"));
+        QVERIFY(text("aboutVersion").contains("0.1.0"));
+        QCOMPARE(text("aboutName"), QString("Omarchy Control"));
+        // Five facts, four project links with their icons, and no jump bar on a page without sections to jump to.
+        QCOMPARE(page.named("aboutDetail").size(), 5);
+        QCOMPARE(page.rowIds(), QStringList({"app.website", "app.releases", "app.issues", "app.license"}));
+        for (const QString &id : page.rowIds())
+            QVERIFY(!page.backend.entry(id).value("icon").toString().isEmpty());
+        QVERIFY(page.named("sectionLinks").isEmpty());
+        // Nothing is asked of the network until someone asks.
+        QCOMPARE(text("updateStatus"), QString("Updates are only checked when you ask."));
+        QVERIFY(s.calls().filter("curl").isEmpty());
+
+        // Checking: said, and not asked twice.
+        writeFile(s.dir.path() + "/delay", "2");
+        QMetaObject::invokeMethod(page.named("checkUpdates").first(), "clicked");
+        QTRY_COMPARE(text("updateStatus"), QString("Checking for updates…"));
+        QVERIFY(!page.named("checkUpdates").first()->property("enabled").toBool());
+        // A failure, in the provider's words, with the way to try again.
+        QTRY_COMPARE_WITH_TIMEOUT(page.backend.updates()->state(), QString("error"), 6000);
+        QVERIFY(text("updateStatus").contains("503"));
+        QVERIFY(page.named("checkUpdates").first()->property("enabled").toBool());
+        writeFile(s.dir.path() + "/delay", "0");
+
+        writeFile(s.dir.path() + "/answer", "{\"message\":\"Not Found\"}\n404");
+        page.backend.updates()->check();
+        QTRY_COMPARE(text("updateStatus"), QString("No releases have been published yet."));
+        writeFile(s.dir.path() + "/answer", "{\"tag_name\":\"v0.1.0\",\"assets\":[]}\n200");
+        page.backend.updates()->check();
+        QTRY_COMPARE(text("updateStatus"), QString("You have the latest version."));
+        QVERIFY(shown("checkUpdates"));
+
+        // A newer release with nothing for this computer: its notes, no install, and why.
+        writeFile(s.dir.path() + "/answer", "{\"tag_name\":\"v0.2.0\",\"body\":\"Faster pages.\",\"assets\":[]}\n200");
+        page.backend.updates()->check();
+        QTRY_COMPARE(page.backend.updates()->state(), QString("available"));
+        QTRY_COMPARE(text("updateAvailableVersion"), QString("0.2.0"));
+        QCOMPARE(text("updateInstalledVersion"), QString("0.1.0"));
+        QCOMPARE(text("updateNotes"), QString("Faster pages."));
+        QVERIFY(shown("updateNoPackage"));
+        QVERIFY(!shown("installUpdate"));
+        QVERIFY(shown("checkUpdates"));
+
+        // The project links open their pages through the usual route.
+        s.command("xdg-open", "exit 0");
+        for (QQuickItem *child : page.row("app.license")->findChildren<QQuickItem *>())
+            if (child->objectName() == "actionButton")
+                QMetaObject::invokeMethod(child, "clicked");
+        QTRY_VERIFY(s.calls().join('\n').contains("LICENSE"));
+    }
+
     void theBarEditorShowsTheModelItEdits() {
         Sandbox s;
         desktopFixture(s);
