@@ -13,6 +13,8 @@ class PluginsProvider : public QObject {
     Q_PROPERTY(QVariantList plugins READ plugins NOTIFY changed)
     Q_PROPERTY(QVariantMap barLayout READ barLayout NOTIFY changed)
     Q_PROPERTY(QStringList dockPins READ dockPins NOTIFY changed)
+    Q_PROPERTY(QVariantList dockApps READ dockApps NOTIFY changed)
+    Q_PROPERTY(bool changing READ changing NOTIFY changed)
     Q_PROPERTY(QString status READ status NOTIFY changed)
     Q_PROPERTY(QString activeBar READ activeBar NOTIFY changed)
 
@@ -22,6 +24,9 @@ public:
     QVariantList plugins() const { return m_plugins; }
     QVariantMap barLayout() const { return m_layout; }
     QStringList dockPins() const { return m_pins; }
+    QVariantList dockApps() const { return m_dockApps; }
+    // A move's positions are only good until the next one lands, so they wait their turn.
+    bool changing() const { return m_changes > 0; }
     QString status() const { return m_status; }
     QString activeBar() const { return m_activeBar; }
 
@@ -37,6 +42,9 @@ public:
     static QVariantList parsePlugins(const QByteArray &json);
     static QVariantList scanManifests(const Env &env);
     static QVariantMap parseLayout(const QByteArray &shellJson);
+    // What a pin looks like: the name and icon its desktop entry gives, looked up in
+    // `iconTheme`. Anything that cannot be found comes back empty, for the fallback.
+    static QVariantMap resolveDockApp(const Env &env, const QString &desktopId, const QString &iconTheme);
 
 signals:
     void changed();
@@ -45,13 +53,17 @@ signals:
 private:
     void runChange(const QString &label, const QString &after, const QStringList &argv, std::function<void(ChangeCoordinator::Done)> verify, const QString &success);
     void loadConfig();
-    void verifyMoved(const QString &id, const QString &section, int attempts, ChangeCoordinator::Done done);
+    void verifyMoved(const QString &id, const QString &section, int index, int attempts, ChangeCoordinator::Done done);
+    void resolveDockApps();
 
     CommandRunner *m_runner;
     ChangeCoordinator *m_coordinator;
     QVariantList m_plugins;
     QVariantMap m_layout;
     QStringList m_pins;
+    QVariantList m_dockApps;
+    QString m_iconTheme;
+    int m_changes = 0;
     QString m_status = "loading";
     QString m_activeBar;
 };

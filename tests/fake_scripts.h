@@ -135,4 +135,48 @@ state="$HOME/.fake-icon-theme"
 exit 0
 )SH";
 
+
+// `omarchy bar move` that applies what the real one does: out first, then in at the index.
+// Bash only, since the sandbox has no jq. Sections hold bare ids on one line each.
+const char kFakeBar[] = R"SH(
+state="$HOME/bar-state"
+config="$HOME/.config/omarchy/shell.json"
+write_config() {
+  local out='{"bar":{"id":"local.test-bar","layout":{'
+  local first=1 section
+  for section in left centerBegin center centerEnd right tray; do
+    [ $first = 1 ] || out+=','
+    first=0
+    out+="\"$section\":["
+    local line="" sep="" id
+    [ -f "$state/$section" ] && read -r line < "$state/$section"
+    for id in $line; do out+="$sep\"$id\""; sep=','; done
+    out+=']'
+  done
+  out+='}},"dock":{"pinned":['
+  local sep=""
+  for id in $(cat "$state/pins" 2>/dev/null); do out+="$sep\"$id\""; sep=','; done
+  printf '%s]}}\n' "$out" > "$config"
+}
+case "$1 $2" in
+  "bar move")
+    id=$3; section=$5; index=$7; from=$9
+    [ -f "$state/ignore" ] && exit 0
+    read -r -a source < "$state/$from"
+    kept=(); for w in "${source[@]}"; do [ "$w" = "$id" ] || kept+=("$w"); done
+    printf '%s\n' "${kept[*]}" > "$state/$from"
+    read -r -a target < "$state/$section"
+    target=("${target[@]:0:$index}" "$id" "${target[@]:$index}")
+    printf '%s\n' "${target[*]}" > "$state/$section"
+    write_config;;
+  "dock unpin")
+    pins=$(cat "$state/pins"); out=""
+    for p in $pins; do [ "$p" = "$3" ] || out+="$p "; done
+    printf '%s\n' "$out" > "$state/pins"
+    write_config;;
+  "plugin list") echo '[{"id":"omarchy.menu","name":"Omarchy menu","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":false,"firstParty":true,"clonedFrom":""},{"id":"omarchy.clock","name":"Clock","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":true,"firstParty":true,"clonedFrom":""}]';;
+  "version "*) echo 4.5.0-3;;
+esac
+)SH";
+
 }  // namespace

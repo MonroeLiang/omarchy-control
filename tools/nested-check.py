@@ -294,6 +294,19 @@ try:
     a = app("widget", "move", widget, target, "0", section, "0")
     b = app("widget", "move", widget, section, "0", target, "0")
     check("bar widget moves and moves back", a.returncode == 0 and b.returncode == 0, a.stdout + a.stderr + b.stdout + b.stderr)
+    # A reorder within a region: the shell takes the widget out before putting it in, and the
+    # app's check now looks at the exact place. Only the real shell can confirm both agree.
+    layout = json.load(open(H + "/.config/omarchy/shell.json"))["bar"]["layout"]
+    ids = lambda name: [w if isinstance(w, str) else w["id"] for w in layout[name]]
+    busy = next((name for name in layout if len(layout[name]) >= 2), None)
+    if busy:
+        before = ids(busy)
+        a = app("widget", "move", before[0], busy, "1", busy, "0")
+        layout = json.load(open(H + "/.config/omarchy/shell.json"))["bar"]["layout"]
+        moved = ids(busy)
+        b = app("widget", "move", before[0], busy, "0", busy, "1")
+        layout = json.load(open(H + "/.config/omarchy/shell.json"))["bar"]["layout"]
+        check("bar widget reorders within a region and back", a.returncode == 0 and b.returncode == 0 and moved[:2] == [before[1], before[0]] and ids(busy) == before, a.stdout + a.stderr + b.stdout + b.stderr + str(moved))
 
     # Real helpers, one of each kind that opens something here.
     client_count = lambda: len(json.loads(run("hyprctl", "-j", "clients").stdout))

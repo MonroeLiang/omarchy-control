@@ -1653,5 +1653,13 @@
  "%1 could not be removed.": "%1 kunne ikke fjernes.",
  "Another icon pack is being imported. Try again when it is done.": "En anden ikonpakke er ved at blive importeret. Prøv igen, når den er færdig.",
  "Its author marked it hidden, so it is not offered as a choice.": "Dens forfatter har markeret den som skjult, så den tilbydes ikke som et valg.",
- "Your active bar is %1. It reads this layout, but a custom bar can draw it differently.": "Din aktive bjælke er %1. Den læser denne opsætning, men en brugerdefineret bjælke kan tegne den anderledes."
+ "Active bar:": "Aktiv bjælke:",
+ "Active bar: %1": "Aktiv bjælke: %1",
+ "Custom bars may display this layout differently.": "Brugerdefinerede bjælker kan vise dette layout anderledes.",
+ "Drag to reorder, or use the arrow keys": "Træk for at ændre rækkefølgen, eller brug piletasterne",
+ "Left and right arrows move it along its region. Up and down arrows move it to the next region.": "Venstre og højre pil flytter den inden for dens område. Pil op og ned flytter den til det næste område.",
+ "Move earlier": "Flyt tidligere",
+ "Move later": "Flyt senere",
+ "Preview of the bar layout": "Forhåndsvisning af bjælkens layout",
+ "Reorder %1": "Flyt %1"
 }

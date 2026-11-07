@@ -5,7 +5,6 @@ ColumnLayout {
     id: root
     spacing: 8
     readonly property var shortcuts: backend.shortcuts
-    property bool expanded: false
     property string filter: ""
     property string captured: ""
     readonly property var check: captured.length ? shortcuts.checkKeys(captured) : ({ valid: false, conflicts: [], critical: false })
@@ -13,20 +12,7 @@ ColumnLayout {
         return !filter.length || (b.keys + " " + b.description).toLowerCase().indexOf(filter.toLowerCase()) >= 0
     })
 
-    RowLayout {
-        Layout.fillWidth: true
-        AppText { text: qsTr("Keyboard shortcuts"); font.weight: Font.DemiBold; scale_: 1.25; Layout.fillWidth: true }
-        AppButton {
-            style: "flat"
-            text: root.expanded ? qsTr("Hide") : qsTr("Show %n", "", root.shortcuts.binds.length)
-            iconName: "chevron"
-            onClicked: root.expanded = !root.expanded
-        }
-    }
-    AppText { visible: shortcuts.status === "unavailable"; text: qsTr("Hyprland is not reachable, so shortcuts cannot be shown."); color: theme.dangerText; Layout.fillWidth: true; wrapMode: Text.Wrap }
-
     ColumnLayout {
-        visible: root.expanded
         Layout.fillWidth: true
         spacing: 8
 

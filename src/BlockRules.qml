@@ -5,7 +5,6 @@ ColumnLayout {
     id: root
     spacing: 8
     readonly property var provider: backend.windowRules
-    property bool expanded: provider.rules.length > 0
     readonly property var actions: [
         { value: "float", label: qsTr("Always float") },
         { value: "tile", label: qsTr("Always tile") },
@@ -19,18 +18,7 @@ ColumnLayout {
         return rule.action
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        AppText { text: qsTr("Window rules"); font.weight: Font.DemiBold; scale_: 1.25; Layout.fillWidth: true }
-        AppButton {
-            style: "flat"
-            text: root.expanded ? qsTr("Hide") : qsTr("Show")
-            iconName: "chevron"
-            onClicked: root.expanded = !root.expanded
-        }
-    }
     ColumnLayout {
-        visible: root.expanded
         Layout.fillWidth: true
         spacing: 8
         AppText {

@@ -3,6 +3,9 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QFileInfo>
+#include <QLocale>
+#include <QUrl>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -11,6 +14,7 @@
 #include <algorithm>
 
 #include "fileops.h"
+#include "iconthemes.h"
 
 PluginsProvider::PluginsProvider(CommandRunner *runner, ChangeCoordinator *coordinator, QObject *parent)
     : QObject(parent), m_runner(runner), m_coordinator(coordinator) {}
@@ -68,6 +72,61 @@ QVariantMap PluginsProvider::parseLayout(const QByteArray &shellJson) {
     return sections;
 }
 
+QVariantMap PluginsProvider::resolveDockApp(const Env &env, const QString &desktopId, const QString &iconTheme) {
+    QVariantMap app{{"id", desktopId}, {"name", QString()}, {"icon", QString()}, {"installed", false}};
+    if (!IconThemes::isValidId(desktopId))
+        return app;
+    QByteArray entry;
+    QStringList roots{env.dataHome};
+    roots += env.dataDirs;
+    // The first one found is the one the desktop uses, so a user's copy hides the system's.
+    for (const QString &root : std::as_const(roots)) {
+        if (FileOps::readFile(root + "/applications/" + desktopId + ".desktop", &entry)) {
+            app["installed"] = true;
+            break;
+        }
+    }
+    if (!app.value("installed").toBool())
+        return app;
+    const QString group = QStringLiteral("Desktop Entry");
+    const QString locale = QLocale::system().name();
+    for (const QString &key : {"Name[" + locale + "]", "Name[" + locale.section('_', 0, 0) + "]", QStringLiteral("Name")}) {
+        const FileOps::IniValue name = FileOps::iniGet(entry, group, key);
+        if (name.found && !name.value.isEmpty()) {
+            app["name"] = name.value;
+            break;
+        }
+    }
+    QString icon = FileOps::iniGet(entry, group, QStringLiteral("Icon")).value;
+    if (icon.isEmpty())
+        return app;
+    QString path;
+    if (QDir::isAbsolutePath(icon)) {
+        path = QFileInfo::exists(icon) ? icon : QString();
+    } else {
+        icon.remove(QRegularExpression("\\.(png|svg|xpm)$"));
+        if (IconThemes::isValidId(icon)) {
+            path = IconThemes::findIcon(env, iconTheme, {icon}, 96);
+            // Old apps still put their icon straight in pixmaps, which no theme covers.
+            for (qsizetype i = 0; path.isEmpty() && i < roots.size(); ++i)
+                for (const char *extension : {".svg", ".png"})
+                    if (path.isEmpty() && QFileInfo::exists(roots[i] + "/pixmaps/" + icon + QLatin1String(extension)))
+                        path = roots[i] + "/pixmaps/" + icon + QLatin1String(extension);
+        }
+    }
+    if (!path.isEmpty())
+        app["icon"] = QUrl::fromLocalFile(path).toString();
+    return app;
+}
+
+void PluginsProvider::resolveDockApps() {
+    const Env &env = m_runner->env();
+    const QString theme = m_iconTheme.isEmpty() ? IconThemes::desktopDefault(env) : m_iconTheme;
+    m_dockApps.clear();
+    for (const QString &pin : std::as_const(m_pins))
+        m_dockApps << resolveDockApp(env, pin, theme);
+}
+
 void PluginsProvider::loadConfig() {
     QByteArray contents;
     if (!FileOps::readFile(m_runner->env().configHome + "/omarchy/shell.json", &contents) || contents.trimmed().isEmpty())
@@ -84,11 +143,22 @@ void PluginsProvider::loadConfig() {
     }
     for (const auto &value : pins.toArray())
         m_pins << value.toString();
+    resolveDockApps();
 }
 
 void PluginsProvider::refresh() {
     loadConfig();
     emit changed();
+    // Pins are drawn from the pack in use. Without an answer the theme's own is close enough.
+    m_runner->run({"gsettings", "get", "org.gnome.desktop.interface", "icon-theme"}, CommandOptions{4000}, this, [this](const CommandResult &result) {
+        bool ok = false;
+        const QString theme = result.ok() ? IconThemes::parseGVariantString(result.out, &ok) : QString();
+        if (ok && theme != m_iconTheme) {
+            m_iconTheme = theme;
+            resolveDockApps();
+            emit changed();
+        }
+    });
     m_runner->run({"omarchy", "plugin", "list", "--json"}, CommandOptions{4000}, this, [this](const CommandResult &result) {
         if (result.ok()) {
             m_plugins = parsePlugins(result.out);
@@ -115,7 +185,10 @@ void PluginsProvider::runChange(const QString &label, const QString &after, cons
         m_runner->run(argv, options, this, [done, argv](const CommandResult &result) { done(result.ok(), result.describe(argv.value(0))); });
     };
     request.verify = verify;
+    ++m_changes;
+    emit changed();
     m_coordinator->submit(std::move(request), [this, success](const Transaction &tx) {
+        --m_changes;
         emit message(tx.phase == QLatin1String("committed") ? success : tx.message, tx.phase != QLatin1String("committed"));
         refresh();
     });
@@ -157,14 +230,15 @@ void PluginsProvider::moveWidget(const QString &id, const QString &section, int 
     const QStringList argv{"omarchy", "bar", "move", id, "--section", section, "--index", QString::number(index),
                            "--from-section", fromSection, "--from-index", QString::number(fromIndex)};
     runChange(tr("Bar widget %1").arg(id), section, argv,
-              [this, id, section](ChangeCoordinator::Done done) { verifyMoved(id, section, 8, done); },
+              [this, id, section, index](ChangeCoordinator::Done done) { verifyMoved(id, section, index, 8, done); },
               tr("Moved %1").arg(id));
 }
 
-void PluginsProvider::verifyMoved(const QString &id, const QString &section, int attempts, ChangeCoordinator::Done done) {
+void PluginsProvider::verifyMoved(const QString &id, const QString &section, int index, int attempts, ChangeCoordinator::Done done) {
     QByteArray contents;
     FileOps::readFile(m_runner->env().configHome + "/omarchy/shell.json", &contents);
-    if (parseLayout(contents).value(section).toList().contains(id)) {
+    // The exact place, not just the section, or a reorder could never fail this check.
+    if (parseLayout(contents).value(section).toList().value(index).toString() == id) {
         done(true, {});
         return;
     }
@@ -173,7 +247,7 @@ void PluginsProvider::verifyMoved(const QString &id, const QString &section, int
         return;
     }
     // A failed check restores the file, so give the write a moment to land first.
-    QTimer::singleShot(150, this, [this, id, section, attempts, done] { verifyMoved(id, section, attempts - 1, done); });
+    QTimer::singleShot(150, this, [this, id, section, index, attempts, done] { verifyMoved(id, section, index, attempts - 1, done); });
 }
 
 void PluginsProvider::pin(const QString &desktopId) {
