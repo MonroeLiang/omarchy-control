@@ -82,6 +82,9 @@ void BluetoothProvider::refresh() {
                     for (const auto &a : addresses)
                         rows << results->value(a);
                     m_devices = rows;
+                    for (const auto &key : m_failures.keys())
+                        if (!addresses.contains(key))
+                            m_failures.remove(key);
                     emit changed();
                 });
             }
@@ -142,10 +145,16 @@ void BluetoothProvider::deviceAction(const QString &action, const QString &addre
         });
     };
     m_busy = true;
+    m_pending.insert(address, action);
+    m_failures.remove(address);
     emit changed();
-    m_coordinator->submit(std::move(request), [this, doneText](const Transaction &tx) {
+    m_coordinator->submit(std::move(request), [this, doneText, address](const Transaction &tx) {
         m_busy = false;
-        emit message(tx.phase == QLatin1String("committed") ? doneText : tx.message, tx.phase != QLatin1String("committed"));
+        m_pending.remove(address);
+        const bool ok = tx.phase == QLatin1String("committed");
+        if (!ok)
+            m_failures.insert(address, tx.message);
+        emit message(ok ? doneText : tx.message, !ok);
         refresh();
     });
 }

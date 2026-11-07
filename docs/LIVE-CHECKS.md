@@ -6,7 +6,7 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 
 | Check | Evidence |
 | --- | --- |
-| 322 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
+| 340 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
 | 87 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
 | Package install, upgrade, and removal | `tools/package-check.sh`, the real package in a disposable pacman root, with real `pacman` under `fakeroot` |
 | All 77 typed settings read correctly on real hardware | `omarchy-control doctor` on Omarchy 4.5.0-3; recorded in `live-evidence.json` |
@@ -46,14 +46,14 @@ These need your real session or hardware. Jason decided on November 6, 2026 to r
 - **14 writable settings:** brightness, night light, DNS, Wi-Fi band, three power profile rows, language, touchscreen, and the five Superwhisper rows. They read correctly on real hardware (touchscreen aside, where none was reported), and their writes are fixture-tested only.
 - **Devices:** real sound routing, Bluetooth, Wi-Fi switching, and NetworkManager checkpoints, where polkit's real answer is unknown. Services and startup-app changes too.
 - **Other helper routes,** especially installers and removals, which were deliberately not run. Their routes resolve.
-- **Display hardware:** arranging real monitors, modes, rotation, hotplug. The recovery mechanism is proven, on one virtual output.
+- **Display hardware:** arranging real monitors, modes, rotation, hotplug. The recovery mechanism is proven, on one virtual output. The Displays page's states are drawn from the sandbox, including a real watchdog preview against fake displays; dragging with a real pointer, per-display brightness over DDC/CI, and unplugging a cable mid-edit are not yet observed. The steps are below.
 - **The installed package on this machine,** in the real launcher with the real icon.
 - **A screen reader speaking,** though the accessibility tree is checked.
 - **Hardware not on the audit machine:** desktops, other GPUs.
 
 ## Languages
 
-Danish, German, and Arabic are 100% translated: 579 interface and 996 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
+Danish, German, and Arabic are 100% translated: 675 interface and 1001 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
 
 ## First live run
 
@@ -91,6 +91,16 @@ Stop at anything surprising, and use `omarchy-control history` and `undo`. This 
 3. **Follow:** pick Follow desktop theme, then switch to `catppuccin`, which asks for `Yaru-purple`. Files should follow.
 4. **Undo:** in History, undo each change, newest first. The first undo of all should remove `~/.config/omarchy/hooks/theme-set.d/90-omarchy-control-icons` and `~/.config/omarchy-control/icons.json`, and leave `gsettings get org.gnome.desktop.interface icon-theme` where it started.
 5. **Import:** download a pack, extract it, then drag its folder onto the tiles, and separately use Import folder. Each should say Imported and change nothing until you press Use this pack. An imported pack can change launcher and dock icons even when it is not chosen, because their list reads every pack. To remove a pack, delete its folder from `~/.local/share/icons`.
+
+## Displays page
+
+Stop at anything surprising. Every layout change here is a preview that undoes itself unless you press Keep.
+
+1. **Selection:** with two displays connected, click the one the window is not on. The inspector, the Screen heading, and the brightness row should all name it, and the desktop's focus should not move.
+2. **Brightness:** with an external display selected, move Screen brightness. Only that display should change. A monitor without DDC/CI should show the row as unavailable, with the reason.
+3. **Scale:** select the display the window is not on. Before the recovery check, the Scale row should say why it cannot change it right away. After it, choosing a scale should mark it Changed and show Changes not applied, with nothing moving yet.
+4. **Drag:** drag a display next to another. Its edge should meet the other's. Preview layout, then let the countdown run out. The previous layout should come back, and the page should say Hyprland reports the layout from before the preview.
+5. **Unplug:** stage a change for an external display, then unplug its cable. The page should say its changes were dropped, keep any others, and select a display that is still connected.
 
 ## Repeating the update check
 

@@ -1374,6 +1374,138 @@ private slots:
         QVERIFY(messages.first().at(1).toBool());
         QVERIFY(coordinator.history().first().phase != QLatin1String("committed"));
     }
+    void audioNamesComeFromTheCardAndPort() {
+        // As PipeWire describes a laptop's own card, its HDMI ports, and a DSP sink.
+        const QByteArray sinks = R"J([
+          {"index":151,"name":"spk","description":"Maker Chip (Series 3) HD Audio Speaker","volume":{},"properties":{"object.id":"84","device.description":"Maker Chip (Series 3) HD Audio","device.profile.description":"Speaker","device.icon_name":"audio-speakers"}},
+          {"index":153,"name":"hdmi1","description":"Maker Chip (Series 3) HD Audio HDMI / DisplayPort 1 Output (Stereo)","volume":{},"properties":{"object.id":"75","device.description":"Maker Chip (Series 3) HD Audio","device.profile.description":"HDMI / DisplayPort 1 Output","device.icon_name":"video-display"}},
+          {"index":49,"name":"dsp","description":"Laptop Speakers","volume":{},"properties":{"object.id":"30","device.description":"Laptop Speakers"}},
+          {"index":60,"name":"bt","description":"Earbuds","volume":{},"properties":{"object.id":"61","device.description":"Earbuds","device.profile.description":"High Fidelity Playback (A2DP Sink)","device.bus":"bluetooth"}},
+          {"index":70,"name":"plain","description":"Some Device","volume":{},"properties":{"object.id":"71"}}])J";
+        const auto rows = AudioProvider::parseNodes(sinks, "spk", false);
+        QCOMPARE(rows.size(), 5);
+        auto row = [&](int i) { return rows[i].toMap(); };
+        QCOMPARE(row(0).value("title").toString(), QString("HD Audio Speaker"));
+        QCOMPARE(row(0).value("subtitle").toString(), QString("Maker Chip (Series 3)"));
+        QCOMPARE(row(0).value("kind").toString(), QString("speaker"));
+        QCOMPARE(row(0).value("index").toInt(), 151);
+        // The full description stays for what is read aloud.
+        QCOMPARE(row(0).value("description").toString(), QString("Maker Chip (Series 3) HD Audio Speaker"));
+        QCOMPARE(row(1).value("title").toString(), QString("HDMI / DisplayPort 1"));
+        QCOMPARE(row(1).value("subtitle").toString(), QString::fromUtf8("Maker Chip (Series 3) · Stereo"));
+        QCOMPARE(row(1).value("kind").toString(), QString("displays"));
+        QCOMPARE(row(2).value("title").toString(), QString("Laptop Speakers"));
+        QVERIFY(row(2).value("subtitle").toString().isEmpty());
+        QCOMPARE(row(2).value("kind").toString(), QString("laptop"));
+        QCOMPARE(row(3).value("title").toString(), QString("Earbuds"));
+        QCOMPARE(row(3).value("subtitle").toString(), QString("High Fidelity Playback (A2DP Sink)"));
+        QCOMPARE(row(3).value("kind").toString(), QString("bluetooth"));
+        QCOMPARE(row(4).value("title").toString(), QString("Some Device"));
+        // A microphone's port reads the same way.
+        const auto mic = AudioProvider::parseNodes(R"J([{"index":156,"name":"mic","description":"Maker Chip (Series 3) HD Audio Microphones","volume":{},"properties":{"device.description":"Maker Chip (Series 3) HD Audio","device.profile.description":"Microphones"}}])J", "mic", true);
+        QCOMPARE(mic.first().toMap().value("title").toString(), QString("HD Audio Microphones"));
+        QCOMPARE(mic.first().toMap().value("kind").toString(), QString("mic"));
+    }
+    void streamsFindTheirOutputByIndex() {
+        const auto outputs = AudioProvider::parseNodes(R"J([{"index":151,"name":"spk","description":"S","volume":{},"properties":{"object.id":"84"}},{"index":152,"name":"hp","description":"H","volume":{},"properties":{"object.id":"76"}}])J", "spk", false);
+        // Two streams from one app stay two, and each finds its own output.
+        auto streams = AudioProvider::parseStreams(R"J([{"index":1,"sink":151,"volume":{},"properties":{"application.name":"Browser","media.name":"Playback"}},{"index":2,"sink":152,"volume":{},"properties":{"application.name":"Browser","media.name":"Playback"}},{"index":3,"sink":76,"volume":{},"properties":{"application.name":"Old"}},{"index":4,"sink":999,"volume":{},"properties":{"application.name":"Lost"}}])J");
+        AudioProvider::matchStreams(streams, outputs);
+        QCOMPARE(streams.size(), 4);
+        QCOMPARE(streams[0].toMap().value("output").toString(), QString("spk"));
+        QCOMPARE(streams[1].toMap().value("output").toString(), QString("hp"));
+        // Older PipeWire named the sink by its object id.
+        QCOMPARE(streams[2].toMap().value("output").toString(), QString("hp"));
+        // One that cannot be told is not guessed.
+        QVERIFY(streams[3].toMap().value("output").toString().isEmpty());
+    }
+    void aStreamMoveIsCheckedAfterwards() {
+        Sandbox s;
+        s.omarchy("exit 0");
+        // pactl takes the move and does nothing with it.
+        s.command("pactl", R"SH(
+case "$*" in
+  "-f json list sinks") echo '[{"index":151,"name":"spk","description":"S","volume":{},"properties":{"object.id":"84"}},{"index":152,"name":"hp","description":"H","volume":{},"properties":{"object.id":"76"}}]';;
+  "-f json list sources") echo '[]';;
+  "-f json list sink-inputs") echo '[{"index":7,"sink":151,"volume":{},"properties":{"application.name":"Browser"}}]';;
+  get-default-sink) echo spk;;
+esac)SH");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        AudioProvider audio(&runner, &coordinator);
+        QSignalSpy messages(&audio, &AudioProvider::message);
+        audio.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(audio.streams().size(), 1, 5000);
+        QCOMPARE(audio.streams().first().toMap().value("output").toString(), QString("spk"));
+        audio.moveStream(7, "hp");
+        QTRY_VERIFY_WITH_TIMEOUT(messages.count() >= 1, 5000);
+        QVERIFY(messages.first().at(1).toBool());
+        QVERIFY(messages.first().at(0).toString().contains("did not move"));
+        QVERIFY(s.calls().contains("pactl move-sink-input 7 hp"));
+    }
+    void aDefaultChangeIsShownAsPending() {
+        Sandbox s;
+        s.omarchy("sleep 0.4; exit 0");
+        s.command("pactl", kScript6);
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        AudioProvider audio(&runner, &coordinator);
+        audio.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(audio.outputs().size(), 2, 5000);
+        audio.setDefaultOutput("b");
+        QCOMPARE(audio.pendingDefault(), QString("b"));
+        QTRY_VERIFY_WITH_TIMEOUT(audio.pendingDefault().isEmpty(), 8000);
+    }
+    void aBluetoothFailureStaysWithItsDevice() {
+        Sandbox s;
+        s.omarchy(R"SH(case "$*" in "bluetooth power is-on") exit 0;; esac; exit 0)SH");
+        s.command("bluetoothctl", R"SH(
+case "$1" in
+  devices) printf 'Device AA:BB:CC:DD:EE:03 Office Mouse\nDevice AA:BB:CC:DD:EE:04 Office Mouse\n';;
+  info) printf 'Name: Office Mouse\nConnected: no\nPaired: yes\n';;
+esac)SH");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        BluetoothProvider bluetooth(&runner, &coordinator);
+        bluetooth.refresh();
+        // Two devices with one name stay two.
+        QTRY_COMPARE_WITH_TIMEOUT(bluetooth.devices().size(), 2, 5000);
+        bluetooth.connectDevice("AA:BB:CC:DD:EE:04");
+        QCOMPARE(bluetooth.pending().value("AA:BB:CC:DD:EE:04").toString(), QString("connect"));
+        QVERIFY(!bluetooth.pending().contains("AA:BB:CC:DD:EE:03"));
+        QTRY_VERIFY_WITH_TIMEOUT(bluetooth.pending().isEmpty(), 8000);
+        QTRY_VERIFY_WITH_TIMEOUT(!bluetooth.failures().value("AA:BB:CC:DD:EE:04").toString().isEmpty(), 5000);
+        QVERIFY(!bluetooth.failures().contains("AA:BB:CC:DD:EE:03"));
+        // It outlives the refresh after it, and goes with the device.
+        QTRY_COMPARE_WITH_TIMEOUT(bluetooth.devices().size(), 2, 5000);
+        QVERIFY(bluetooth.failures().contains("AA:BB:CC:DD:EE:04"));
+    }
+    void soundToolsAppearOnceEach() {
+        Catalog catalog;
+        QStringList placed, blocks;
+        for (const auto &row : catalog.panelLayout("sound"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    if (!panel.value("block").toString().isEmpty())
+                        blocks << panel.value("block").toString();
+                    for (const auto &id : panel.value("rows").toArray())
+                        placed << id.toString();
+                }
+        placed.sort();
+        QStringList tools{"audio.tuning", "helper.printer", "install.camera", "install.video.decode", "panel.audio", "panel.bluetooth", "restart.audio", "restart.bluetooth"};
+        QCOMPARE(placed, tools);
+        QCOMPARE(blocks, QStringList({"output", "microphone", "appAudio", "bluetooth"}));
+        // Search lands on each native section by name, and each is on the page.
+        const QHash<QString, QString> destinations{{"native.audio.output", "block.output"}, {"native.audio.input", "block.microphone"}, {"native.audio.apps", "block.appAudio"}, {"native.bluetooth", "block.bluetooth"}};
+        for (auto it = destinations.cbegin(); it != destinations.cend(); ++it) {
+            const CatalogEntry *entry = catalog.find(it.key());
+            QVERIFY(entry);
+            QCOMPARE(entry->launch.value("focus").toString(), it.value());
+            QVERIFY(catalog.page("sound")->blocks.contains(it.value().mid(6)));
+        }
+    }
+
     void bluetoothInfoParsing() {
         const auto device = BluetoothProvider::parseInfo("Device AA:BB:CC:DD:EE:01 (public)\n\tName: Phones\n\tAlias: Phones\n\tIcon: audio-headset\n\tPaired: yes\n\tConnected: no\n\tBattery Percentage: 0x4b (75)\n", "AA:BB:CC:DD:EE:01");
         QCOMPARE(device.value("name").toString(), QString("Phones"));
@@ -1847,6 +1979,231 @@ private slots:
         QVERIFY(!QFile::exists(s.dir.path() + "/hypr-eval"));
     }
 
+    // ---- Displays: selection, staging, and what the page is told -------------
+    void theSelectionIsKeptAndFallsBackWhenUnplugged() {
+        Sandbox s;
+        monitorFixture(s, twoMonitors());
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        DisplayProvider displays(&runner, &coordinator);
+        QSignalSpy messages(&displays, &DisplayProvider::message);
+        displays.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.monitors().size(), 3, 5000);
+        // It starts on the display the desktop has focused, then stays wherever it is put.
+        QCOMPARE(displays.selected(), QString("eDP-1"));
+        displays.select("DP-1");
+        QCOMPARE(displays.selected(), QString("DP-1"));
+        displays.select("HDMI-9");
+        QCOMPARE(displays.selected(), QString("DP-1"));
+        // Off displays stay selectable, so they can be turned back on.
+        displays.select("DP-2");
+        QCOMPARE(displays.selected(), QString("DP-2"));
+        displays.select("DP-1");
+        QSignalSpy changed(&displays, &DisplayProvider::changed);
+        displays.refresh();
+        QTRY_VERIFY_WITH_TIMEOUT(changed.count() >= 1, 5000);
+        QCOMPARE(displays.selected(), QString("DP-1"));
+        writeFile(s.dir.path() + "/hypr-monitors", withoutMonitor(twoMonitors(), "DP-1"));
+        displays.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.monitors().size(), 2, 5000);
+        QCOMPARE(displays.selected(), QString("eDP-1"));
+        QVERIFY(!messages.isEmpty());
+        QVERIFY(messages.last().at(0).toString().contains("DP-1"));
+    }
+    void stagedEditsSurviveRefreshesAndLeaveOnlyWithTheirDisplay() {
+        Sandbox s;
+        monitorFixture(s, twoMonitors());
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        DisplayProvider displays(&runner, &coordinator);
+        displays.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.monitors().size(), 3, 5000);
+        // Locked: nothing can be staged before the recovery check has passed.
+        displays.stageEdit("DP-1", "x", 2000);
+        QVERIFY(!displays.dirty());
+        writeFile(displays.recoveryCheckPath(), R"({"passed":true,"hyprland":"0.56.2"})");
+        QTRY_VERIFY_WITH_TIMEOUT(displays.editingUnlocked(), 3000);
+        displays.stageEdit("DP-1", "x", 2000);
+        displays.stageEdit("eDP-1", "y", 50);
+        QVERIFY(displays.dirty());
+        QCOMPARE(stagedRow(displays, "DP-1").value("pending").toStringList(), QStringList{"x"});
+        // Fresh state from Hyprland does not wipe what is being worked on.
+        QSignalSpy changed(&displays, &DisplayProvider::changed);
+        displays.refresh();
+        QTRY_VERIFY_WITH_TIMEOUT(changed.count() >= 1, 5000);
+        QVERIFY(displays.dirty());
+        QCOMPARE(stagedRow(displays, "DP-1").value("x").toInt(), 2000);
+        // Moving it back to where it is leaves nothing pending for it.
+        displays.stagePosition("DP-1", 1920, 0);
+        QVERIFY(stagedRow(displays, "DP-1").value("pending").toStringList().isEmpty());
+        QVERIFY(displays.dirty());
+        displays.stageEdit("DP-1", "x", 2000);
+        // Unplugged: its edits go, the others stay, and the page is told.
+        writeFile(s.dir.path() + "/hypr-monitors", withoutMonitor(twoMonitors(), "DP-1"));
+        displays.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.monitors().size(), 2, 5000);
+        QVERIFY(stagedRow(displays, "DP-1").isEmpty());
+        QVERIFY(displays.dirty());
+        QCOMPARE(stagedRow(displays, "eDP-1").value("y").toInt(), 50);
+        QCOMPARE(displays.outcome().value("kind").toString(), QString("warning"));
+        QVERIFY(displays.outcome().value("title").toString().contains("DP-1"));
+        displays.discardStaged();
+        QVERIFY(!displays.dirty());
+        QCOMPARE(stagedRow(displays, "eDP-1").value("y").toInt(), 0);
+    }
+    void stagedScalesAreOnesHyprlandCanShow() {
+        for (const auto &choice : DisplayProvider::scaleChoices(2560, 1440, 1.6)) {
+            const int k = qRound(choice.toMap().value("value").toDouble() * 120);
+            QCOMPARE((2560 * 120) % k, 0);
+            QCOMPARE((1440 * 120) % k, 0);
+        }
+        Sandbox s;
+        monitorFixture(s, R"([{"name":"DP-1","width":2560,"height":1440,"refreshRate":60,"x":0,"y":0,"scale":1,"transform":0,"disabled":false,"focused":true,"availableModes":["2560x1440@60.00Hz","1920x1080@60.00Hz"]}])");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        DisplayProvider displays(&runner, &coordinator);
+        displays.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.monitors().size(), 1, 5000);
+        writeFile(displays.recoveryCheckPath(), R"({"passed":true,"hyprland":"0.56.2"})");
+        QTRY_VERIFY_WITH_TIMEOUT(displays.editingUnlocked(), 3000);
+        // 150% does not divide 2560x1440 into whole pixels; the nearest that does is staged.
+        displays.stageEdit("DP-1", "scale", 1.5);
+        QCOMPARE(stagedRow(displays, "DP-1").value("scale").toDouble(), 1.6);
+        QCOMPARE(stagedRow(displays, "DP-1").value("logicalWidth").toInt(), 1600);
+        QCOMPARE(stagedRow(displays, "DP-1").value("logicalHeight").toInt(), 900);
+        // A new mode carries the scale along, and the workspace follows both.
+        displays.stageEdit("DP-1", "mode", "1920x1080@60.00");
+        QCOMPARE(stagedRow(displays, "DP-1").value("width").toInt(), 1920);
+        QCOMPARE(stagedRow(displays, "DP-1").value("logicalWidth").toInt(), 1200);
+        // Rotated, the workspace stands on its side.
+        displays.stageEdit("DP-1", "transform", 1);
+        QCOMPARE(stagedRow(displays, "DP-1").value("logicalWidth").toInt(), 675);
+        QVERIFY(displays.stageProblem().isEmpty());
+    }
+    void oneAnswerSaysWhereTheSelectedScaleGoes() {
+        Sandbox s;
+        monitorFixture(s, twoMonitors());
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        DisplayProvider displays(&runner, &coordinator);
+        displays.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.monitors().size(), 3, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(!displays.selectedScale().isEmpty(), 3000);
+        // The focused display changes right away, through Omarchy's own command.
+        QCOMPARE(displays.selectedScale().value("route").toString(), QString("immediate"));
+        // Another display only through the arrangement, which is locked for now.
+        displays.select("DP-1");
+        QCOMPARE(displays.selectedScale().value("route").toString(), QString("locked"));
+        QVERIFY(displays.selectedScale().value("reason").toString().contains("DP-1"));
+        displays.select("DP-2");
+        QCOMPARE(displays.selectedScale().value("route").toString(), QString("off"));
+        writeFile(displays.recoveryCheckPath(), R"({"passed":true,"hyprland":"0.56.2"})");
+        QTRY_VERIFY_WITH_TIMEOUT(displays.editingUnlocked(), 3000);
+        displays.select("DP-1");
+        QCOMPARE(displays.selectedScale().value("route").toString(), QString("stage"));
+        displays.stageEdit("DP-1", "scale", 2);
+        QVERIFY(displays.selectedScale().value("pending").toBool());
+        QCOMPARE(displays.selectedScale().value("applied").toDouble(), 1.0);
+        QVERIFY(displays.selectedScale().value("reason").toString().contains("100%"));
+        // With a layout staged, even the focused display's scale joins it.
+        displays.select("eDP-1");
+        QCOMPARE(displays.selectedScale().value("route").toString(), QString("stage"));
+        displays.discardStaged();
+        QCOMPARE(displays.selectedScale().value("route").toString(), QString("immediate"));
+    }
+    void aRefusedPreviewKeepsWhatWasStaged() {
+        Sandbox s;
+        monitorFixture(s, twoMonitors());
+        ChangeCoordinator coordinator(s.env);
+        Env broken = s.env;
+        broken.selfBinary = "/nonexistent/omarchy-control";
+        CommandRunner runner(broken);
+        DisplayProvider displays(&runner, &coordinator);
+        displays.refresh();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.monitors().size(), 3, 5000);
+        writeFile(displays.recoveryCheckPath(), R"({"passed":true,"hyprland":"0.56.2"})");
+        QTRY_VERIFY_WITH_TIMEOUT(displays.editingUnlocked(), 3000);
+        displays.stageEdit("DP-1", "x", 2400);
+        displays.previewStaged();
+        QTRY_COMPARE_WITH_TIMEOUT(displays.outcome().value("kind").toString(), QString("error"), 8000);
+        QVERIFY(displays.outcome().value("detail").toString().contains("nothing was changed"));
+        QVERIFY(displays.dirty());
+        QCOMPARE(stagedRow(displays, "DP-1").value("x").toInt(), 2400);
+        QVERIFY(!displays.busy());
+        QVERIFY(!QFile::exists(s.dir.path() + "/hypr-eval"));
+    }
+    void aPreviewThatOutlivedTheWindowIsReported() {
+        Sandbox s;
+        monitorFixture(s, twoMonitors());
+        const QString run = s.env.runtimeDir + "/omarchy-control";
+        writeFile(run + "/display-0ld0ne00.result", "restored\n");
+        // Still owned by a watchdog that is running: not this window's to report.
+        writeFile(run + "/display-l1ve0000.result", "armed\n");
+        writeFile(run + "/display-l1ve0000.json", "{}");
+        ChangeCoordinator coordinator(s.env);
+        CommandRunner runner(s.env);
+        DisplayProvider displays(&runner, &coordinator);
+        QCOMPARE(displays.outcome().value("kind").toString(), QString("info"));
+        QVERIFY(displays.outcome().value("detail").toString().contains("previous layout"));
+        QVERIFY(!QFile::exists(run + "/display-0ld0ne00.result"));
+        QVERIFY(QFile::exists(run + "/display-l1ve0000.result"));
+        displays.dismissOutcome();
+        QVERIFY(displays.outcome().isEmpty());
+    }
+    void brightnessCanTargetOneDisplay() {
+        Sandbox s;
+        s.minimalHyprland();
+        s.omarchy(R"SH(
+root="$(dirname "$HOME")"
+case "$*" in
+  "brightness display --monitor DP-2"*) exit 1;;
+  "brightness display --monitor DP-1 --no-osd "*) v="$6"; echo "${v%\%}" > "$root/b";;
+  "brightness display --monitor DP-1") cat "$root/b" 2>/dev/null || echo 40;;
+  "brightness display") echo 70;;
+esac
+)SH");
+        AppCore core(s.env);
+        QCOMPARE(readSetting(core.engine, "displays.brightness").value, QString("70"));
+        QCOMPARE(readSetting(core.engine, "displays.brightness@DP-1").value, QString("40"));
+        // A display with neither a backlight nor DDC/CI has no such control, and says so.
+        const ReadResult none = readSetting(core.engine, "displays.brightness@DP-2");
+        QCOMPARE(none.status, QString("unavailable"));
+        QVERIFY(none.reason.contains("DP-2"));
+        // Only a plain connector name can be a target, and only of a setting that has one.
+        QVERIFY(!core.catalog.find("displays.brightness@DP-1;reboot"));
+        QVERIFY(!core.catalog.find("displays.brightness@"));
+        QVERIFY(!core.catalog.find("displays.nightlight@DP-1"));
+        const Transaction tx = applySetting(core.engine, "displays.brightness@DP-1", "55");
+        QCOMPARE(tx.phase, QString("committed"));
+        QVERIFY(s.calls().contains("omarchy brightness display --monitor DP-1 --no-osd 55%"));
+        QCOMPARE(readSetting(core.engine, "displays.brightness@DP-1").value, QString("55"));
+        // Undo goes back to the same display, not whichever one has focus.
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QCOMPARE(readSetting(core.engine, "displays.brightness@DP-1").value, QString("40"));
+    }
+    void displayToolsFollowTheHardware() {
+        Sandbox s;
+        AppCore core(s.env);
+        auto reason = [&](const QString &id) {
+            core.capabilities.scanFiles();
+            const auto a = core.capabilities.availability(*core.catalog.find(id));
+            return a.available ? QString() : a.reason;
+        };
+        QVERIFY(reason("monitor.recover").contains("built-in"));
+        writeFile(s.env.sys("/sys/class/drm/card1-eDP-1/status"), "connected\n");
+        // Built in and enabled: there is nothing to recover, and nothing to switch off to.
+        QVERIFY(reason("monitor.recover").contains("already enabled"));
+        QVERIFY(reason("trigger.hardware.laptop-display").contains("external"));
+        writeFile(s.env.stateHome + "/omarchy/toggles/hypr/internal-monitor-disable.lua", "");
+        QVERIFY(reason("monitor.recover").isEmpty());
+        writeFile(s.env.sys("/sys/class/drm/card1-DP-1/status"), "connected\n");
+        // With an external display connected, Omarchy's recovery does nothing.
+        QVERIFY(reason("monitor.recover").contains("external display is connected"));
+        QVERIFY(reason("trigger.hardware.laptop-display").isEmpty());
+        QVERIFY(reason("trigger.hardware.mirror-display").isEmpty());
+        QCOMPARE(core.capabilities.values().value("internaldisplay.name").toString(), QString("eDP-1"));
+    }
+
     // ---- Regressions from the adversarial review ------------------------------
     void unreadableFilesStopTheChangeAndSurvive() {
         if (geteuid() == 0)
@@ -2250,6 +2607,18 @@ private slots:
         // Whatever the verdict, the display ended up where it started.
         QCOMPARE(readAll(s.dir.path() + "/x").trimmed(), QByteArray("0"));
         QTRY_COMPARE_WITH_TIMEOUT(displays.editingUnlocked(), expectPass, 3000);
+        // A failure says which step failed and what Hyprland reports now; a pass clears it.
+        if (expectPass) {
+            QVERIFY(displays.outcome().isEmpty());
+        } else {
+            QCOMPARE(displays.outcome().value("scope").toString(), QString("check"));
+            QVERIFY(displays.outcome().value("detail").toString().contains("did not report the test move"));
+            QVERIFY(displays.outcome().value("detail").toString().contains("original layout"));
+            QVERIFY(displays.lastCheck().value("reason").toString().contains("test move"));
+        }
+        QCOMPARE(displays.lastCheck().value("passed").toBool(), expectPass);
+        // Nothing of the run is left behind to be mistaken later for an interrupted one.
+        QVERIFY(QDir(env.runtimeDir + "/omarchy-control").entryList({"display-*"}, QDir::Files).isEmpty());
     }
     void recoveryCheckFailsWhenTheWatchdogCannotStart() {
         Sandbox s;
@@ -3569,6 +3938,19 @@ private slots:
     }
 
 private:
+    static QByteArray withoutMonitor(const QByteArray &json, const QString &name) {
+        QJsonArray kept;
+        for (const auto &monitor : QJsonDocument::fromJson(json).array())
+            if (monitor.toObject().value("name").toString() != name)
+                kept << monitor;
+        return QJsonDocument(kept).toJson(QJsonDocument::Compact);
+    }
+    static QVariantMap stagedRow(const DisplayProvider &displays, const QString &output) {
+        for (const auto &row : displays.staged())
+            if (row.toMap().value("output").toString() == output)
+                return row.toMap();
+        return {};
+    }
     static QByteArray twoMonitors() {
         return R"([{"name":"eDP-1","width":1920,"height":1080,"refreshRate":60,"x":0,"y":0,"scale":1,"transform":0,"disabled":false,"focused":true,"availableModes":["1920x1080@60.00Hz"]},{"name":"DP-1","width":2560,"height":1440,"refreshRate":60,"x":1920,"y":0,"scale":1,"transform":0,"disabled":false,"availableModes":["2560x1440@60.00Hz"]},{"name":"DP-2","width":1920,"height":1080,"refreshRate":60,"x":0,"y":0,"scale":1,"transform":0,"disabled":true,"availableModes":["1920x1080@60.00Hz"]}])";
     }
@@ -3702,7 +4084,38 @@ private:
             window->requestActivate();
         }
         void show(const QString &focus = {}) {
-            QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, "desktop"), Q_ARG(QVariant, focus));
+            open("desktop", focus);
+        }
+        void open(const QString &pageId, const QString &focus = {}) {
+            QMetaObject::invokeMethod(window, "go", Q_ARG(QVariant, pageId), Q_ARG(QVariant, focus));
+        }
+        // Every setting row on screen by its id, as often as it is drawn.
+        QStringList rowIds() const {
+            QStringList ids;
+            for (QQuickItem *row : named("settingRow"))
+                ids << row->property("entryId").toString();
+            return ids;
+        }
+        QQuickItem *row(const QString &id) const {
+            for (QQuickItem *item : named("settingRow"))
+                if (item->property("entryId").toString() == id)
+                    return item;
+            return nullptr;
+        }
+        QQuickItem *pageView() const {
+            const auto pages = named("pageLoader");
+            return pages.isEmpty() ? nullptr : qvariant_cast<QQuickItem *>(pages.first()->property("item"));
+        }
+        qreal scrolled() const {
+            QQuickItem *view = pageView();
+            QObject *flick = view ? qvariant_cast<QObject *>(view->property("contentItem")) : nullptr;
+            return flick ? flick->property("contentY").toReal() : -1;
+        }
+        bool focusWithin(QQuickItem *item) const {
+            for (QQuickItem *f = window->activeFocusItem(); f; f = f->parentItem())
+                if (f == item)
+                    return true;
+            return false;
         }
         QList<QQuickItem *> named(const QString &objectName) const {
             QList<QQuickItem *> found;
@@ -3764,6 +4177,170 @@ private:
     }
 
 private slots:
+    void inputPanelsPlaceEveryEntryOnce() {
+        Catalog catalog;
+        QStringList placed;
+        QHash<QString, QStringList> byPanel;
+        QString header;
+        for (const auto &row : catalog.panelLayout("input"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    const QString name = panel.value("title").toString();
+                    if (!panel.value("header").toString().isEmpty()) {
+                        header = panel.value("header").toString();
+                        placed << header;
+                        byPanel[name] << header;
+                    }
+                    for (const auto &id : panel.value("rows").toArray()) {
+                        placed << id.toString();
+                        byPanel[name] << id.toString();
+                    }
+                }
+        QStringList expected;
+        for (const auto *entry : catalog.entriesForPage("input"))
+            expected << entry->id;
+        QCOMPARE(expected.size(), 36);
+        QStringList sortedPlaced = placed, sortedExpected = expected;
+        sortedPlaced.sort();
+        sortedExpected.sort();
+        QCOMPARE(sortedPlaced, sortedExpected);
+        // The touchpad switch is the Touchpad panel's heading, and counts once there.
+        QCOMPARE(header, QString("input.touchpad"));
+        QCOMPARE(byPanel.value("Keyboard").size(), 4);
+        QCOMPARE(byPanel.value("Mouse").size(), 4);
+        QCOMPARE(byPanel.value("Touchpad").size(), 8);
+        QCOMPARE(byPanel.value("Touchscreen").size(), 1);
+        QCOMPARE(byPanel.value("Typing").size(), 3);
+        QCOMPARE(byPanel.value("Dictation").size(), 8);
+        QCOMPARE(byPanel.value("Voxtype").size(), 4);
+        QCOMPARE(byPanel.value("Accessibility").size(), 4);
+        QVERIFY(byPanel.value("Dictation").contains("dictation.install.superwhisper"));
+        QVERIFY(byPanel.value("Voxtype").contains("setup.default.dictation.voxtype"));
+        // Separating the driver reset: settings first, the action last.
+        QCOMPARE(byPanel.value("Touchpad").last(), QString("restart.trackpad.input"));
+    }
+    void anEntryNoPanelClaimsStillGetsOne() {
+        Sandbox s;
+        const QString dir = s.dir.path() + "/catalog";
+        writeFile(dir + "/pages.json", R"([{"id":"p","label":"P","icon":"x","description":"","sections":["A","B"],"panels":[{"columns":[[{"section":"A","icon":"x"}]]}]}])");
+        writeFile(dir + "/settings.json", R"([{"id":"a.one","page":"p","section":"A","label":"One","type":"toggle"},{"id":"b.two","page":"p","section":"B","label":"Two","type":"toggle"},{"id":"a.three","page":"p","section":"A","label":"Three","type":"toggle","group":"Elsewhere"}])");
+        writeFile(dir + "/workflows.json", "[]");
+        Catalog catalog(dir);
+        const QJsonArray layout = catalog.panelLayout("p");
+        QCOMPARE(layout.size(), 2);
+        const auto first = layout[0].toObject().value("columns").toArray()[0].toArray()[0].toObject();
+        // A group with no panel of its own stays with its section.
+        QCOMPARE(first.value("rows").toArray().size(), 2);
+        const auto added = layout[1].toObject().value("columns").toArray()[0].toArray()[0].toObject();
+        QCOMPARE(added.value("section").toString(), QString("B"));
+        QCOMPARE(added.value("rows").toArray()[0].toString(), QString("b.two"));
+        QVERIFY(catalog.panelLayout("nothing").isEmpty());
+    }
+    void theInputPageDrawsEveryEntryOnceAndLandsOnEach() {
+        Sandbox s;
+        desktopFixture(s);
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("input");
+        QTRY_COMPARE(page.named("sectionPanel").size(), 8);
+        QStringList drawn = page.rowIds();
+        QStringList expected;
+        const Catalog catalog;
+        for (const auto *entry : catalog.entriesForPage("input"))
+            expected << entry->id;
+        drawn.sort();
+        expected.sort();
+        QCOMPARE(drawn, expected);
+        // Seven jump links, in the page's order.
+        QStringList links;
+        for (QQuickItem *flow : page.named("sectionLinks"))
+            for (QQuickItem *child : flow->childItems())
+                if (child->objectName().startsWith("sectionLink_"))
+                    links << child->objectName().mid(12);
+        QCOMPARE(links, QStringList({"Keyboard", "Mouse", "Touchpad", "Touchscreen", "Typing", "Dictation", "Accessibility"}));
+        QCOMPARE(page.pageView()->property("activeTab").toString(), QString("Keyboard"));
+        // A link scrolls to its section and leaves the keyboard there.
+        QQuickItem *link = page.named("sectionLink_Accessibility").first();
+        QMetaObject::invokeMethod(link, "clicked");
+        QTRY_VERIFY(page.scrolled() > 100);
+        QTRY_COMPARE(page.pageView()->property("activeTab").toString(), QString("Accessibility"));
+        QQuickItem *accessibility = nullptr;
+        for (QQuickItem *panel : page.named("sectionPanel"))
+            if (panel->property("section").toString() == "Accessibility")
+                accessibility = panel;
+        QVERIFY(accessibility);
+        QTRY_VERIFY(page.focusWithin(accessibility));
+        // Search lands on a row far down the page, from the top.
+        page.open("input", "input.tp_drag");
+        page.open("input", "input.dictation.paste");
+        QTRY_VERIFY(page.focusWithin(page.row("input.dictation.paste")) || page.row("input.dictation.paste")->property("highlighted").toBool());
+        QVERIFY(page.scrolled() > 100);
+        // And on the touchpad switch, which is a panel's heading.
+        page.open("input", "input.touchpad");
+        QTRY_VERIFY(page.row("input.touchpad")->property("highlighted").toBool());
+    }
+
+    void theSoundPageShowsEveryDeviceAndLandsOnEachSection() {
+        Sandbox s;
+        desktopFixture(s);
+        writeFile(s.env.sys("/sys/class/bluetooth/hci0/address"), "x");
+        s.command("pactl", R"SH(
+case "$*" in
+  "-f json list sinks") echo '[{"index":151,"name":"spk","description":"Maker Chip (Series 3) HD Audio Speaker","mute":false,"volume":{"l":{"value_percent":"25%"}},"properties":{"object.id":"84","device.description":"Maker Chip (Series 3) HD Audio","device.profile.description":"Speaker"}},{"index":153,"name":"hdmi1","description":"Maker Chip (Series 3) HD Audio HDMI / DisplayPort 1 Output (Stereo)","mute":true,"volume":{"l":{"value_percent":"100%"}},"properties":{"object.id":"75","device.description":"Maker Chip (Series 3) HD Audio","device.profile.description":"HDMI / DisplayPort 1 Output"}}]';;
+  "-f json list sources") echo '[]';;
+  "-f json list sink-inputs") echo '[{"index":1,"sink":151,"volume":{},"properties":{"application.name":"Browser","media.name":"Playback"}},{"index":2,"sink":999,"volume":{},"properties":{"application.name":"Browser","media.name":"Playback"}}]';;
+  get-default-sink) echo spk;;
+esac)SH");
+        s.command("bluetoothctl", R"SH(
+case "$1" in
+  devices) printf 'Device AA:BB:CC:DD:EE:03 Office Mouse\nDevice AA:BB:CC:DD:EE:04 Office Mouse\n';;
+  info) printf 'Name: Office Mouse\nConnected: no\nPaired: yes\nIcon: input-mouse\n';;
+esac)SH");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("sound");
+        QTRY_COMPARE(page.named("deviceTitle").size(), 2);
+        QStringList titles;
+        for (QQuickItem *title : page.named("deviceTitle"))
+            titles << title->property("text").toString();
+        QCOMPARE(titles, QStringList({"HD Audio Speaker", "HDMI / DisplayPort 1"}));
+        // Two streams from one app, one of them on an output that cannot be told.
+        QTRY_COMPARE(page.named("streamOutput").size(), 2);
+        QCOMPARE(page.named("streamOutput").at(0)->property("currentIndex").toInt(), 0);
+        QCOMPARE(page.named("streamOutput").at(1)->property("currentIndex").toInt(), -1);
+        QCOMPARE(page.named("streamOutput").at(1)->property("displayText").toString(), QString());
+        // Two devices with one name, both shown.
+        QTRY_COMPARE(page.named("bluetoothDevice").size(), 2);
+        // Muted says so in what is read aloud as well.
+        QTRY_COMPARE(page.named("deviceMute").size(), 2);
+        QVERIFY(page.named("deviceMute").at(1)->property("iconName").toString() == "soundoff");
+        // All eight tools, and the jump links in the page's order.
+        QStringList tools = page.rowIds();
+        tools.sort();
+        QCOMPARE(tools, QStringList({"audio.tuning", "helper.printer", "install.camera", "install.video.decode", "panel.audio", "panel.bluetooth", "restart.audio", "restart.bluetooth"}));
+        QStringList links;
+        for (QQuickItem *flow : page.named("sectionLinks"))
+            for (QQuickItem *child : flow->childItems())
+                if (child->objectName().startsWith("sectionLink_"))
+                    links << child->objectName().mid(12);
+        QCOMPARE(links, QStringList({"Output", "Microphone", "App audio", "Bluetooth", "Tools"}));
+        // Search for each native section lands on its panel.
+        auto holder = [&](const QString &block) -> QQuickItem * {
+            for (QQuickItem *panel : page.named("sectionPanel"))
+                if (panel->property("block").toString() == block)
+                    return panel;
+            return nullptr;
+        };
+        page.open("sound", "block.bluetooth");
+        QTRY_VERIFY(page.focusWithin(holder("bluetooth")));
+        page.open("sound", "block.output");
+        QTRY_VERIFY(page.focusWithin(holder("output")));
+        // The Tools link leads to the sound tools.
+        QMetaObject::invokeMethod(page.named("sectionLink_Tools").first(), "clicked");
+        QTRY_VERIFY(page.focusWithin(page.row("panel.audio")));
+    }
+
     void theBarEditorShowsTheModelItEdits() {
         Sandbox s;
         desktopFixture(s);

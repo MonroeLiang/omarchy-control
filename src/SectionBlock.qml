@@ -8,6 +8,8 @@ ColumnLayout {
     property string title: ""
     property var rows: []
     property string focusId: ""
+    // A quiet note at the heading's end, such as which display the rows act on.
+    property string aside: ""
     readonly property int actionCount: rows.filter(function (row) { return row.type === "action" }).length
     readonly property bool collapsible: actionCount > 12 && actionCount === rows.length
     readonly property bool containsFocus: {
@@ -38,6 +40,13 @@ ColumnLayout {
             Layout.fillWidth: true
             Accessible.role: Accessible.Heading
             Accessible.name: text
+        }
+        AppText {
+            objectName: "sectionAside"
+            visible: root.aside.length > 0
+            text: root.aside
+            secondary: true
+            scale_: 0.95
         }
         AppButton {
             visible: root.collapsible

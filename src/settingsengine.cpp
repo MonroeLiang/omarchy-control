@@ -288,16 +288,23 @@ void SettingsEngine::read(const QString &id, ReadCallback callback) {
         QStringList argv;
         for (const auto &part : entry->read.value("argv").toArray())
             argv << part.toString();
+        const QString target = Catalog::targetOf(id);
+        argv = targeted(argv, *entry, target);
         CommandOptions options;
         options.timeoutMs = entry->read.value("timeout").toInt(8000);
         const QJsonObject spec = entry->read;
-        m_runner->run(expandArgv(argv), options, this, [callback, spec, argv](const CommandResult &command) {
+        m_runner->run(expandArgv(argv), options, this, [callback, spec, argv, target](const CommandResult &command) {
             ReadResult result;
             bool ok = false;
             const QString value = SettingsEngine::parseOutput(command, spec, &ok);
             if (ok) {
                 result.status = "ok";
                 result.value = value;
+            } else if (!target.isEmpty() && spec.contains("unsupported") && command.failure == CommandResult::None) {
+                // The command ran and said no: this device has no such control, which is
+                // a fact about the hardware rather than a failure to read it.
+                result.status = "unavailable";
+                result.reason = QCoreApplication::translate("catalog", spec.value("unsupported").toString().toUtf8().constData()).replace("{target}", target);
             } else {
                 result.reason = command.describe(argv.value(0));
             }
@@ -540,11 +547,28 @@ bool SettingsEngine::valuesMatch(const CatalogEntry &entry, const QString &a, co
     return std::abs(numberA - numberB) < 0.0005;
 }
 
-QStringList SettingsEngine::substitute(const QJsonArray &argv, const QString &value) const {
+QStringList SettingsEngine::targeted(const QStringList &argv, const CatalogEntry &entry, const QString &target) {
+    QStringList out;
+    for (const auto &part : argv) {
+        if (part != QLatin1String("{targetArgs}")) {
+            out << part;
+            continue;
+        }
+        if (target.isEmpty())
+            continue;
+        for (QString arg : entry.targetArgs)
+            out << arg.replace("{target}", target);
+    }
+    return out;
+}
+
+QStringList SettingsEngine::substitute(const QJsonArray &argv, const QString &value, const CatalogEntry *entry, const QString &target) const {
     // Paths expand before the value goes in, so text someone typed stays literal.
     QStringList templates;
     for (const auto &part : argv)
         templates << part.toString();
+    if (entry)
+        templates = targeted(templates, *entry, target);
     QStringList out = expandArgv(templates);
     for (auto &text : out)
         text.replace("{value}", value);
@@ -578,7 +602,7 @@ void SettingsEngine::verifyValue(const QString &id, const QString &expected, int
 }
 
 void SettingsEngine::applyCommand(const CatalogEntry &entry, const QJsonObject &write, const QString &value, const QString &before,
-                                  ChangeCoordinator::Done done) {
+                                  const QString &target, ChangeCoordinator::Done done) {
     QString mappedValue = mapped(write.value("map").toObject(), value);
     QJsonArray argv = write.value("argv").toArray();
     if (value.isEmpty() && write.contains("clear"))
@@ -592,7 +616,7 @@ void SettingsEngine::applyCommand(const CatalogEntry &entry, const QJsonObject &
     CommandOptions options;
     options.timeoutMs = write.value("timeout").toInt(15000);
     options.mutation = true;
-    const QStringList command = substitute(argv, mappedValue);
+    const QStringList command = substitute(argv, mappedValue, &entry, target);
     const QJsonArray after = write.value("after").toArray();
     const QString label = entry.label;
     m_runner->run(command, options, this, [this, done, after, command](const CommandResult &result) {
@@ -671,7 +695,7 @@ void SettingsEngine::apply(const QString &id, const QString &value, ApplyCallbac
             const QString before = current.value;
             const CatalogEntry *e = entry;
             request.apply = [this, id, e, write, value, before](ChangeCoordinator::Done done) {
-                applyCommand(*e, write, value, before, [this, id, e, value, before, done](bool ok, const QString &error) {
+                applyCommand(*e, write, value, before, Catalog::targetOf(id), [this, id, e, value, before, done](bool ok, const QString &error) {
                     if (ok || valuesMatch(*e, before, value)) {
                         done(ok, error);
                         return;
@@ -696,7 +720,7 @@ void SettingsEngine::apply(const QString &id, const QString &value, ApplyCallbac
                         }
                         // Going back through the same command keeps Omarchy's own side
                         // effects consistent, and only a read-back proves it worked.
-                        applyCommand(*e, write, before, now.value, [this, id, before, done](bool ok, const QString &error) {
+                        applyCommand(*e, write, before, now.value, Catalog::targetOf(id), [this, id, before, done](bool ok, const QString &error) {
                             // Same reasoning as above: a nonzero exit is not the last word here
                             // either, and the read-back below decides.
                             Q_UNUSED(ok);

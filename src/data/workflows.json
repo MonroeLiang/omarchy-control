@@ -822,10 +822,12 @@
    ]
   },
   "requiresHardware": [
+   "internaldisplay",
    "externalmonitor"
   ],
   "confirm": "confirm",
-  "confirmText": "Turns the built-in display on or off."
+  "confirmText": "Turns the built-in display on or off.",
+  "icon": "laptop"
  },
  {
   "id": "trigger.hardware.mirror-display",
@@ -852,8 +854,10 @@
    ]
   },
   "requiresHardware": [
+   "internaldisplay",
    "externalmonitor"
-  ]
+  ],
+  "icon": "mirror"
  },
  {
   "id": "trigger.hardware.hybrid-gpu",
@@ -1845,7 +1849,8 @@
     "omarchy-default-dictation",
     "superwhisper"
    ]
-  }
+  },
+  "group": "Superwhisper"
  },
  {
   "id": "setup.default.dictation.voxtype",
@@ -1869,7 +1874,8 @@
     "omarchy-default-dictation",
     "voxtype"
    ]
-  }
+  },
+  "group": "Voxtype"
  },
  {
   "id": "setup.plugin.add",
@@ -6459,7 +6465,8 @@
   },
   "requiresCaps": [
    "shell"
-  ]
+  ],
+  "icon": "headphones"
  },
  {
   "id": "audio.tuning",
@@ -6480,7 +6487,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-audio-tuning status; omarchy-show-done"
-  }
+  },
+  "icon": "sliders"
  },
  {
   "id": "restart.audio",
@@ -6501,7 +6509,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-restart-audio"
-  }
+  },
+  "icon": "refresh"
  },
  {
   "id": "panel.bluetooth",
@@ -6527,7 +6536,8 @@
   ],
   "requiresHardware": [
    "bluetooth"
-  ]
+  ],
+  "icon": "bluetooth"
  },
  {
   "id": "restart.bluetooth",
@@ -6548,7 +6558,8 @@
   },
   "requiresHardware": [
    "bluetooth"
-  ]
+  ],
+  "icon": "refresh"
  },
  {
   "id": "helper.printer",
@@ -6575,7 +6586,8 @@
   "requiresCommands": [
    "system-config-printer"
   ],
-  "installHint": "Install a package: system-config-printer"
+  "installHint": "Install a package: system-config-printer",
+  "icon": "printer"
  },
  {
   "id": "install.camera",
@@ -6598,7 +6610,8 @@
   },
   "requiresHardware": [
    "snapdragon"
-  ]
+  ],
+  "icon": "camera"
  },
  {
   "id": "panel.monitor",
@@ -6622,7 +6635,8 @@
   },
   "requiresCaps": [
    "shell"
-  ]
+  ],
+  "icon": "external"
  },
  {
   "id": "monitor.recover",
@@ -6650,8 +6664,11 @@
    ]
   },
   "requiresHardware": [
-   "laptop"
-  ]
+   "internaldisplay",
+   "internaloff",
+   "noexternalmonitor"
+  ],
+  "icon": "refresh"
  },
  {
   "id": "panel.power",
@@ -6776,7 +6793,8 @@
   },
   "requiresHardware": [
    "kbdbacklight"
-  ]
+  ],
+  "icon": "kbdlight"
  },
  {
   "id": "restart.trackpad.input",
@@ -6925,7 +6943,8 @@
   },
   "requiresCommands": [
    "superwhisper"
-  ]
+  ],
+  "group": "Superwhisper"
  },
  {
   "id": "voxtype.config",
@@ -6952,7 +6971,8 @@
   },
   "requiresCommands": [
    "voxtype"
-  ]
+  ],
+  "group": "Voxtype"
  },
  {
   "id": "voxtype.model",
@@ -6977,7 +6997,8 @@
   },
   "requiresCommands": [
    "voxtype"
-  ]
+  ],
+  "group": "Voxtype"
  },
  {
   "id": "dictation.install.superwhisper",
@@ -6995,7 +7016,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-install-dictation-superwhisper"
-  }
+  },
+  "group": "Superwhisper"
  },
  {
   "id": "dictation.install.voxtype",
@@ -7013,7 +7035,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-install-dictation-voxtype"
-  }
+  },
+  "group": "Voxtype"
  },
  {
   "id": "helper.fcitx",
@@ -7564,7 +7587,8 @@
   },
   "requiresHardware": [
    "snapdragon"
-  ]
+  ],
+  "icon": "video"
  },
  {
   "id": "install.gpu.lib32",
@@ -8890,7 +8914,7 @@
   "launch": {
    "kind": "page",
    "page": "sound",
-   "focus": "block.audio"
+   "focus": "block.output"
   }
  },
  {
@@ -8913,7 +8937,7 @@
   "launch": {
    "kind": "page",
    "page": "sound",
-   "focus": "block.audio"
+   "focus": "block.microphone"
   }
  },
  {
@@ -8934,7 +8958,7 @@
   "launch": {
    "kind": "page",
    "page": "sound",
-   "focus": "block.audio"
+   "focus": "block.appAudio"
   }
  },
  {
