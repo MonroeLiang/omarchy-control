@@ -156,6 +156,7 @@ QVariantMap CatalogEntry::toVariant() const {
     m["group"] = group;
     m["tone"] = tone;
     m["link"] = link.toVariantMap();
+    m["tones"] = tones.toVariantMap();
     return m;
 }
 
@@ -244,6 +245,7 @@ void Catalog::load(const QString &path) {
         e.group = o.value("group").toString();
         e.tone = o.value("tone").toString();
         e.link = o.value("link").toObject();
+        e.tones = o.value("tones").toObject();
         m_index.insert(e.id, m_entries.size());
         m_entries << e;
     }

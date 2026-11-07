@@ -88,12 +88,23 @@ Item {
         enabled: root.navigation && !root.unavailable
         onTapped: win.activate(root.entry)
     }
+    // How a status reads at a glance, where the catalog says so per value.
+    readonly property string tone: root.entry.tones && root.st.value !== undefined ? (root.entry.tones[root.st.value] || "") : ""
     AppIcon {
         id: icon
         visible: root.rich && name.length > 0
         name: root.headingIcon || root.entry.icon || ""
         size: Math.round(theme.fontSize * (root.headingTitle.length ? 1.75 : 1.55))
-        tint: root.unavailable ? theme.muted : theme.foreground
+        tint: root.unavailable ? theme.muted : root.tone === "good" ? theme.goodText : root.tone === "danger" ? theme.dangerText : theme.foreground
+        // Something that takes away, marked on its icon as well as its button.
+        AppIcon {
+            visible: root.entry.confirm === "destructive" && root.kind === "action"
+            name: "close"
+            size: Math.round(parent.size * 0.5)
+            tint: theme.dangerText
+            x: parent.width - width * 0.55
+            y: parent.height - height * 0.55
+        }
         anchors.left: parent.left
         anchors.leftMargin: 18
         anchors.verticalCenter: parent.verticalCenter
@@ -561,7 +572,28 @@ Item {
         id: statusControl
         ColumnLayout {
             spacing: 2
+        // A toned status reads as a small pill, its word in the tone's color.
+        Rectangle {
+            visible: root.rich && root.tone.length > 0
+            Layout.alignment: Qt.AlignRight
+            implicitHeight: Math.round(theme.fontSize * 1.85)
+            implicitWidth: pillText.implicitWidth + 22
+            radius: theme.controlRadius
+            readonly property color ink: root.tone === "good" ? theme.goodText : root.tone === "danger" ? theme.dangerText : theme.muted
+            color: root.tone === "neutral" || root.tone === "muted" ? Qt.alpha(theme.foreground, 0.06) : Qt.alpha(ink, 0.12)
+            border.width: 1
+            border.color: root.tone === "neutral" || root.tone === "muted" ? theme.divider : Qt.alpha(ink, 0.5)
+            AppText {
+                id: pillText
+                anchors.centerIn: parent
+                text: root.status === "loading" ? "…" : root.st.display || ""
+                color: root.tone === "neutral" ? theme.foreground : parent.ink
+                mono: root.tone === "neutral"
+                scale_: 0.93
+            }
+        }
         RowLayout {
+            visible: !(root.rich && root.tone.length > 0)
             Layout.alignment: Qt.AlignRight
             spacing: 8
             // A yes-or-no status says yes with a mark as well as a word.

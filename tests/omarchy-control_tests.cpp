@@ -1764,6 +1764,35 @@ esac)SH");
         QCOMPARE(items[1].toObject().value("section").toString(), QString("Install robots"));
         QCOMPARE(panel.value("rows").toArray().size(), 2);
     }
+    void everyAccountsEntryIsPlacedOnce() {
+        Catalog catalog;
+        QStringList placed;
+        QHash<QString, QStringList> byPanel;
+        for (const auto &row : catalog.panelLayout("accounts"))
+            for (const auto &column : row.toObject().value("columns").toArray())
+                for (const auto &panelValue : column.toArray()) {
+                    const auto panel = panelValue.toObject();
+                    for (const auto &id : panel.value("rows").toArray()) {
+                        placed << id.toString();
+                        byPanel[panel.value("title").toString()] << id.toString();
+                    }
+                }
+        QStringList expected;
+        for (const auto *entry : catalog.entriesForPage("accounts"))
+            expected << entry->id;
+        QCOMPARE(expected.size(), 20);
+        placed.sort();
+        expected.sort();
+        QCOMPARE(placed, expected);
+        QCOMPARE(byPanel.value("Security status"), QStringList({"accounts.sshd", "accounts.firewall"}));
+        QCOMPARE(byPanel.value("Password and sign-in").size(), 6);
+        QCOMPARE(byPanel.value("Remote login"), QStringList({"setup.security.sshd", "setup.security.ssh-agent", "remove.security.sshd"}));
+        QCOMPARE(byPanel.value("Firewall"), QStringList({"firewall.status", "firewall.enable", "firewall.disable", "firewall.allow", "firewall.delete"}));
+        QCOMPARE(byPanel.value("Sudo and Docker").size(), 3);
+        QCOMPARE(byPanel.value("Git and GitHub"), QStringList{"setup.config.git"});
+        // The firewall actions keep their section; only their panel is new.
+        QCOMPARE(catalog.find("firewall.allow")->section, QString("Remote login"));
+    }
     void networkRefusesBadIds() {
         Sandbox s;
         s.command("nmcli", "exit 0");
@@ -4670,6 +4699,43 @@ exit 0)SH");
         QTRY_VERIFY(s.calls().join('\n').contains("omarchy-launch-floating-terminal-with-presentation"));
         press("install.gaming.retroarch");
         QTRY_VERIFY(s.calls().filter("omarchy-launch-floating-terminal-with-presentation").size() >= 2);
+    }
+
+    void theAccountsPageReadsItsServicesAndRunsItsTools() {
+        Sandbox s;
+        desktopFixture(s);
+        s.command("systemctl", R"SH(case "$*" in "is-active sshd") echo inactive; exit 3;; "is-active ufw") echo active;; *) echo '[]';; esac)SH");
+        s.command("ufw", "exit 0");
+        s.command("omarchy-launch-floating-terminal-with-presentation", "exit 0");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("accounts");
+        QTRY_VERIFY(page.row("firewall.disable"));
+        QStringList rows = page.rowIds();
+        QCOMPARE(rows.size(), 20);
+        QCOMPARE(QSet<QString>(rows.begin(), rows.end()).size(), 20);
+        // The readings, each in its tone: SSH off is neutral, the firewall service running is good.
+        QTRY_COMPARE(page.row("accounts.sshd")->property("tone").toString(), QString("neutral"));
+        QTRY_COMPARE(page.row("accounts.firewall")->property("tone").toString(), QString("good"));
+        // Search lands in each panel.
+        page.open("accounts", "firewall.allow");
+        QTRY_VERIFY(page.focusWithin(page.row("firewall.allow")));
+        page.open("accounts", "setup.config.git");
+        QTRY_VERIFY(page.focusWithin(page.row("setup.config.git")));
+        auto press = [&](const QString &id) {
+            for (QQuickItem *child : page.row(id)->findChildren<QQuickItem *>())
+                if (child->objectName() == "actionButton")
+                    QMetaObject::invokeMethod(child, "clicked");
+        };
+        // Allowing a port goes straight to its terminal; turning the firewall off asks first.
+        press("firewall.allow");
+        QTRY_VERIFY(s.calls().join('\n').contains("Port to allow"));
+        auto *dialog = page.window->findChild<QObject *>("confirmDialog");
+        press("firewall.disable");
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QVERIFY(!s.calls().join('\n').contains("ufw disable"));
+        QMetaObject::invokeMethod(dialog, "accept_");
+        QTRY_VERIFY(s.calls().join('\n').contains("ufw disable"));
     }
 
     void theBarEditorShowsTheModelItEdits() {

@@ -1989,13 +1989,14 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-setup-security-fingerprint"
-  }
+  },
+  "icon": "fingerprint"
  },
  {
   "id": "setup.security.fido2",
   "page": "accounts",
   "section": "Password and sign-in",
-  "label": "Set up Fido2",
+  "label": "Set up FIDO2",
   "type": "action",
   "domain": "C16",
   "integration": "omarchy-wizard",
@@ -2010,7 +2011,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-setup-security-fido2"
-  }
+  },
+  "icon": "key"
  },
  {
   "id": "setup.security.sshd",
@@ -2031,7 +2033,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-setup-security-sshd"
-  }
+  },
+  "icon": "server"
  },
  {
   "id": "setup.security.ssh-agent",
@@ -2052,7 +2055,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-setup-security-ssh-agent"
-  }
+  },
+  "icon": "key"
  },
  {
   "id": "setup.security.sudoless-docker",
@@ -2073,7 +2077,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-setup-security-sudoless-docker"
-  }
+  },
+  "icon": "container"
  },
  {
   "id": "setup.security.passwordless-sudo",
@@ -2094,7 +2099,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-sudo-passwordless"
-  }
+  },
+  "icon": "terminal"
  },
  {
   "id": "setup.config.git",
@@ -2115,7 +2121,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-setup-git"
-  }
+  },
+  "icon": "git"
  },
  {
   "id": "setup.config.hyprland",
@@ -4149,13 +4156,14 @@
    "command": "omarchy-remove-security-fingerprint"
   },
   "confirm": "destructive",
-  "confirmText": "Remove fingerprint authentication from sudo, polkit, and lock screen"
+  "confirmText": "Remove fingerprint authentication from sudo, polkit, and lock screen",
+  "icon": "fingerprint"
  },
  {
   "id": "remove.security.fido2",
   "page": "accounts",
   "section": "Password and sign-in",
-  "label": "Remove Fido2",
+  "label": "Remove FIDO2",
   "type": "action",
   "domain": "C16",
   "integration": "omarchy-wizard",
@@ -4172,7 +4180,8 @@
    "command": "omarchy-remove-security-fido2"
   },
   "confirm": "destructive",
-  "confirmText": "Remove FIDO2 authentication from sudo and polkit"
+  "confirmText": "Remove FIDO2 authentication from sudo and polkit",
+  "icon": "key"
  },
  {
   "id": "remove.security.sshd",
@@ -4195,7 +4204,8 @@
    "command": "omarchy-remove-security-sshd"
   },
   "confirm": "destructive",
-  "confirmText": "Disable the OpenSSH server, remove standard firewall rules, and optionally remove authorized keys"
+  "confirmText": "Disable the OpenSSH server, remove standard firewall rules, and optionally remove authorized keys",
+  "icon": "server"
  },
  {
   "id": "remove.security.sudoless-docker",
@@ -4218,7 +4228,8 @@
    "command": "omarchy-remove-security-sudoless-docker"
   },
   "confirm": "destructive",
-  "confirmText": "Disable sudoless Docker by removing your user from the docker group"
+  "confirmText": "Disable sudoless Docker by removing your user from the docker group",
+  "icon": "container"
  },
  {
   "id": "remove.ai.hermes",
@@ -5834,7 +5845,8 @@
   "launch": {
    "kind": "terminal",
    "command": "omarchy-drive-password"
-  }
+  },
+  "icon": "disk"
  },
  {
   "id": "update.password.user",
@@ -5854,7 +5866,8 @@
   "launch": {
    "kind": "terminal",
    "command": "passwd"
-  }
+  },
+  "icon": "lock"
  },
  {
   "id": "appearance.background.switcher",
@@ -8583,7 +8596,9 @@
   },
   "requiresCommands": [
    "ufw"
-  ]
+  ],
+  "icon": "list",
+  "group": "Firewall"
  },
  {
   "id": "firewall.enable",
@@ -8605,7 +8620,9 @@
   },
   "requiresCommands": [
    "ufw"
-  ]
+  ],
+  "icon": "shield",
+  "group": "Firewall"
  },
  {
   "id": "firewall.disable",
@@ -8628,7 +8645,9 @@
    "ufw"
   ],
   "confirm": "destructive",
-  "confirmText": "This computer stops filtering incoming connections until the firewall is turned back on."
+  "confirmText": "This computer stops filtering incoming connections until the firewall is turned back on.",
+  "icon": "shield",
+  "group": "Firewall"
  },
  {
   "id": "firewall.allow",
@@ -8650,7 +8669,9 @@
   },
   "requiresCommands": [
    "ufw"
-  ]
+  ],
+  "icon": "squareplus",
+  "group": "Firewall"
  },
  {
   "id": "firewall.delete",
@@ -8672,7 +8693,9 @@
   },
   "requiresCommands": [
    "ufw"
-  ]
+  ],
+  "icon": "squareminus",
+  "group": "Firewall"
  },
  {
   "id": "docs.config",

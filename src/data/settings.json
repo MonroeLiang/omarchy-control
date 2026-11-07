@@ -3473,7 +3473,19 @@
   "map": {
    "active": "Running",
    "inactive": "Off",
-   "unknown": "Not installed"
+   "unknown": "Not installed",
+   "failed": "Failed",
+   "activating": "Starting",
+   "deactivating": "Stopping"
+  },
+  "icon": "terminal",
+  "tones": {
+   "active": "good",
+   "inactive": "neutral",
+   "failed": "danger",
+   "activating": "neutral",
+   "deactivating": "neutral",
+   "unknown": "muted"
   }
  },
  {
@@ -3503,7 +3515,19 @@
   "map": {
    "active": "Running",
    "inactive": "Off",
-   "unknown": "Not installed"
+   "unknown": "Not installed",
+   "failed": "Failed",
+   "activating": "Starting",
+   "deactivating": "Stopping"
+  },
+  "icon": "shieldcheck",
+  "tones": {
+   "active": "good",
+   "inactive": "neutral",
+   "failed": "danger",
+   "activating": "neutral",
+   "deactivating": "neutral",
+   "unknown": "muted"
   }
  },
  {

@@ -1101,7 +1101,6 @@
  "Remove Edge": "Edge entfernen",
  "Remove Elixir": "Elixir entfernen",
  "Remove FIDO2 authentication from sudo and polkit": "FIDO2-Authentifizierung für sudo und polkit entfernen",
- "Remove Fido2": "Fido2 entfernen",
  "Remove Fingerprint": "Fingerabdruck entfernen",
  "Remove Firefox": "Firefox entfernen",
  "Remove Go": "Go entfernen",
@@ -1252,7 +1251,6 @@
  "Set the Omarchy package channel.": "Den Omarchy-Paketkanal festlegen.",
  "Set the name and email for your git commits, and sign in to GitHub": "Name und E-Mail für Ihre Git-Commits festlegen und sich bei GitHub anmelden",
  "Set up FIDO2 authentication for sudo and polkit": "FIDO2-Authentifizierung für sudo und polkit einrichten",
- "Set up Fido2": "Fido2 einrichten",
  "Set up Fingerprint": "Fingerabdruck einrichten",
  "Set up Passwordless Sudo": "Sudo ohne Passwort einrichten",
  "Set up SSH Agent": "SSH-Agent einrichten",
@@ -1818,5 +1816,11 @@
  "Games": "Spiele",
  "Software": "Software",
  "Terminals": "Terminals",
- "Web apps & TUIs": "Web-Apps und TUIs"
+ "Web apps & TUIs": "Web-Apps und TUIs",
+ "Set up FIDO2": "FIDO2 einrichten",
+ "Remove FIDO2": "FIDO2 entfernen",
+ "Failed": "Fehlgeschlagen",
+ "Starting": "Wird gestartet",
+ "Status": "Status",
+ "Stopping": "Wird beendet"
 }

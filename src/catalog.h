@@ -32,6 +32,8 @@ struct CatalogEntry {
     QString tone;
     // Where a status row's link leads: {label, page, focus}.
     QJsonObject link;
+    // How each status value reads at a glance: "good", "neutral", "danger", or "muted".
+    QJsonObject tones;
 
     bool isAction() const { return type == QLatin1String("action"); }
     bool isSetting() const { return !isAction(); }
