@@ -16,8 +16,21 @@ Item {
     readonly property string block: spec.block || ""
     readonly property var header: spec.header || null
     readonly property var rows: spec.rows || []
-    readonly property var settingRows: rows.filter(function (row) { return row.type !== "action" })
-    readonly property var actionRows: rows.filter(function (row) { return row.type === "action" })
+    // Rows in runs: settings first, then actions, each split by the group it belongs
+    // to, in the order the groups first appear, with a gap between runs.
+    readonly property var runs: {
+        var settingKeys = [], actionKeys = [], byKey = {}
+        for (var i = 0; i < rows.length; ++i) {
+            var action = rows[i].type === "action"
+            var key = (action ? "a:" : "s:") + (rows[i].group || "")
+            if (!byKey[key]) {
+                byKey[key] = []
+                ;(action ? actionKeys : settingKeys).push(key)
+            }
+            byKey[key].push(rows[i])
+        }
+        return settingKeys.concat(actionKeys).map(function (key) { return byKey[key] })
+    }
     readonly property bool inset: !!spec.inset
     readonly property bool outside: !!spec.outside
     readonly property bool headed: spec.heading !== false && !root.header
@@ -30,13 +43,16 @@ Item {
                   : (outsideHeading.visible ? outsideHeading.implicitHeight + layout.spacing : 0) + card.implicitHeight
 
     function rowItem(id) {
+        if (blockLoader.item)
+            return blockLoader.item.rowItem ? blockLoader.item.rowItem(id) : null
         if (headerRow.item && headerRow.item.entryId === id)
             return headerRow.item
-        var lists = [settings, actions]
-        for (var l = 0; l < lists.length; ++l)
-            for (var i = 0; i < lists[l].count; ++i)
-                if (lists[l].itemAt(i) && lists[l].itemAt(i).entryId === id)
-                    return lists[l].itemAt(i)
+        for (var r = 0; r < runRepeater.count; ++r) {
+            var run = runRepeater.itemAt(r)
+            for (var i = 0; run && i < run.rows.count; ++i)
+                if (run.rows.itemAt(i) && run.rows.itemAt(i).entryId === id)
+                    return run.rows.itemAt(i)
+        }
         return null
     }
     // A jump link lands on the first thing in the panel that can take the keyboard.
@@ -46,7 +62,8 @@ Item {
                 blockLoader.item.takeFocus()
             return
         }
-        var first = headerRow.item || (settings.count ? settings.itemAt(0) : actions.count ? actions.itemAt(0) : null)
+        var firstRun = runRepeater.count ? runRepeater.itemAt(0) : null
+        var first = headerRow.item || (firstRun && firstRun.rows.count ? firstRun.rows.itemAt(0) : null)
         if (first)
             first.takeFocus()
     }
@@ -65,6 +82,13 @@ Item {
             active: root.block.length > 0
             visible: active
             source: active ? "qrc:/Block" + root.block.charAt(0).toUpperCase() + root.block.slice(1) + ".qml" : ""
+            // A block can take the catalog rows its panel claims and draw them in its own card.
+            onLoaded: {
+                if (item.panelRows !== undefined)
+                    item.panelRows = Qt.binding(function () { return root.rows })
+                if (item.focusId !== undefined)
+                    item.focusId = Qt.binding(function () { return root.focusId })
+            }
         }
 
         PanelHeading {
@@ -179,31 +203,29 @@ Item {
                             color: theme.hairline
                         }
                         Repeater {
-                            id: settings
-                            model: root.settingRows
-                            delegate: SettingRow {
+                            id: runRepeater
+                            model: root.runs
+                            delegate: Column {
+                                readonly property alias rows: runRows
+                                readonly property int run: index
                                 width: body.width
-                                entry: modelData
-                                rich: true
-                                last: index === root.settingRows.length - 1 && root.actionRows.length === 0
-                                highlighted: root.focusId === modelData.id
-                            }
-                        }
-                        Item {
-                            visible: root.settingRows.length > 0 && root.actionRows.length > 0
-                            width: parent.width
-                            height: visible ? 10 : 0
-                        }
-                        Repeater {
-                            id: actions
-                            model: root.actionRows
-                            delegate: SettingRow {
-                                width: body.width
-                                entry: modelData
-                                rich: true
-                                navigation: !!root.spec.navigation
-                                last: index === root.actionRows.length - 1
-                                highlighted: root.focusId === modelData.id
+                                Item {
+                                    visible: parent.run > 0
+                                    width: parent.width
+                                    height: visible ? 10 : 0
+                                }
+                                Repeater {
+                                    id: runRows
+                                    model: modelData
+                                    delegate: SettingRow {
+                                        width: body.width
+                                        entry: modelData
+                                        rich: true
+                                        navigation: !!root.spec.navigation && modelData.type === "action"
+                                        last: parent.run === root.runs.length - 1 && index === runRows.count - 1
+                                        highlighted: root.focusId === modelData.id
+                                    }
+                                }
                             }
                         }
                     }

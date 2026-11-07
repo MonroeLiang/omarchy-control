@@ -394,10 +394,6 @@
   "one": "%n tjeneste mislykkedes.",
   "other": "%n tjenester mislykkedes."
  },
- "Keep this connection? Going back to the previous one in %n second(s).": {
-  "one": "Vil du beholde denne forbindelse? Går tilbage til den forrige om %n sekund.",
-  "other": "Vil du beholde denne forbindelse? Går tilbage til den forrige om %n sekunder."
- },
  "Show %n": {
   "one": "Vis %n",
   "other": "Vis %n"
@@ -1774,5 +1770,27 @@
  "%n paired device(s)": {
   "one": "%n parret enhed",
   "other": "%n parrede enheder"
+ },
+ "%1 did not become the active connection.": "%1 blev ikke den aktive forbindelse.",
+ "%1 is still connected.": "%1 er stadig forbundet.",
+ "%1, signal %2%": "%1, signal %2%",
+ "Connect to %1": "Opret forbindelse til %1",
+ "External": "Ekstern",
+ "Join %1 in the Omarchy panel": "Tilslut %1 i Omarchy-panelet",
+ "Keep this connection?": "Behold denne forbindelse?",
+ "Limited internet": "Begrænset internet",
+ "Looking for connections…": "Søger efter forbindelser…",
+ "Looking for networks…": "Søger efter netværk…",
+ "NetworkManager is not responding, so connections cannot be shown.": "NetworkManager svarer ikke, så forbindelser kan ikke vises.",
+ "NetworkManager is not responding, so networks cannot be shown.": "NetworkManager svarer ikke, så netværk kan ikke vises.",
+ "No internet": "Intet internet",
+ "No network interfaces found.": "Ingen netværksgrænseflader fundet.",
+ "No networks found. Scan to look again.": "Ingen netværk fundet. Scan for at søge igen.",
+ "Scanning for networks…": "Scanner efter netværk…",
+ "Sign-in needed for internet": "Login kræves for internet",
+ "Wi-Fi is off. Turn it on to see networks nearby.": "Wi-Fi er slået fra. Slå det til for at se netværk i nærheden.",
+ "Going back to the previous one in %n second(s).": {
+  "one": "Går tilbage til den forrige om %n sekund.",
+  "other": "Går tilbage til den forrige om %n sekunder."
  }
 }

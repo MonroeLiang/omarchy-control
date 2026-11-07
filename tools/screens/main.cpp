@@ -1,7 +1,8 @@
 // Usage: screens <sandbox-root|--real> <output-dir> <page[:focus[:WxH[:steps]]]>...
 //
 // Steps, joined by "+", set up a state before the picture: select=OUT, stage=OUT/field/value,
-// preview, check, discard, refresh, unplug=OUT, details=ID, scroll=PX, wait=MS. They act only on the sandbox's fake
+// preview, check, discard, refresh, unplug=OUT, details=ID, scroll=PX, rescan, connect=UUID/NAME,
+// keep, goback, wait=MS. They act only on the sandbox's fake
 // displays: unplug drops a display from the fake Hyprland's list and refreshes.
 //
 // --real reads the live machine, which only ever reads: it opens pages and takes
@@ -50,6 +51,14 @@ static void runSteps(QQuickWindow *window, Backend &backend, const QString &home
             displays->refresh();
         else if (name == QLatin1String("wait"))
             *wait = value.toInt();
+        else if (name == QLatin1String("rescan"))
+            backend.network()->rescan();
+        else if (name == QLatin1String("connect"))
+            backend.network()->activate(value.section('/', 0, 0), value.section('/', 1));
+        else if (name == QLatin1String("keep"))
+            backend.network()->keepConnection();
+        else if (name == QLatin1String("goback"))
+            backend.network()->revertConnection();
         else if (name == QLatin1String("details"))
             visit(window->contentItem(), [&](QQuickItem *item) {
                 if (item->objectName() == QLatin1String("settingRow") && item->property("entryId").toString() == value)

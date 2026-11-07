@@ -180,3 +180,10 @@ esac
 )SH";
 
 }  // namespace
+// NetworkManager after `connection up`: the profile is listed as active.
+const char kNmcliBringsUpCafe[] = R"SH(
+case "$*" in
+  *"connection up"*) [ -f "$(dirname "$HOME")/slow" ] && sleep 2; touch "$(dirname "$HOME")/up";;
+  *"connection show"*) [ -f "$(dirname "$HOME")/up" ] && echo 'Cafe:11111111-1111-1111-1111-111111111111:802-11-wireless:yes';;
+esac
+exit 0)SH";

@@ -394,10 +394,6 @@
   "one": "%n Dienst ist fehlgeschlagen.",
   "other": "%n Dienste sind fehlgeschlagen."
  },
- "Keep this connection? Going back to the previous one in %n second(s).": {
-  "one": "Diese Verbindung beibehalten? Die vorherige wird in %n Sekunde wiederhergestellt.",
-  "other": "Diese Verbindung beibehalten? Die vorherige wird in %n Sekunden wiederhergestellt."
- },
  "Show %n": {
   "one": "%n anzeigen",
   "other": "%n anzeigen"
@@ -1774,5 +1770,27 @@
  "%n paired device(s)": {
   "one": "%n gekoppeltes Gerät",
   "other": "%n gekoppelte Geräte"
+ },
+ "%1 did not become the active connection.": "%1 wurde nicht zur aktiven Verbindung.",
+ "%1 is still connected.": "%1 ist noch verbunden.",
+ "%1, signal %2%": "%1, Signal %2%",
+ "Connect to %1": "Mit %1 verbinden",
+ "External": "Extern",
+ "Join %1 in the Omarchy panel": "%1 im Omarchy-Panel beitreten",
+ "Keep this connection?": "Diese Verbindung behalten?",
+ "Limited internet": "Eingeschränktes Internet",
+ "Looking for connections…": "Verbindungen werden gesucht…",
+ "Looking for networks…": "Netzwerke werden gesucht…",
+ "NetworkManager is not responding, so connections cannot be shown.": "NetworkManager reagiert nicht, daher können keine Verbindungen angezeigt werden.",
+ "NetworkManager is not responding, so networks cannot be shown.": "NetworkManager reagiert nicht, daher können keine Netzwerke angezeigt werden.",
+ "No internet": "Kein Internet",
+ "No network interfaces found.": "Keine Netzwerkschnittstellen gefunden.",
+ "No networks found. Scan to look again.": "Keine Netzwerke gefunden. Erneut suchen, um nachzusehen.",
+ "Scanning for networks…": "Netzwerke werden gesucht…",
+ "Sign-in needed for internet": "Anmeldung für Internet erforderlich",
+ "Wi-Fi is off. Turn it on to see networks nearby.": "WLAN ist aus. Schalten Sie es ein, um Netzwerke in der Nähe zu sehen.",
+ "Going back to the previous one in %n second(s).": {
+  "one": "Zurück zur vorherigen in %n Sekunde.",
+  "other": "Zurück zur vorherigen in %n Sekunden."
  }
 }

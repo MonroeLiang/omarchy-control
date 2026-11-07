@@ -19,10 +19,6 @@
     "one": "%n service failed.",
     "other": "%n services failed."
   },
-  "Keep this connection? Going back to the previous one in %n second(s).": {
-    "one": "Keep this connection? Going back to the previous one in %n second.",
-    "other": "Keep this connection? Going back to the previous one in %n seconds."
-  },
   "Show %n": {
     "one": "Show %n",
     "other": "Show %n"
@@ -50,5 +46,9 @@
   "%n paired device(s)": {
     "one": "%n paired device",
     "other": "%n paired devices"
+  },
+  "Going back to the previous one in %n second(s).": {
+    "one": "Going back to the previous one in %n second.",
+    "other": "Going back to the previous one in %n seconds."
   }
 }

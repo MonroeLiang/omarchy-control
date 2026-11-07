@@ -20,8 +20,15 @@ class NetworkProvider : public QObject {
     Q_PROPERTY(QVariantList saved READ saved NOTIFY changed)
     Q_PROPERTY(QString status READ status NOTIFY changed)
     Q_PROPERTY(bool busy READ busy NOTIFY changed)
+    // A scan is its own thing: it neither blocks nor stands for a connection change.
+    Q_PROPERTY(bool scanning READ scanning NOTIFY changed)
     Q_PROPERTY(int keepSeconds READ keepSeconds NOTIFY keepChanged)
     Q_PROPERTY(bool awaitingKeep READ awaitingKeep NOTIFY keepChanged)
+    Q_PROPERTY(int keepTotal READ keepTotal CONSTANT)
+    // What is under way, keyed by the network's name or the device's interface, and
+    // the last failure for each until it is tried again.
+    Q_PROPERTY(QVariantMap pending READ pending NOTIFY changed)
+    Q_PROPERTY(QVariantMap failures READ failures NOTIFY changed)
 
 public:
     NetworkProvider(CommandRunner *runner, ChangeCoordinator *coordinator, QObject *parent = nullptr);
@@ -33,8 +40,12 @@ public:
     QVariantList saved() const { return m_saved; }
     QString status() const { return m_status; }
     bool busy() const { return m_busy; }
+    bool scanning() const { return m_scanning; }
     int keepSeconds() const { return m_keepSeconds; }
     bool awaitingKeep() const { return !m_checkpoint.isEmpty() && m_keepSeconds > 0; }
+    int keepTotal() const;
+    QVariantMap pending() const { return m_pending; }
+    QVariantMap failures() const { return m_failures; }
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void rescan();
@@ -55,6 +66,8 @@ signals:
     void message(const QString &text, bool isError);
 
 private:
+    void connected(const QString &name);
+
     CommandRunner *m_runner;
     ChangeCoordinator *m_coordinator;
     bool m_wifiEnabled = false;
@@ -62,9 +75,11 @@ private:
     QVariantList m_devices, m_networks, m_saved;
     QString m_status = "loading";
     bool m_busy = false;
+    bool m_scanning = false;
     QString m_checkpoint;
     qint64 m_checkpointDeadline = 0;
     int m_keepSeconds = 0;
     QTimer m_keepTimer;
     int m_generation = 0;
+    QVariantMap m_pending, m_failures;
 };
