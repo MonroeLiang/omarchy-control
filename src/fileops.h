@@ -34,4 +34,16 @@ QByteArray jsonLiteral(const QJsonValue &value);
 // which is all shell.toml overrides use. Omarchy's own command does the writing.
 QString tomlGet(const QByteArray &document, const QString &section, const QString &key);
 
+// One key of an INI file other tools own. Reading says whether the key is there and
+// whether it is there more than once, which makes the file ambiguous. Setting replaces
+// only the value's bytes and refuses to add a key or a group, or to guess between
+// duplicates, so comments, spacing, line endings, and every other key stay as they are.
+struct IniValue {
+    bool found = false;
+    bool ambiguous = false;
+    QString value;
+};
+IniValue iniGet(const QByteArray &document, const QString &group, const QString &key);
+bool iniSet(QByteArray *document, const QString &group, const QString &key, const QString &value, QString *error = nullptr);
+
 }  // namespace FileOps

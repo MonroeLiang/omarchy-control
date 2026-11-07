@@ -26,6 +26,12 @@ ColumnLayout {
                     }
                     return modelData.phase
                 }
+                // An icon pack's stored value says how it was chosen, which no one needs to read.
+                function shown(value) {
+                    if (modelData.settingId !== "appearance.icons")
+                        return value
+                    return value === "follow-theme" ? qsTranslate("catalog", "Follow desktop theme") : value.replace(/^pack:/, "")
+                }
                 RowLayout {
                     anchors.left: parent.left
                     anchors.right: parent.right
@@ -39,7 +45,7 @@ ColumnLayout {
                         spacing: 1
                         AppText {
                             Layout.fillWidth: true
-                            text: qsTranslate("catalog", modelData.label) + (modelData.after.length ? ": " + (modelData.before.length ? modelData.before + " → " : "") + modelData.after : "")
+                            text: qsTranslate("catalog", modelData.label) + (modelData.after.length ? ": " + (modelData.before.length ? parent.parent.parent.shown(modelData.before) + " → " : "") + parent.parent.parent.shown(modelData.after) : "")
                         }
                         AppText {
                             Layout.fillWidth: true

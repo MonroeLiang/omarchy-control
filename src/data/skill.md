@@ -18,6 +18,8 @@ omarchy-control history                  # What changed, with transaction ids
 omarchy-control undo <transaction>       # Refuses if something edited it since
 omarchy-control doctor                   # Compatibility and read checks
 omarchy-control update check             # Is a newer version of this app out?
+omarchy-control icons list                # Installed icon packs, and any problems reading them
+omarchy-control apply appearance.icons <id or follow-theme>  # Choose one; `get --json` has the details
 ```
 
 Add `--json` for machine-readable output. Commands exit 0 or 1, with errors on

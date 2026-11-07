@@ -8,6 +8,9 @@ HEADERS += \
     $$PWD/src/theme.h \
     $$PWD/src/translator.h \
     $$PWD/src/iconprovider.h \
+    $$PWD/src/iconthemes.h \
+    $$PWD/src/iconthemeprovider.h \
+    $$PWD/src/iconthemeimporter.h \
     $$PWD/src/catalog.h \
     $$PWD/src/capabilities.h \
     $$PWD/src/hypromodule.h \
@@ -38,6 +41,9 @@ SOURCES += \
     $$PWD/src/theme.cpp \
     $$PWD/src/translator.cpp \
     $$PWD/src/iconprovider.cpp \
+    $$PWD/src/iconthemes.cpp \
+    $$PWD/src/iconthemeprovider.cpp \
+    $$PWD/src/iconthemeimporter.cpp \
     $$PWD/src/catalog.cpp \
     $$PWD/src/capabilities.cpp \
     $$PWD/src/hypromodule.cpp \

@@ -1,6 +1,7 @@
 #include "compat.h"
 
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 
@@ -13,8 +14,17 @@ Compat::Compat(const Env &env, const QString &directory) : m_env(env) {
         m_baselineOmarchy = root.value("omarchy").toString();
         m_baselineHyprland = root.value("hyprland").toString();
         const auto settings = root.value("settings").toObject();
-        for (auto it = settings.begin(); it != settings.end(); ++it)
-            m_settingToBinary.insert(it.key(), it.value().toString());
+        // Usually one command; a setting that relies on how several behave together lists them.
+        for (auto it = settings.begin(); it != settings.end(); ++it) {
+            QStringList binaries;
+            if (it.value().isArray()) {
+                for (const auto &binary : it.value().toArray())
+                    binaries << binary.toString();
+            } else {
+                binaries << it.value().toString();
+            }
+            m_settingToBinaries.insert(it.key(), binaries);
+        }
         const auto commands = root.value("commands").toObject();
         for (auto it = commands.begin(); it != commands.end(); ++it)
             m_reviewed.insert(it.key(), it.value().toString());
@@ -54,14 +64,13 @@ QString Compat::changedFor(const CatalogEntry &entry, const QString &hyprlandVer
         return {};
     if (entry.write.value("kind").toString() == QLatin1String("hypr"))
         return hyprlandDiffers(hyprlandVersion) ? QStringLiteral("Hyprland %1").arg(hyprlandVersion) : QString();
-    const QString binary = m_settingToBinary.value(entry.id);
-    if (binary.isEmpty())
-        return {};
-    const QString hash = currentHash(binary);
-    // A missing command is an availability problem, reported as such elsewhere.
-    if (hash.isEmpty() || hash == m_reviewed.value(binary) || isAccepted(binary, hash))
-        return {};
-    return binary;
+    for (const QString &binary : m_settingToBinaries.value(entry.id)) {
+        const QString hash = currentHash(binary);
+        // A missing command is an availability problem, reported as such elsewhere.
+        if (!hash.isEmpty() && hash != m_reviewed.value(binary) && !isAccepted(binary, hash))
+            return binary;
+    }
+    return {};
 }
 
 QStringList Compat::changedCommands(const QString &hyprlandVersion) const {

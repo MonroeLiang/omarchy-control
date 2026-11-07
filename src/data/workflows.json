@@ -9414,5 +9414,29 @@
    "kind": "url",
    "url": "https://github.com/last-refuge/omarchy-control/blob/main/LICENSE"
   }
+ },
+ {
+  "id": "appearance.icons.import",
+  "page": "appearance",
+  "section": "Icons",
+  "label": "Import an icon pack",
+  "type": "action",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Copy an extracted icon pack from a folder into your icons folder.",
+  "keywords": [
+   "install icons",
+   "add icon pack",
+   "icon theme folder",
+   "drag and drop icons"
+  ],
+  "sources": [
+   "omarchy-control icons import"
+  ],
+  "launch": {
+   "kind": "page",
+   "page": "appearance",
+   "focus": "appearance.icons"
+  }
  }
 ]

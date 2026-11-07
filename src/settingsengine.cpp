@@ -226,6 +226,30 @@ void SettingsEngine::read(const QString &id, ReadCallback callback) {
         callback(result);
         return;
     }
+    if (entry->read.value("kind").toString() == QLatin1String("icons")) {
+        if (!m_icons) {
+            ReadResult result;
+            result.status = "unavailable";
+            callback(result);
+            return;
+        }
+        m_icons->readState([callback](const IconThemeProvider::State &state) {
+            ReadResult result;
+            result.extra = state.toVariant();
+            if (!state.known) {
+                result.reason = state.error;
+                callback(result);
+                return;
+            }
+            result.status = "ok";
+            result.value = state.value();
+            result.reason = state.reason();
+            result.isOverride = state.managed && state.fixed;
+            result.source = state.effective;
+            callback(result);
+        });
+        return;
+    }
     const QString kind = entry->read.value("kind").toString();
     if (kind == QLatin1String("hypr")) {
         const QStringList argv = m_runner->env().hyprctl({"-j", "getoption", entry->read.value("option").toString()});
@@ -300,6 +324,16 @@ void SettingsEngine::readChoices(const QString &id, ChoicesCallback callback) {
         choices << QVariantMap{{"value", o.value("value").toString()}, {"label", o.value("label").toString()}};
     }
     const QString kind = entry->choicesFrom.value("kind").toString();
+    if (kind == QLatin1String("icons")) {
+        if (!m_icons) {
+            callback(choices);
+            return;
+        }
+        m_icons->readChoices([callback, choices](const QVariantList &packs) mutable {
+            callback(choices + packs);
+        });
+        return;
+    }
     if (kind == QLatin1String("cmd")) {
         QStringList argv;
         for (const auto &part : entry->choicesFrom.value("argv").toArray())
@@ -380,6 +414,9 @@ ChangePlan SettingsEngine::plan(const QString &id, const QString &rawValue, cons
     QString value = rawValue.trimmed();
     if (entry->type == QLatin1String("text") || value != rawValue)
         value = entry->type == QLatin1String("choice") ? rawValue : value;
+    const bool iconPack = entry->write.value("kind").toString() == QLatin1String("icons");
+    if (iconPack)
+        value = IconThemeProvider::normalizeChoice(value);
     if (entry->type == QLatin1String("toggle")) {
         if (value != QLatin1String("true") && value != QLatin1String("false")) {
             plan.error = tr("Expected on or off.");
@@ -450,6 +487,10 @@ ChangePlan SettingsEngine::plan(const QString &id, const QString &rawValue, cons
     plan.restart = entry->restart;
     for (const auto &file : entry->files)
         plan.files << m_runner->env().expand(file);
+    if (iconPack && m_icons) {
+        plan.files = m_icons->plannedFiles();
+        plan.effects += m_icons->plannedEffects();
+    }
 
     if (!entry->confirmAlways.isEmpty())
         plan.confirmText = entry->confirmAlways;
@@ -597,6 +638,11 @@ void SettingsEngine::apply(const QString &id, const QString &value, ApplyCallbac
         read(id, [this, id, entry, plan, callback, kind](const ReadResult &current) {
             const bool known = current.status == QLatin1String("ok") || current.status == QLatin1String("custom");
             const QString writeKind = entry->write.value("kind").toString();
+            if (writeKind == QLatin1String("icons")) {
+                if (m_icons)
+                    m_icons->submit(plan.normalized, kind, entry->label, callback);
+                return;
+            }
             if (writeKind == QLatin1String("hypr")) {
                 const QString after = plan.normalized;
                 const bool remove = after.isEmpty();
@@ -893,6 +939,10 @@ void SettingsEngine::reset(const QString &id, ApplyCallback callback) {
     }
     failed.label = entry->label;
     const QString writeKind = entry->write.value("kind").toString();
+    if (writeKind == QLatin1String("icons")) {
+        apply(id, QString::fromLatin1(IconThemeProvider::FollowTheme), std::move(callback), QStringLiteral("reset"));
+        return;
+    }
     read(id, [this, id, entry, writeKind, callback, failed](const ReadResult &current) {
         if (writeKind == QLatin1String("hypr")) {
             HyprModule module(m_runner->env());
@@ -962,6 +1012,19 @@ void SettingsEngine::undo(const QString &transactionId, ApplyCallback callback) 
     if (!entry) {
         failed.message = QCoreApplication::translate("SettingsEngine", "This setting no longer exists.");
         callback(failed);
+        return;
+    }
+    if (entry->write.value("kind").toString() == QLatin1String("icons")) {
+        if (!m_icons) {
+            failed.message = QCoreApplication::translate("SettingsEngine", "This change cannot be undone automatically.");
+            callback(failed);
+            return;
+        }
+        m_icons->undo(original, [this, callback, transactionId](const Transaction &result) {
+            if (result.phase == QLatin1String("committed"))
+                m_coordinator->markUndoneBy(transactionId, result.id);
+            callback(result);
+        });
         return;
     }
     // Undo only goes back from the state this change left. If anything has

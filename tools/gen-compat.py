@@ -24,6 +24,14 @@ for entry in settings:
     out["settings"][entry["id"]] = binary
     with open("/usr/bin/" + binary, "rb") as f:
         out["commands"][binary] = hashlib.sha256(f.read()).hexdigest()
+# Settings resting on how several commands behave together, not on one setter. The icon
+# pack relies on what omarchy-theme-set-gnome writes, on omarchy-theme-set running hooks
+# after that, and on omarchy-hook running the owned hook.
+for setting, binaries in {"appearance.icons": ["omarchy-hook", "omarchy-theme-set", "omarchy-theme-set-gnome"]}.items():
+    out["settings"][setting] = binaries
+    for binary in binaries:
+        with open("/usr/bin/" + binary, "rb") as f:
+            out["commands"][binary] = hashlib.sha256(f.read()).hexdigest()
 json.dump(out, open(ROOT + "/src/data/compat.json", "w"), indent=1, sort_keys=True)
 open(ROOT + "/src/data/compat.json", "a").write("\n")
 print(f"{len(out['settings'])} settings pinned to {len(out['commands'])} commands, on Omarchy {out['omarchy']}")

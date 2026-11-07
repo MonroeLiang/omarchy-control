@@ -11,6 +11,7 @@
 #include "commandrunner.h"
 #include "compat.h"
 #include "hypromodule.h"
+#include "iconthemeprovider.h"
 
 struct ReadResult {
     QString status = "unknown";  // ok, unknown, custom, unavailable
@@ -18,6 +19,7 @@ struct ReadResult {
     QString source;
     QString reason;
     bool isOverride = false;
+    QVariantMap extra;  // Structure a setting has beyond one value, such as who agrees on it.
 };
 
 struct ChangePlan {
@@ -46,6 +48,10 @@ public:
 
     SettingsEngine(const Catalog *catalog, CommandRunner *runner, Capabilities *capabilities,
                    ChangeCoordinator *coordinator, Compat *compat = nullptr, QObject *parent = nullptr);
+
+    // Icon packs need more than a command or a file can describe, and the same path has
+    // to serve the window and the CLI, so the shared provider is plugged in here.
+    void setIconThemes(IconThemeProvider *icons) { m_icons = icons; }
 
     void read(const QString &id, ReadCallback callback);
     void readChoices(const QString &id, ChoicesCallback callback);
@@ -83,5 +89,6 @@ private:
     Capabilities *m_capabilities;
     ChangeCoordinator *m_coordinator;
     Compat *m_compat;
+    IconThemeProvider *m_icons = nullptr;
     QHash<QString, QVariantList> m_lastChoices;
 };

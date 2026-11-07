@@ -22,7 +22,8 @@ Backend::Backend(const Env &env, QObject *parent)
       m_plugins(&m_core->runner, &m_core->coordinator),
       m_system(&m_core->catalog, &m_core->runner, &m_core->capabilities, &m_core->coordinator),
       m_windowRules(&m_core->runner, &m_core->coordinator),
-      m_updates(&m_core->runner) {
+      m_updates(&m_core->runner),
+      m_iconImporter(env, &m_core->coordinator) {
     loadPreferences();
     connect(&m_core->capabilities, &Capabilities::changed, this, &Backend::capabilitiesChanged);
     connect(&m_core->capabilities, &Capabilities::changed, this, &Backend::problemsChanged);
@@ -41,6 +42,7 @@ Backend::Backend(const Env &env, QObject *parent)
     connect(&m_system, &SystemProvider::message, this, relay);
     connect(&m_updates, &UpdateProvider::message, this, relay);
     connect(&m_windowRules, &WindowRulesProvider::message, this, relay);
+    connect(&m_iconImporter, &IconThemeImporter::finished, this, [this] { refresh(QStringLiteral("appearance.icons")); });
 
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(250);
@@ -50,6 +52,10 @@ Backend::Backend(const Env &env, QObject *parent)
         watchFiles();
         m_core->capabilities.scanFiles();
         refreshPage(m_currentPage);
+        // Omarchy applies a new theme's icons a moment after the theme's folder swaps, and
+        // reading only at the swap would look like something else had changed them.
+        if (m_currentPage == QLatin1String("appearance"))
+            QTimer::singleShot(2500, this, [this] { refresh(QStringLiteral("appearance.icons")); });
     });
     watchFiles();
 
@@ -61,7 +67,7 @@ Backend::Backend(const Env &env, QObject *parent)
 
     // Repair anything a previous run left unfinished before showing state.
     const QStringList recovered = m_core->coordinator.recoverInterrupted();
-    for (const auto &message : recovered)
+    for (const auto &message : recovered + m_iconImporter.recoverStaging())
         QTimer::singleShot(600, this, [this, message] { emit toast(message, "warning"); });
 
     m_core->capabilities.scanServices();
@@ -83,7 +89,8 @@ void Backend::watchFiles() {
                                  env.configHome + "/omarchy", env.configHome + "/hypr", env.stateHome + "/omarchy/toggles",
                                  env.stateHome + "/omarchy/toggles/hypr", env.stateHome + "/omarchy/indicators",
                                  env.stateHome + "/omarchy/powerprofiles", env.stateHome + "/omarchy/defaults", env.configHome + "/autostart"};
-    for (const auto &path : candidates)
+    // Each is watched as one folder, not per pack: a pack added or removed is what matters.
+    for (const auto &path : candidates + IconThemes::searchRoots(env))
         if (QFileInfo::exists(path))
             m_watcher.addPath(path);
 }
@@ -230,6 +237,7 @@ void Backend::refresh(const QString &id) {
         updated["isOverride"] = result.isOverride;
         updated["note"] = noteFor(*entry);
         updated["display"] = m_core->engine.displayValue(*entry, result.value, m_choices.value(id));
+        updated["extra"] = result.extra;
         setState(id, updated);
     });
 }

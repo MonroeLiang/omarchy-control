@@ -16,6 +16,8 @@ struct Env {
     QString appCacheDir;
     QString runtimeDir;
     QString omarchyPath;
+    QString dataHome;       // Where this user's data lives, such as their icon packs.
+    QStringList dataDirs;   // The shared data roots, most important first.
     QString sysRoot;        // "/" normally; a fixture tree in tests.
     QString selfBinary;     // Path of this executable, for the display watchdog.
     QProcessEnvironment process;

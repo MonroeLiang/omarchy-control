@@ -112,6 +112,58 @@
   "softRequires": true
  },
  {
+  "id": "appearance.icons",
+  "page": "appearance",
+  "section": "Icons",
+  "label": "Icon pack",
+  "type": "choice",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Icons for apps, folders, and files. Omarchy's launcher and dock choose their own app icons, so they may not change.",
+  "keywords": [
+   "icon theme",
+   "icon set",
+   "icons",
+   "app icons",
+   "folder icons",
+   "file icons",
+   "gnome tweaks",
+   "papirus",
+   "yaru"
+  ],
+  "sources": [
+   "gsettings get org.gnome.desktop.interface icon-theme",
+   "gsettings set org.gnome.desktop.interface icon-theme",
+   "omarchy-theme-set-gnome",
+   "appearance.icons"
+  ],
+  "read": {
+   "kind": "icons"
+  },
+  "write": {
+   "kind": "icons"
+  },
+  "choicesFrom": {
+   "kind": "icons"
+  },
+  "choices": [
+   {
+    "value": "follow-theme",
+    "label": "Follow desktop theme"
+   }
+  ],
+  "recovery": "auto-undo",
+  "restart": "Open apps may need reopening to show the new icons.",
+  "effects": [
+   "Changes the icon theme in GSettings, which GTK and Qt apps read.",
+   "Keeps your choice in omarchy-control/icons.json, so a theme change does not replace it."
+  ],
+  "scope": "per-user",
+  "requiresCommands": [
+   "gsettings"
+  ]
+ },
+ {
   "id": "appearance.font",
   "page": "appearance",
   "section": "Text",

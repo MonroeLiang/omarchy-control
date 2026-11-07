@@ -11,6 +11,7 @@
 
 #include "backend.h"
 #include "iconprovider.h"
+#include "iconthemes.h"
 #include "theme.h"
 #include "translator.h"
 
@@ -73,6 +74,7 @@ int runGui(const Env &env, const QStringList &arguments, std::function<void(QQml
 
     QQmlApplicationEngine engine;
     engine.addImageProvider("icons", new IconProvider);
+    engine.addImageProvider("iconpacks", new IconPackImageProvider(env));
     QObject::connect(&translator, &Translator::changed, &engine, &QQmlEngine::retranslate);
     engine.rootContext()->setContextProperty("translator", &translator);
     engine.rootContext()->setContextProperty("theme", &theme);
