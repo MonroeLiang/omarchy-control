@@ -73,8 +73,9 @@ public:
 private:
     void readFiles(const CatalogEntry &entry, ReadCallback callback);
     void applyCommand(const CatalogEntry &entry, const QJsonObject &write, const QString &value, const QString &before,
-                      ChangeCoordinator::Done done);
-    QStringList substitute(const QJsonArray &argv, const QString &value) const;
+                      const QString &target, ChangeCoordinator::Done done);
+    QStringList substitute(const QJsonArray &argv, const QString &value, const CatalogEntry *entry = nullptr, const QString &target = {}) const;
+    static QStringList targeted(const QStringList &argv, const CatalogEntry &entry, const QString &target);
     QStringList expandArgv(const QStringList &argv) const;
     void verifyValue(const QString &id, const QString &expected, int attempts, ChangeCoordinator::Done done);
     void submitHypr(const CatalogEntry &entry, const QString &value, const QString &before, bool beforeWasDefault, bool remove,

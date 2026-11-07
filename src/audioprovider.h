@@ -15,6 +15,8 @@ class AudioProvider : public QObject {
     Q_PROPERTY(QVariantList streams READ streams NOTIFY changed)
     Q_PROPERTY(QString status READ status NOTIFY changed)
     Q_PROPERTY(int defaultOutputVolume READ defaultOutputVolume NOTIFY changed)
+    // The device a default change is on its way to, until Omarchy confirms or refuses it.
+    Q_PROPERTY(QString pendingDefault READ pendingDefault NOTIFY changed)
 
 public:
     AudioProvider(CommandRunner *runner, ChangeCoordinator *coordinator, QObject *parent = nullptr);
@@ -25,6 +27,7 @@ public:
     QVariantList streams() const { return m_streams; }
     QString status() const { return m_status; }
     int defaultOutputVolume() const;
+    QString pendingDefault() const { return m_pendingDefault; }
 
     Q_INVOKABLE void refresh();
     // Listens for PipeWire events only while the Sound page is on screen.
@@ -39,6 +42,11 @@ public:
 
     static QVariantList parseNodes(const QByteArray &json, const QString &defaultName, bool sources);
     static QVariantList parseStreams(const QByteArray &json);
+    // A short name and the line under it, from the card and port PipeWire describes,
+    // falling back to the full description when there is nothing to split.
+    static QVariantMap nodeNames(const QString &description, const QJsonObject &properties);
+    // Which output each stream plays through, by the index the stream reports.
+    static void matchStreams(QVariantList &streams, const QVariantList &outputs);
 
 signals:
     void changed();
@@ -53,6 +61,8 @@ private:
     QVariantList m_outputs, m_inputs, m_streams;
     QString m_status = "loading";
     QString m_defaultOutputSink;
+    QString m_pendingDefault;
+    QHash<QString, QString> m_appIcons;
     QProcess *m_subscribe = nullptr;
     QTimer m_debounce;
     int m_generation = 0;

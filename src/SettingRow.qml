@@ -7,15 +7,30 @@ import QtQuick.Layouts
 // file paths and commands behind an expandable details line.
 Item {
     id: root
+    objectName: "settingRow"
     property var entry: ({})
     property bool compact: false
     property bool last: false
     property bool highlighted: false
     // Where a row has the room to show its subject rather than only name it.
     property bool rich: false
+    // Drawn as a panel's heading: the panel's own title and icon, with this setting's
+    // control beside it, as a device's on/off switch is.
+    property string headingTitle: ""
+    property string headingIcon: ""
+    // A row that only leads elsewhere: the whole row goes there, marked with a chevron.
+    property bool navigation: false
 
     readonly property string entryId: entry.id || ""
-    readonly property var st: backend.states[backend.stateKey(entryId)] || ({})
+    // A setting for one display of several reads and writes that display: the one
+    // selected on the Displays page. Search and pins still know it by its plain id.
+    readonly property string target: rich && entry.target === "display" ? backend.displays.selected : ""
+    readonly property string stateId: target.length ? entryId + "@" + target : entryId
+    readonly property bool multiDisplay: rich && backend.displays.monitors.length > 1
+    readonly property string labelText: qsTranslate("catalog", multiDisplay && entry.multiLabel ? entry.multiLabel : entry.label || "")
+    readonly property string descriptionText: st.detail ? st.detail
+        : qsTranslate("catalog", multiDisplay && entry.multiDescription ? entry.multiDescription : entry.description || "").replace("{target}", backend.displays.selected)
+    readonly property var st: backend.states[backend.stateKey(stateId)] || ({})
     readonly property string status: st.status || "loading"
     readonly property bool busy: !!st.busy
     readonly property bool unavailable: status === "unavailable"
@@ -26,6 +41,11 @@ Item {
     readonly property bool hasDetails: (entry.details || []).length > 0
     readonly property bool actionsRevealed: hover.hovered || pinButton.activeFocus || detailsButton.activeFocus
     readonly property bool packTiles: rich && entryId === "appearance.icons"
+    // The selected display's scale goes where the Displays page says it can: applied now,
+    // or staged with the arrangement, or not at all and why.
+    readonly property bool displayScale: rich && entryId === "displays.scale"
+    readonly property var scaleInfo: displayScale ? backend.displays.selectedScale : ({})
+    onStateIdChanged: if (target.length) backend.refresh(stateId)
     readonly property bool tiles: rich && (entryId === "appearance.theme" || entryId === "appearance.background" || packTiles)
     readonly property string unitSuffix: !entry.unit ? "" : entry.unit === "%" ? "%" : " " + entry.unit
 
@@ -54,7 +74,24 @@ Item {
         color: root.highlighted ? Qt.alpha(theme.accent, 0.14) : hover.hovered ? Qt.alpha(theme.foreground, 0.04) : "transparent"
         Behavior on color { enabled: theme.animate; ColorAnimation { duration: 200 } }
     }
-    HoverHandler { id: hover }
+    HoverHandler {
+        id: hover
+        cursorShape: root.navigation && !root.unavailable ? Qt.PointingHandCursor : Qt.ArrowCursor
+    }
+    TapHandler {
+        enabled: root.navigation && !root.unavailable
+        onTapped: win.activate(root.entry)
+    }
+    AppIcon {
+        id: icon
+        visible: root.rich && name.length > 0
+        name: root.headingIcon || root.entry.icon || ""
+        size: Math.round(theme.fontSize * (root.headingTitle.length ? 1.75 : 1.55))
+        tint: root.unavailable ? theme.muted : theme.foreground
+        anchors.left: parent.left
+        anchors.leftMargin: 18
+        anchors.verticalCenter: parent.verticalCenter
+    }
     Rectangle {
         visible: !root.last
         anchors.left: parent.left
@@ -68,10 +105,10 @@ Item {
 
     ColumnLayout {
         id: body
-        anchors.left: parent.left
+        anchors.left: icon.visible ? icon.right : parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 14
+        anchors.leftMargin: icon.visible ? 16 : 14
         anchors.rightMargin: 14
         spacing: 3
 
@@ -100,7 +137,12 @@ Item {
                         AppText {
                             id: title
                             Layout.maximumWidth: parent.width - quietActions.implicitWidth - 6
-                            text: qsTranslate("catalog", root.entry.label || "")
+                            text: root.headingTitle.length ? root.headingTitle : root.labelText
+                            // A long or translated name gets a second line rather than losing its end.
+                            wrapMode: Text.Wrap
+                            scale_: root.headingTitle.length ? 1.45 : 1
+                            font.weight: root.headingTitle.length ? Font.DemiBold : Font.Normal
+                            Accessible.role: root.headingTitle.length ? Accessible.Heading : Accessible.StaticText
                             opacity: root.unavailable ? 0.6 : 1
                         }
                         Row {
@@ -120,7 +162,7 @@ Item {
                                 ToolTip.visible: hovered
                                 ToolTip.text: Accessible.name
                                 ToolTip.delay: 500
-                                onClicked: backend.resetValue(root.entryId)
+                                onClicked: backend.resetValue(root.stateId)
                             }
                             AppButton {
                                 id: pinButton
@@ -161,8 +203,8 @@ Item {
                 }
                 AppText {
                     Layout.fillWidth: true
-                    visible: !root.compact && !!root.entry.description && !root.unavailable
-                    text: qsTranslate("catalog", root.entry.description || "")
+                    visible: !root.compact && root.descriptionText.length > 0 && !root.unavailable
+                    text: root.descriptionText
                     secondary: true
                     scale_: 0.88
                     wrapMode: Text.Wrap
@@ -184,7 +226,7 @@ Item {
                         scale_: 0.88
                         secondary: !root.st.error
                         color: root.st.error ? theme.dangerText : theme.muted
-                        text: root.st.error || root.st.reason || root.st.note || ""
+                        text: root.st.error || (root.displayScale && root.scaleInfo.route !== "immediate" ? root.scaleInfo.reason || "" : "") || root.st.reason || root.st.note || ""
                     }
                 }
             }
@@ -203,6 +245,8 @@ Item {
                 active: root.kind !== "action" && !root.unavailable && !root.tiles
                 visible: active
                 sourceComponent: {
+                    if (root.displayScale)
+                        return displayScaleControl
                     switch (root.kind) {
                     case "toggle": return toggleControl
                     case "choice": return choiceControl
@@ -219,9 +263,10 @@ Item {
                 objectName: "actionButton"
                 visible: root.kind === "action"
                 enabled: !root.unavailable
-                text: qsTranslate("HelperLabels", root.entry.verb || "Open")
-                iconName: root.actionIcon()
-                style: root.entry.confirm === "destructive" ? "danger" : "outline"
+                text: root.navigation ? "" : qsTranslate("HelperLabels", root.entry.verb || "Open")
+                iconName: root.navigation ? "chevronright" : root.actionIcon()
+                implicitWidth: root.navigation ? 34 : implicitContentWidth + 24
+                style: root.navigation ? "flat" : root.entry.confirm === "destructive" ? "danger" : "outline"
                 Accessible.name: qsTranslate("catalog", root.entry.label || "")
                 onClicked: win.activate(root.entry)
             }
@@ -243,7 +288,7 @@ Item {
                     // Videos have no still to show, so they fall back to the drawn tile.
                     return /\.(png|jpe?g|webp|gif)$/i.test(value) ? ({ image: "file://" + value }) : ({})
                 }
-                onPicked: function (value) { win.requestChange(root.entryId, value) }
+                onPicked: function (value) { win.requestChange(root.stateId, value) }
             }
         }
 
@@ -261,7 +306,7 @@ Item {
                 current: root.st.value === undefined ? "" : root.st.value
                 choices: root.st.choices || []
                 details: root.st.extra || ({})
-                onPicked: function (value) { win.requestChange(root.entryId, value) }
+                onPicked: function (value) { win.requestChange(root.stateId, value) }
             }
         }
 
@@ -317,6 +362,32 @@ Item {
     }
 
     Component {
+        id: displayScaleControl
+        AppCombo {
+            label: root.labelText
+            proportional: true
+            implicitWidth: Math.min(320, Math.max(200, root.width * 0.32))
+            readonly property string route: root.scaleInfo.route || ""
+            enabled: (route === "immediate" && root.editable) || route === "stage"
+            readonly property var choices: root.scaleInfo.choices || []
+            model: choices.map(function (choice) { return choice.label })
+            currentIndex: {
+                var best = -1
+                for (var i = 0; i < choices.length; ++i)
+                    if (best < 0 || Math.abs(choices[i].value - root.scaleInfo.value) < Math.abs(choices[best].value - root.scaleInfo.value))
+                        best = i
+                return best
+            }
+            onActivated: function (i) {
+                var value = choices[i].value
+                if (route === "immediate")
+                    win.requestChange(root.entryId, String(Math.round(value * 100000) / 100000))
+                else if (route === "stage")
+                    backend.displays.stageEdit(root.scaleInfo.output, "scale", value)
+            }
+        }
+    }
+    Component {
         id: toggleControl
         AppSwitch {
             on: root.st.value === "true"
@@ -324,7 +395,7 @@ Item {
             busy: root.busy
             unknown: root.status === "loading"
             label: qsTranslate("catalog", root.entry.label || "")
-            onClicked: win.requestChange(root.entryId, on ? "false" : "true")
+            onClicked: win.requestChange(root.stateId, on ? "false" : "true")
         }
     }
     Component {
@@ -369,41 +440,60 @@ Item {
             onActivated: function (index) {
                 var value = model[index].value
                 if (value !== current)
-                    win.requestChange(root.entryId, value)
+                    win.requestChange(root.stateId, value)
             }
         }
     }
     Component {
         id: stepperControl
-        RowLayout {
-            spacing: 4
+        // One control, not three: the value sits between its own minus and plus.
+        Rectangle {
+            id: stepper
             property int pending: parseInt(root.st.value) || 0
+            implicitWidth: steps.implicitWidth + 2
+            implicitHeight: Math.round(theme.fontSize * 2.2) + 2
+            radius: theme.controlRadius
+            color: "transparent"
+            border.width: 1
+            border.color: theme.divider
+            opacity: root.editable ? 1 : 0.55
             Timer {
                 id: settle
                 interval: 500
-                onTriggered: win.requestChange(root.entryId, String(parent.pending))
+                onTriggered: win.requestChange(root.stateId, String(stepper.pending))
             }
-            AppButton {
-                text: ""
-                iconName: "minus"
-                implicitWidth: 32
-                enabled: root.editable && parent.pending > root.entry.min
-                Accessible.name: qsTr("Decrease %1").arg(qsTranslate("catalog", root.entry.label || ""))
-                onClicked: { parent.pending -= root.entry.step; settle.restart() }
-            }
-            AppText {
-                Layout.minimumWidth: 60
-                horizontalAlignment: Text.AlignHCenter
-                mono: true
-                text: parent.pending.toLocaleString(Qt.locale(), "f", 0) + root.unitSuffix
-            }
-            AppButton {
-                text: ""
-                iconName: "plus"
-                implicitWidth: 32
-                enabled: root.editable && parent.pending < root.entry.max
-                Accessible.name: qsTr("Increase %1").arg(qsTranslate("catalog", root.entry.label || ""))
-                onClicked: { parent.pending += root.entry.step; settle.restart() }
+            RowLayout {
+                id: steps
+                anchors.centerIn: parent
+                spacing: 0
+                AppButton {
+                    style: "flat"
+                    text: ""
+                    iconName: "minus"
+                    implicitWidth: Math.round(theme.fontSize * 2.4)
+                    implicitHeight: stepper.height - 2
+                    enabled: root.editable && stepper.pending > root.entry.min
+                    Accessible.name: qsTr("Decrease %1").arg(qsTranslate("catalog", root.entry.label || ""))
+                    onClicked: { stepper.pending -= root.entry.step; settle.restart() }
+                }
+                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: theme.divider }
+                AppText {
+                    Layout.minimumWidth: Math.round(theme.fontSize * 5.4)
+                    horizontalAlignment: Text.AlignHCenter
+                    mono: true
+                    text: stepper.pending.toLocaleString(Qt.locale(), "f", 0) + root.unitSuffix
+                }
+                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: theme.divider }
+                AppButton {
+                    style: "flat"
+                    text: ""
+                    iconName: "plus"
+                    implicitWidth: Math.round(theme.fontSize * 2.4)
+                    implicitHeight: stepper.height - 2
+                    enabled: root.editable && stepper.pending < root.entry.max
+                    Accessible.name: qsTr("Increase %1").arg(qsTranslate("catalog", root.entry.label || ""))
+                    onClicked: { stepper.pending += root.entry.step; settle.restart() }
+                }
             }
         }
     }
@@ -421,10 +511,10 @@ Item {
                 snapMode: Slider.SnapAlways
                 enabled: root.editable
                 value: parseFloat(root.st.value) || 0
-                onPressedChanged: if (!pressed) win.requestChange(root.entryId, String(root.kind === "float" ? Math.round(value * 1000) / 1000 : Math.round(value)))
+                onPressedChanged: if (!pressed) win.requestChange(root.stateId, String(root.kind === "float" ? Math.round(value * 1000) / 1000 : Math.round(value)))
                 Keys.onReleased: function (event) {
                     if (event.key === Qt.Key_Left || event.key === Qt.Key_Right)
-                        win.requestChange(root.entryId, String(root.kind === "float" ? Math.round(value * 1000) / 1000 : Math.round(value)))
+                        win.requestChange(root.stateId, String(root.kind === "float" ? Math.round(value * 1000) / 1000 : Math.round(value)))
                 }
             }
             AppText {
@@ -444,7 +534,7 @@ Item {
             placeholderText: qsTranslate("catalog", root.entry.placeholder || "")
             // An unfinished edit stays put when the file changes underneath it.
             text: activeFocus ? text : (root.st.value || "")
-            onEditingFinished: if (text !== (root.st.value || "")) win.requestChange(root.entryId, text)
+            onEditingFinished: if (text !== (root.st.value || "")) win.requestChange(root.stateId, text)
         }
     }
     Component {

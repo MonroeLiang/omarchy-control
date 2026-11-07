@@ -63,7 +63,7 @@ AbstractButton {
             }
             AppIcon {
                 visible: root.iconName.length > 0
-                mirror: root.mirrored && root.iconName === "arrow"
+                mirror: root.mirrored && (root.iconName === "arrow" || root.iconName === "chevronright")
                 name: root.iconName
                 tint: root.tint
                 size: Math.round(theme.fontSize * 1.1)

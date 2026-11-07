@@ -14,6 +14,10 @@ class BluetoothProvider : public QObject {
     Q_PROPERTY(QVariantList devices READ devices NOTIFY changed)
     Q_PROPERTY(QString status READ status NOTIFY changed)
     Q_PROPERTY(bool busy READ busy NOTIFY changed)
+    // What is under way per device address ("connect", "disconnect", "forget"), and the
+    // last failure per address until that device is acted on again.
+    Q_PROPERTY(QVariantMap pending READ pending NOTIFY changed)
+    Q_PROPERTY(QVariantMap failures READ failures NOTIFY changed)
 
 public:
     BluetoothProvider(CommandRunner *runner, ChangeCoordinator *coordinator, QObject *parent = nullptr);
@@ -22,6 +26,8 @@ public:
     QVariantList devices() const { return m_devices; }
     QString status() const { return m_status; }
     bool busy() const { return m_busy; }
+    QVariantMap pending() const { return m_pending; }
+    QVariantMap failures() const { return m_failures; }
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void setPowered(bool on);
@@ -44,6 +50,7 @@ private:
     bool m_powered = false;
     bool m_busy = false;
     QVariantList m_devices;
+    QVariantMap m_pending, m_failures;
     QString m_status = "loading";
     int m_generation = 0;
 };

@@ -8,11 +8,11 @@ setkv() { printf '%s\n' "$2" >"$HOME/.sandbox-$1"; }
 case "$name" in
 pactl)
   case "$*" in
-    "-f json list sinks") echo '[{"index":1,"state":"RUNNING","name":"alsa_output.speakers","description":"Built-in Speakers","mute":false,"volume":{"front-left":{"value_percent":"65%"}},"properties":{"object.id":"42"}},{"index":2,"state":"SUSPENDED","name":"bluez_output.headphones","description":"Wireless Headphones","mute":false,"volume":{"front-left":{"value_percent":"40%"}},"properties":{"object.id":"43"}}]';;
-    "-f json list sources") echo '[{"index":3,"state":"IDLE","name":"alsa_input.mic","description":"Built-in Microphone","mute":false,"volume":{"mono":{"value_percent":"80%"}},"properties":{"object.id":"44"}},{"index":4,"name":"alsa_output.speakers.monitor","description":"Monitor of Speakers","mute":false,"volume":{},"properties":{"device.class":"monitor"}}]';;
-    "-f json list sink-inputs") echo '[{"index":9,"sink":42,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"application.name":"Music Player","media.name":"Example Track"}}]';;
-    get-default-sink) echo alsa_output.speakers;;
-    get-default-source) echo alsa_input.mic;;
+    "-f json list sinks") echo '[{"index":49,"state":"SUSPENDED","name":"example_speaker_tuning","description":"Laptop Speakers","mute":false,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"object.id":"30","device.description":"Laptop Speakers"}},{"index":151,"state":"RUNNING","name":"alsa_output.pci-0000_00_1f.3.HiFi__Speaker__sink","description":"Example Chipset (Series 3) HD Audio Speaker","mute":false,"volume":{"front-left":{"value_percent":"25%"}},"properties":{"object.id":"84","device.description":"Example Chipset (Series 3) HD Audio","device.profile.description":"Speaker","device.icon_name":"audio-speakers"}},{"index":152,"state":"SUSPENDED","name":"alsa_output.pci-0000_00_1f.3.HiFi__Headphones__sink","description":"Example Chipset (Series 3) HD Audio Headphones","mute":false,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"object.id":"76","device.description":"Example Chipset (Series 3) HD Audio","device.profile.description":"Headphones","device.icon_name":"audio-headphones"}},{"index":153,"state":"SUSPENDED","name":"alsa_output.pci-0000_00_1f.3.HiFi__HDMI1__sink","description":"Example Chipset (Series 3) HD Audio HDMI / DisplayPort 1 Output (Stereo)","mute":false,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"object.id":"75","device.description":"Example Chipset (Series 3) HD Audio","device.profile.description":"HDMI / DisplayPort 1 Output","device.icon_name":"video-display"}},{"index":154,"state":"SUSPENDED","name":"alsa_output.pci-0000_00_1f.3.HiFi__HDMI2__sink","description":"Example Chipset (Series 3) HD Audio HDMI / DisplayPort 2 Output (Stereo)","mute":true,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"object.id":"74","device.description":"Example Chipset (Series 3) HD Audio","device.profile.description":"HDMI / DisplayPort 2 Output","device.icon_name":"video-display"}},{"index":155,"state":"SUSPENDED","name":"alsa_output.pci-0000_00_1f.3.HiFi__HDMI3__sink","description":"Example Chipset (Series 3) HD Audio HDMI / DisplayPort 3 Output (Stereo)","mute":false,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"object.id":"73","device.description":"Example Chipset (Series 3) HD Audio","device.profile.description":"HDMI / DisplayPort 3 Output","device.icon_name":"video-display"}}]';;
+    "-f json list sources") echo '[{"index":156,"state":"IDLE","name":"alsa_input.pci-0000_00_1f.3.HiFi__Mic__source","description":"Example Chipset (Series 3) HD Audio Microphones","mute":false,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"object.id":"90","device.description":"Example Chipset (Series 3) HD Audio","device.profile.description":"Microphones","device.icon_name":"audio-input-microphone","device.class":"sound"}},{"index":157,"name":"alsa_output.pci-0000_00_1f.3.HiFi__Speaker__sink.monitor","description":"Monitor of Speaker","mute":false,"volume":{},"properties":{"device.class":"monitor"}}]';;
+    "-f json list sink-inputs") echo '[{"index":2919,"sink":151,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"application.name":"Web Browser","application.icon_name":"web-browser","application.process.binary":"browser","media.name":"Playback"}},{"index":2929,"sink":151,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"application.name":"Web Browser","application.icon_name":"web-browser","application.process.binary":"browser","media.name":"Playback"}},{"index":9,"sink":152,"volume":{"front-left":{"value_percent":"100%"}},"properties":{"application.name":"Music Player","media.name":"Example Track"}}]';;
+    get-default-sink) echo alsa_output.pci-0000_00_1f.3.HiFi__Speaker__sink;;
+    get-default-source) echo alsa_input.pci-0000_00_1f.3.HiFi__Mic__source;;
   esac;;
 nmcli)
   case "$*" in
@@ -24,8 +24,12 @@ nmcli)
   esac;;
 bluetoothctl)
   case "$1" in
-    devices) printf 'Device AA:BB:CC:DD:EE:01 Wireless Headphones\nDevice AA:BB:CC:DD:EE:02 Example Mouse\n';;
-    info) if [ "$2" = "AA:BB:CC:DD:EE:01" ]; then printf 'Name: Wireless Headphones\nConnected: yes\nPaired: yes\nIcon: audio-headphones\nBattery Percentage: 0x4b (75)\n'; else printf 'Name: Example Mouse\nConnected: no\nPaired: yes\nIcon: input-mouse\n'; fi;;
+    devices) printf 'Device AA:BB:CC:DD:EE:01 Example Earbuds\nDevice AA:BB:CC:DD:EE:02 Travel Mouse\nDevice AA:BB:CC:DD:EE:03 Office Mouse\nDevice AA:BB:CC:DD:EE:04 Office Mouse\nDevice AA:BB:CC:DD:EE:05 Office Mouse\n';;
+    info) case "$2" in
+      AA:BB:CC:DD:EE:01) printf 'Name: Example Earbuds\nConnected: no\nPaired: yes\nIcon: audio-headphones\n';;
+      AA:BB:CC:DD:EE:02) printf 'Name: Travel Mouse\nConnected: yes\nPaired: yes\nIcon: input-mouse\nBattery Percentage: 0x4c (76)\n';;
+      *) printf 'Name: Office Mouse\nConnected: no\nPaired: yes\nIcon: input-mouse\n';;
+    esac;;
   esac;;
 systemctl)
   case "$*" in
@@ -68,9 +72,13 @@ omarchy)
     "shell notifications isDnd") echo off;;
     "shell -q "*) ;;
     "plugin list --json") echo '[{"id":"omarchy.audio","name":"Audio","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":true,"firstParty":true,"clonedFrom":""},{"id":"omarchy.clock","name":"Clock","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":false,"firstParty":true,"clonedFrom":""},{"id":"omarchy.weather","name":"Weather","kinds":["bar-widget"],"enabled":true,"active":true,"canDisable":true,"firstParty":true,"clonedFrom":""},{"id":"local.notes","name":"Notes","kinds":["bar-widget"],"enabled":false,"active":false,"canDisable":true,"firstParty":false,"clonedFrom":""}]';;
-    "audio output sink") echo alsa_output.speakers;;
+    "audio output sink") echo alsa_output.pci-0000_00_1f.3.HiFi__Speaker__sink;;
     "bluetooth power is-on") exit 0;;
-    "brightness display"*) echo 72;;
+    "brightness display"*)
+      # A display listed in .sandbox-nobrightness has neither a backlight nor DDC/CI.
+      mon=""; [ "$3" = "--monitor" ] && mon=$4
+      if [ -n "$mon" ] && grep -qx "$mon" "$HOME/.sandbox-nobrightness" 2>/dev/null; then exit 1; fi
+      echo 72;;
     "powerprofiles list --active-state") printf 'power-saver\t0\nbalanced\t1\nperformance\t0\n';;
     "powerprofiles list") printf 'power-saver\nbalanced\nperformance\n';;
     "powerprofiles set"*) ;;

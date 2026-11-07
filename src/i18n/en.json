@@ -23,10 +23,6 @@
     "one": "Keep this connection? Going back to the previous one in %n second.",
     "other": "Keep this connection? Going back to the previous one in %n seconds."
   },
-  "Keep this layout? Restoring the previous one in %n second(s).": {
-    "one": "Keep this layout? Restoring the previous one in %n second.",
-    "other": "Keep this layout? Restoring the previous one in %n seconds."
-  },
   "Show %n": {
     "one": "Show %n",
     "other": "Show %n"
@@ -34,5 +30,25 @@
   "Omarchy changed %n command(s) since this app was tested, so those settings are paused.": {
     "one": "Omarchy changed %n command since this app was tested, so its settings are paused.",
     "other": "Omarchy changed %n commands since this app was tested, so those settings are paused."
+  },
+  "%n display(s) connected": {
+    "one": "%n display connected",
+    "other": "%n displays connected"
+  },
+  "One display moves a few pixels, then the safety timer has to put it back. %n second(s) left.": {
+    "one": "One display moves a few pixels, then the safety timer has to put it back. %n second left.",
+    "other": "One display moves a few pixels, then the safety timer has to put it back. %n seconds left."
+  },
+  "The previous layout comes back in %n second(s) unless you keep this one.": {
+    "one": "The previous layout comes back in %n second unless you keep this one.",
+    "other": "The previous layout comes back in %n seconds unless you keep this one."
+  },
+  "%n output(s)": {
+    "one": "%n output",
+    "other": "%n outputs"
+  },
+  "%n paired device(s)": {
+    "one": "%n paired device",
+    "other": "%n paired devices"
   }
 }

@@ -85,6 +85,9 @@ public:
     Q_INVOKABLE static QString stateKey(const QString &id);
     Q_INVOKABLE QVariantMap entry(const QString &id) const;
     Q_INVOKABLE QVariantList sections(const QString &page) const;
+    // The page's panel composition, with each row as its full entry; empty for a page
+    // that is a plain list of sections.
+    Q_INVOKABLE QVariantList panels(const QString &page) const;
     Q_INVOKABLE QStringList blocks(const QString &page) const;
     Q_INVOKABLE QVariantList search(const QString &query) const;
     Q_INVOKABLE QVariantList pinnedEntries() const;
@@ -123,6 +126,8 @@ private:
     void savePreferences();
     void handleResult(const QString &id, const CatalogEntry *entry, const Transaction &tx);
     QString noteFor(const CatalogEntry &entry) const;
+    QString detailFor(const CatalogEntry &entry) const;
+    void refreshTargets();
 
     std::unique_ptr<AppCore> m_core;
     HelperLauncher m_launcher;

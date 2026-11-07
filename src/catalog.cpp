@@ -149,6 +149,11 @@ QVariantMap CatalogEntry::toVariant() const {
     if (read.contains("option"))
         details << read.value("option").toString();
     m["details"] = details;
+    m["target"] = target;
+    m["icon"] = iconName;
+    m["multiLabel"] = multiLabel;
+    m["multiDescription"] = multiDescription;
+    m["group"] = group;
     return m;
 }
 
@@ -164,6 +169,8 @@ Catalog::Catalog(const QString &directory) {
             page.description = o.value("description").toString();
             page.sections = toStrings(o.value("sections"));
             page.blocks = toStrings(o.value("blocks"));
+            page.panels = o.value("panels").toArray();
+            page.jumps = toStrings(o.value("jumps"));
             m_pages << page;
         }
     }
@@ -227,14 +234,38 @@ void Catalog::load(const QString &path) {
         e.note = o.value("note").toString();
         e.placeholder = o.value("placeholder").toString();
         e.installHint = o.value("installHint").toString();
+        e.target = o.value("target").toString();
+        e.targetArgs = toStrings(o.value("targetArgs"));
+        e.iconName = o.value("icon").toString();
+        e.multiLabel = o.value("multiLabel").toString();
+        e.multiDescription = o.value("multiDescription").toString();
+        e.group = o.value("group").toString();
         m_index.insert(e.id, m_entries.size());
         m_entries << e;
     }
 }
 
 const CatalogEntry *Catalog::find(const QString &id) const {
-    const auto it = m_index.constFind(id);
-    return it == m_index.constEnd() ? nullptr : &m_entries[it.value()];
+    auto it = m_index.constFind(id);
+    if (it != m_index.constEnd())
+        return &m_entries[it.value()];
+    const int at = id.indexOf('@');
+    if (at <= 0 || targetOf(id).isEmpty())
+        return nullptr;
+    it = m_index.constFind(id.left(at));
+    if (it == m_index.constEnd() || m_entries[it.value()].target.isEmpty())
+        return nullptr;
+    return &m_entries[it.value()];
+}
+
+QString Catalog::targetOf(const QString &id) {
+    const int at = id.indexOf('@');
+    if (at < 0)
+        return {};
+    // The name becomes a command argument, so only a plain connector name may pass.
+    static const QRegularExpression plain("^[A-Za-z0-9._-]+$");
+    const QString target = id.mid(at + 1);
+    return plain.match(target).hasMatch() ? target : QString();
 }
 
 const PageInfo *Catalog::page(const QString &id) const {
@@ -249,6 +280,80 @@ QList<const CatalogEntry *> Catalog::entriesForPage(const QString &page) const {
     for (const auto &entry : m_entries)
         if (entry.page == page)
             out << &entry;
+    return out;
+}
+
+QJsonArray Catalog::panelLayout(const QString &pageId) const {
+    const PageInfo *info = page(pageId);
+    if (!info || info->panels.isEmpty())
+        return {};
+    // The rows the page shows, as Backend::sections does: a link to a block on this
+    // same page is only there for search to land on.
+    QList<const CatalogEntry *> entries;
+    for (const auto *e : entriesForPage(pageId))
+        if (!(e->launch.value("kind").toString() == QLatin1String("page") && e->launch.value("page").toString() == pageId))
+            entries << e;
+    // Groups that have a panel of their own leave their section's general panel.
+    QHash<QString, QStringList> dedicated;
+    for (const auto &row : info->panels)
+        for (const auto &column : row.toObject().value("columns").toArray())
+            for (const auto &spec : column.toArray()) {
+                const auto o = spec.toObject();
+                if (!o.value("group").toString().isEmpty())
+                    dedicated[o.value("section").toString()] << o.value("group").toString();
+            }
+    QSet<QString> placed;
+    auto fill = [&](const QJsonObject &spec) {
+        const QString section = spec.value("section").toString(), group = spec.value("group").toString();
+        const QString header = spec.value("header").toString();
+        QJsonObject panel = spec;
+        panel["title"] = spec.value("title").toString(section);
+        QJsonArray rows;
+        QString headerId;
+        for (const auto *e : std::as_const(entries)) {
+            if (placed.contains(e->id) || e->section != section)
+                continue;
+            if (group.isEmpty() ? dedicated.value(section).contains(e->group) : e->group != group)
+                continue;
+            placed.insert(e->id);
+            if (e->id == header)
+                headerId = e->id;
+            else
+                rows << e->id;
+        }
+        panel["header"] = headerId;
+        panel["rows"] = rows;
+        return panel;
+    };
+    QJsonArray out;
+    for (const auto &rowValue : info->panels) {
+        QJsonArray columns;
+        for (const auto &column : rowValue.toObject().value("columns").toArray()) {
+            QJsonArray panels;
+            for (const auto &spec : column.toArray())
+                panels << fill(spec.toObject());
+            columns << panels;
+        }
+        // The row keeps whatever else it says about itself, such as column weights.
+        QJsonObject row = rowValue.toObject();
+        row["columns"] = columns;
+        out << row;
+    }
+    // Whatever no panel claimed, a section at a time, across the full width.
+    QStringList leftover;
+    for (const auto *e : std::as_const(entries))
+        if (!placed.contains(e->id) && !leftover.contains(e->section))
+            leftover << e->section;
+    for (const auto &section : std::as_const(leftover)) {
+        QJsonArray rows;
+        for (const auto *e : std::as_const(entries))
+            if (!placed.contains(e->id) && e->section == section) {
+                placed.insert(e->id);
+                rows << e->id;
+            }
+        const QJsonObject panel{{"section", section}, {"title", section}, {"icon", "list"}, {"header", QString()}, {"rows", rows}};
+        out << QJsonObject{{"columns", QJsonArray{QJsonArray{panel}}}};
+    }
     return out;
 }
 

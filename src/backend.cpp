@@ -43,6 +43,13 @@ Backend::Backend(const Env &env, QObject *parent)
     connect(&m_updates, &UpdateProvider::message, this, relay);
     connect(&m_windowRules, &WindowRulesProvider::message, this, relay);
     connect(&m_iconImporter, &IconThemeImporter::finished, this, [this] { refresh(QStringLiteral("appearance.icons")); });
+    // The display tools describe the displays themselves, which change on their own.
+    connect(&m_displays, &DisplayProvider::monitorsChanged, this, [this] {
+        for (const auto *entry : m_core->catalog.entriesForPage(QStringLiteral("displays")))
+            if (entry->isAction())
+                refresh(entry->id);
+    });
+    connect(&m_displays, &DisplayProvider::selectionChanged, this, &Backend::refreshTargets);
 
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(250);
@@ -105,7 +112,7 @@ QString Backend::stateKey(const QString &id) {
 QVariantList Backend::pages() const {
     QVariantList list;
     for (const auto &page : m_core->catalog.pages())
-        list << QVariantMap{{"id", page.id}, {"label", page.label}, {"icon", page.icon}, {"description", page.description}};
+        list << QVariantMap{{"id", page.id}, {"label", page.label}, {"icon", page.icon}, {"description", page.description}, {"sections", page.sections}, {"jumps", page.jumps}};
     return list;
 }
 
@@ -138,6 +145,35 @@ QVariantList Backend::sections(const QString &page) const {
             out << QVariantMap{{"title", title}, {"rows", rows}};
     }
     return out;
+}
+
+QVariantList Backend::panels(const QString &page) const {
+    auto entryOf = [this](const QString &id) {
+        const CatalogEntry *e = m_core->catalog.find(id);
+        return e ? QVariant(e->toVariant()) : QVariant();
+    };
+    QVariantList rows;
+    for (const auto &rowValue : m_core->catalog.panelLayout(page)) {
+        QVariantList columns;
+        for (const auto &column : rowValue.toObject().value("columns").toArray()) {
+            QVariantList panels;
+            for (const auto &panelValue : column.toArray()) {
+                QVariantMap panel = panelValue.toObject().toVariantMap();
+                QVariantList entries;
+                for (const auto &id : panelValue.toObject().value("rows").toArray())
+                    entries << entryOf(id.toString());
+                panel["rows"] = entries;
+                const QString header = panelValue.toObject().value("header").toString();
+                panel["header"] = header.isEmpty() ? QVariant() : entryOf(header);
+                panels << panel;
+            }
+            columns << QVariant(panels);
+        }
+        QVariantMap row = rowValue.toObject().toVariantMap();
+        row["columns"] = columns;
+        rows << row;
+    }
+    return rows;
 }
 
 QStringList Backend::blocks(const QString &page) const {
@@ -189,6 +225,40 @@ void Backend::acceptCompat() {
     emit toast(tr("Changes resumed. If something behaves differently, check the result."), "ok");
 }
 
+QString Backend::detailFor(const CatalogEntry &entry) const {
+    // What the display tools would act on, said from what Hyprland reports.
+    QString internal, external;
+    bool internalOn = false;
+    for (const auto &monitor : m_displays.monitors()) {
+        const auto m = monitor.toMap();
+        if (m.value("internal").toBool() && internal.isEmpty()) {
+            internal = m.value("output").toString();
+            internalOn = m.value("enabled").toBool();
+        } else if (!m.value("internal").toBool() && m.value("enabled").toBool() && external.isEmpty()) {
+            external = m.value("output").toString();
+        }
+    }
+    if (internal.isEmpty())
+        internal = m_core->capabilities.values().value("internaldisplay.name").toString();
+    if (internal.isEmpty())
+        return {};
+    if (entry.id == QLatin1String("trigger.hardware.laptop-display"))
+        return internalOn ? tr("Built-in %1 is enabled.").arg(internal) : tr("Built-in %1 is turned off.").arg(internal);
+    if (entry.id == QLatin1String("trigger.hardware.mirror-display") && !external.isEmpty())
+        return m_core->capabilities.has("internalmirror") ? tr("%1 is showing the same picture as %2.").arg(external, internal)
+                                                         : tr("Shows %1 on %2 as well.").arg(internal, external);
+    return {};
+}
+
+void Backend::refreshTargets() {
+    const QString target = m_displays.selected();
+    if (target.isEmpty())
+        return;
+    for (const auto *entry : m_core->catalog.entriesForPage(QStringLiteral("displays")))
+        if (entry->target == QLatin1String("display"))
+            refresh(entry->id + "@" + target);
+}
+
 QString Backend::noteFor(const CatalogEntry &entry) const {
     const QString changed = m_core->compat.changedFor(entry, m_core->capabilities.versions().value("hyprland").toString());
     if (!changed.isEmpty())
@@ -212,6 +282,7 @@ void Backend::refresh(const QString &id) {
         state["status"] = a.available ? "ok" : "unavailable";
         state["reason"] = a.reason;
         state["note"] = noteFor(*entry);
+        state["detail"] = a.available ? detailFor(*entry) : QString();
         setState(id, state);
         return;
     }
@@ -245,6 +316,8 @@ void Backend::refresh(const QString &id) {
 void Backend::refreshPage(const QString &page) {
     for (const auto *entry : m_core->catalog.entriesForPage(page))
         refresh(entry->id);
+    if (page == QLatin1String("displays"))
+        refreshTargets();
     if (page == QLatin1String("overview")) {
         for (const auto &entry : m_core->catalog.entries())
             if (entry.quick)
@@ -312,6 +385,9 @@ void Backend::handleResult(const QString &id, const CatalogEntry *entry, const T
     }
     refresh(id);
     m_core->capabilities.scanFiles();
+    // A display setting moves what the arrangement shows.
+    if (id.startsWith(QLatin1String("displays.")))
+        m_displays.refresh();
 }
 
 void Backend::commit(const QString &id, const QString &value) {

@@ -72,14 +72,24 @@ void Capabilities::scanFiles() {
     set("hybridgpu", hasCommand("supergfxctl"));
 
     bool externalConnected = false;
+    QString internalName;
     const QDir drm(env.sys("/sys/class/drm"));
     for (const auto &name : drm.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        if (!name.contains('-') || name.contains("eDP") || name.contains("LVDS") || name.contains("DSI"))
+        if (!name.contains('-') || firstLine(drm.filePath(name) + "/status") != QLatin1String("connected"))
             continue;
-        if (firstLine(drm.filePath(name) + "/status") == QLatin1String("connected"))
+        if (name.contains("eDP") || name.contains("LVDS") || name.contains("DSI"))
+            internalName = name.section('-', 1);  // card1-eDP-1 is eDP-1 to Hyprland.
+        else
             externalConnected = true;
     }
     set("externalmonitor", externalConnected);
+    set("noexternalmonitor", !externalConnected);
+    set("internaldisplay", !internalName.isEmpty());
+    set("internaldisplay.name", internalName);
+    // Omarchy's own switches for the built-in panel, which its recovery command clears.
+    const QString toggles = env.stateHome + "/omarchy/toggles/hypr/";
+    set("internaloff", QFileInfo::exists(toggles + "internal-monitor-disable.lua"));
+    set("internalmirror", QFileInfo::exists(toggles + "internal-monitor-mirror.lua"));
 
     // A kernel update removes the running kernel's modules until the next boot, the
     // same evidence omarchy-update-restart goes by.
@@ -177,6 +187,9 @@ Capabilities::Availability Capabilities::availability(const CatalogEntry &entry)
                 {"bluetooth", QT_TRANSLATE_NOOP("Capabilities", "No Bluetooth adapter detected.")},
                 {"laptop", QT_TRANSLATE_NOOP("Capabilities", "This does not apply: no built-in display was detected.")},
                 {"externalmonitor", QT_TRANSLATE_NOOP("Capabilities", "No external display detected.")},
+                {"internaldisplay", QT_TRANSLATE_NOOP("Capabilities", "No built-in display detected.")},
+                {"internaloff", QT_TRANSLATE_NOOP("Capabilities", "The built-in display is already enabled.")},
+                {"noexternalmonitor", QT_TRANSLATE_NOOP("Capabilities", "An external display is connected, so use Laptop display on or off instead.")},
                 {"hybridgpu", QT_TRANSLATE_NOOP("Capabilities", "No switchable graphics detected.")},
                 {"snapdragon", QT_TRANSLATE_NOOP("Capabilities", "This only applies to Snapdragon laptops.")},
                 {"n1x", QT_TRANSLATE_NOOP("Capabilities", "This only applies to NVIDIA N1x laptops.")},

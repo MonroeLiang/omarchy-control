@@ -4,6 +4,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QUrl>
+
+#include "iconthemes.h"
 
 static int volumePercent(const QJsonObject &volume) {
     int highest = 0;
@@ -14,6 +17,73 @@ static int volumePercent(const QJsonObject &volume) {
         any = true;
     }
     return any ? highest : -1;
+}
+
+QVariantMap AudioProvider::nodeNames(const QString &description, const QJsonObject &properties) {
+    const QString card = properties.value("device.description").toString();
+    QString port = properties.value("device.profile.description").toString();
+    QString title = description, subtitle;
+    const QString rest = card.isEmpty() || !description.startsWith(card) ? QString() : description.mid(card.size()).trimmed();
+    if (rest.isEmpty()) {
+        // One device, one port, as a Bluetooth headset is: its name is the name, and the
+        // port says how it is being used.
+        if (!port.isEmpty() && port != description)
+            subtitle = port;
+    } else if (!port.isEmpty()) {
+        static const QRegularExpression channels(R"(\(([^()]+)\)\s*$)");
+        static const QRegularExpression direction(R"(\s+(Output|Input)$)");
+        static const QRegularExpression numbered(R"(\d)");
+        static const QRegularExpression family(R"(^(.*\))\s+(\S.*)$)");
+        port.remove(direction);
+        // "Maker Chip (Series 3) HD Audio": the words after the model say what kind of
+        // device it is, which a plain port like "Speaker" needs and "HDMI 1" does not.
+        QString maker = card, kind;
+        const auto split = family.match(card);
+        if (split.hasMatch()) {
+            maker = split.captured(1);
+            kind = split.captured(2);
+        }
+        title = !kind.isEmpty() && !numbered.match(port).hasMatch() ? kind + " " + port : port;
+        subtitle = maker;
+        const auto layout = channels.match(rest);
+        if (layout.hasMatch() && layout.captured(1) != port)
+            subtitle += QString::fromUtf8(" · ") + layout.captured(1);
+    }
+    return {{"title", title}, {"subtitle", subtitle}};
+}
+
+static QString nodeKind(const QJsonObject &properties, const QString &description, bool source) {
+    if (source)
+        return QStringLiteral("mic");
+    const QString hint = properties.value("device.icon_name").toString() + " " + properties.value("device.form_factor").toString();
+    if (hint.contains("headphone") || hint.contains("headset"))
+        return QStringLiteral("headphones");
+    if (hint.contains("video-display") || description.contains("HDMI") || description.contains("DisplayPort"))
+        return QStringLiteral("displays");
+    if (properties.value("device.bus").toString() == QLatin1String("bluetooth"))
+        return QStringLiteral("bluetooth");
+    if (description.contains("Laptop", Qt::CaseInsensitive))
+        return QStringLiteral("laptop");
+    return QStringLiteral("speaker");
+}
+
+void AudioProvider::matchStreams(QVariantList &streams, const QVariantList &outputs) {
+    for (auto &value : streams) {
+        auto stream = value.toMap();
+        const int sink = stream.value("sink").toInt();
+        QString output;
+        // pactl names a stream's sink by the same index it lists sinks with; older
+        // PipeWire made that the object id, so either one counts.
+        for (const auto &row : outputs)
+            if (row.toMap().value("index").toInt() == sink)
+                output = row.toMap().value("name").toString();
+        if (output.isEmpty())
+            for (const auto &row : outputs)
+                if (row.toMap().value("objectId").toString() == QString::number(sink))
+                    output = row.toMap().value("name").toString();
+        stream["output"] = output;
+        value = stream;
+    }
 }
 
 QVariantList AudioProvider::parseNodes(const QByteArray &json, const QString &defaultName, bool sources) {
@@ -29,7 +99,12 @@ QVariantList AudioProvider::parseNodes(const QByteArray &json, const QString &de
         QVariantMap row;
         row["name"] = name;
         row["description"] = node.value("description").toString(name);
+        row["index"] = node.value("index").toInt(-1);
         row["objectId"] = properties.value("object.id").toString();
+        const auto names = nodeNames(row["description"].toString(), properties);
+        row["title"] = names.value("title");
+        row["subtitle"] = names.value("subtitle");
+        row["kind"] = nodeKind(properties, row["description"].toString(), sources);
         row["volume"] = volumePercent(node.value("volume").toObject());
         row["mute"] = node.value("mute").toBool();
         row["state"] = node.value("state").toString();
@@ -54,6 +129,8 @@ QVariantList AudioProvider::parseStreams(const QByteArray &json) {
         row["app"] = app;
         row["title"] = properties.value("media.name").toString();
         row["sink"] = stream.value("sink").toInt();
+        row["iconName"] = properties.value("application.icon_name").toString();
+        row["binary"] = properties.value("application.process.binary").toString();
         row["volume"] = volumePercent(stream.value("volume").toObject());
         rows << row;
     }
@@ -120,6 +197,23 @@ void AudioProvider::refresh() {
         m_outputs = parseNodes(pending->sinks, pending->defaultSink, false);
         m_inputs = parseNodes(pending->sources, pending->defaultSource, true);
         m_streams = parseStreams(pending->inputs);
+        matchStreams(m_streams, m_outputs);
+        // The app's own icon from the desktop's icon theme, found once per app.
+        const Env &env = m_runner->env();
+        for (auto &value : m_streams) {
+            auto stream = value.toMap();
+            const QString key = stream.value("iconName").toString() + "|" + stream.value("binary").toString();
+            if (!m_appIcons.contains(key)) {
+                QStringList names;
+                for (const QString &name : {stream.value("iconName").toString(), stream.value("binary").toString(), stream.value("app").toString().toLower()})
+                    if (!name.isEmpty() && !name.contains('/'))
+                        names << name;
+                const QString path = names.isEmpty() ? QString() : IconThemes::findIcon(env, IconThemes::desktopDefault(env), names, 48);
+                m_appIcons.insert(key, path.isEmpty() ? QString() : QUrl::fromLocalFile(path).toString());
+            }
+            stream["icon"] = m_appIcons.value(key);
+            value = stream;
+        }
         emit changed();
         // A DSP sink can front the real output, where loudness actually lives.
         m_runner->run({"omarchy", "audio", "output", "sink"}, CommandOptions{3000}, this, [this](const CommandResult &result) {
@@ -181,7 +275,10 @@ void AudioProvider::setDefault(const QString &name, bool input) {
             done(result.outText() == name, tr("The device did not become the default."));
         });
     };
+    m_pendingDefault = name;
+    emit changed();
     m_coordinator->submit(std::move(request), [this, description](const Transaction &tx) {
+        m_pendingDefault.clear();
         if (tx.phase == QLatin1String("committed"))
             emit message(tr("Now using %1").arg(description), false);
         else
@@ -247,9 +344,28 @@ void AudioProvider::setInputMute(const QString &name, bool mute) {
 void AudioProvider::moveStream(int index, const QString &sink) {
     CommandOptions options;
     options.mutation = true;
-    m_runner->run({"pactl", "move-sink-input", QString::number(index), sink}, options, this, [this](const CommandResult &result) {
-        if (!result.ok())
+    m_runner->run({"pactl", "move-sink-input", QString::number(index), sink}, options, this, [this, index, sink](const CommandResult &result) {
+        if (!result.ok()) {
             emit message(result.describe("pactl"), true);
-        refresh();
+            refresh();
+            return;
+        }
+        // Where the stream really went, asked afterwards: an app can refuse a move or
+        // be closed in between.
+        m_runner->run({"pactl", "-f", "json", "list", "sink-inputs"}, CommandOptions{4000}, this, [this, index, sink](const CommandResult &check) {
+            QVariantList streams = parseStreams(check.out);
+            matchStreams(streams, m_outputs);
+            bool found = false, moved = false;
+            for (const auto &value : streams)
+                if (value.toMap().value("index").toInt() == index) {
+                    found = true;
+                    moved = value.toMap().value("output").toString() == sink;
+                }
+            if (check.ok() && found && !moved)
+                emit message(tr("The app did not move to that output."), true);
+            else if (check.ok() && !found)
+                emit message(tr("That app stopped playing before it could move."), true);
+            refresh();
+        });
     });
 }

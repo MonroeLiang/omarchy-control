@@ -84,6 +84,8 @@ printf 'Discharging\n' >"$ROOT/sys-root/sys/class/power_supply/BAT0/status"
 printf '10\n' >"$ROOT/sys-root/sys/class/dmi/id/chassis_type"
 printf 'Example Laptop 14\n' >"$ROOT/sys-root/sys/class/dmi/id/product_name"
 printf 'Example\n' >"$ROOT/sys-root/sys/class/dmi/id/sys_vendor"
+# The connectors the kernel reports, matching the fake Hyprland's two displays.
+for c in card1-eDP-1 card1-DP-1; do mkdir -p "$ROOT/sys-root/sys/class/drm/$c"; printf 'connected\n' >"$ROOT/sys-root/sys/class/drm/$c/status"; done
 # Fictional icon packs, drawn here, so the picker has something to show.
 python3 - "$ROOT/sys-root/usr/share/icons" <<'PY'
 import os, sys
