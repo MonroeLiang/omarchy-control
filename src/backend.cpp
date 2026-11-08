@@ -95,6 +95,8 @@ Backend::Backend(const Env &env, QObject *parent)
     for (const auto &message : recovered + m_iconImporter.recoverStaging())
         QTimer::singleShot(600, this, [this, message] { emit toast(message, "warning"); });
 
+    // Local only: where this copy came from, which decides how it updates.
+    m_updates.readSource();
     m_core->capabilities.scanServices();
     m_system.refresh();
     m_services.refresh();

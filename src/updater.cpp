@@ -143,6 +143,49 @@ QString checksumFor(const QByteArray &sums, const QString &fileName) {
     return {};
 }
 
+QStringList syncCommand() {
+    return {"env", "LC_ALL=C", "pacman", "-Si", "omarchy-control"};
+}
+
+QStringList installedCommand() {
+    return {"env", "LC_ALL=C", "pacman", "-Qi", "omarchy-control"};
+}
+
+// The fields of pacman's first entry, by name.
+static QHash<QString, QString> pacmanFields(const QByteArray &output) {
+    QHash<QString, QString> fields;
+    for (const QString &line : QString::fromUtf8(output).split('\n')) {
+        if (line.trimmed().isEmpty() && !fields.isEmpty())
+            break;
+        const qsizetype colon = line.indexOf(QLatin1String(" : "));
+        if (colon > 0)
+            fields.insert(line.left(colon).trimmed(), line.mid(colon + 3).trimmed());
+    }
+    return fields;
+}
+
+Source sourceFrom(const QByteArray &sync, const QByteArray &installed) {
+    Source source;
+    const auto offered = pacmanFields(sync);
+    if (offered.value("Name") == QLatin1String("omarchy-control") && !offered.value("Repository").isEmpty()) {
+        source.repository = offered.value("Repository");
+        // "1:0.3.0-1" to "0.3.0", as installed versions are compared.
+        source.version = offered.value("Version").section('-', 0, 0).section(':', -1);
+    }
+    // A package from GitHub is unsigned; one a repository served carries its signature.
+    const auto copy = pacmanFields(installed);
+    source.installedSigned = copy.value("Name") == QLatin1String("omarchy-control") && copy.value("Validated By").contains(QLatin1String("Signature"));
+    return source;
+}
+
+Source sourceBlocking(CommandRunner &runner) {
+    CommandOptions options;
+    options.timeoutMs = 5000;
+    const CommandResult sync = runner.runBlocking(syncCommand(), options);
+    const CommandResult installed = runner.runBlocking(installedCommand(), options);
+    return sourceFrom(sync.ok() ? sync.out : QByteArray(), installed.ok() ? installed.out : QByteArray());
+}
+
 bool install(CommandRunner &runner, const Release &release, bool assumeYes, QString *error,
              const std::function<void(const QString &)> &progress) {
     const auto fail = [&](const QString &message) {
@@ -217,9 +260,28 @@ void UpdateProvider::setState(const QString &state) {
     emit changed();
 }
 
+void UpdateProvider::readSource() {
+    m_runner->run(Updater::syncCommand(), CommandOptions{5000}, this, [this](const CommandResult &sync) {
+        const QByteArray offered = sync.ok() ? sync.out : QByteArray();
+        m_runner->run(Updater::installedCommand(), CommandOptions{5000}, this, [this, offered](const CommandResult &installed) {
+            m_source = Updater::sourceFrom(offered, installed.ok() ? installed.out : QByteArray());
+            if (m_source.fromRepository() && m_state != QLatin1String("restart"))
+                setState(QStringLiteral("repository"));
+            else
+                emit changed();
+        });
+    });
+}
+
 void UpdateProvider::check() {
     if (m_state == QLatin1String("checking") || m_state == QLatin1String("restart"))
         return;
+    // A repository's signed copy updates with the system. GitHub's is the other channel,
+    // and installing it here would swap one for the other.
+    if (m_source.fromRepository()) {
+        readSource();
+        return;
+    }
     m_error.clear();
     setState(QStringLiteral("checking"));
     CommandOptions options;

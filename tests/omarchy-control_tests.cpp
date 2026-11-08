@@ -3905,6 +3905,26 @@ esac
         QCOMPARE(Updater::versionFromPacman("omarchy-control 0.2.0-1\n"), QString("0.2.0"));
         QCOMPARE(Updater::versionFromPacman("error: package 'omarchy-control' was not found\n"), QString());
     }
+    // Each copy updates the way it came. Only one a repository installed, signed by it,
+    // updates with the system; a GitHub copy keeps GitHub, whatever a repository offers.
+    void eachCopyUpdatesTheWayItCame() {
+        const QByteArray offered = "Repository      : omarchy\nName            : omarchy-control\nVersion         : 1:0.4.1-2\n"
+                                   "Description     : One searchable place : to understand\n\nRepository      : extra\nName            : omarchy-control\n";
+        const QByteArray signedCopy = "Name            : omarchy-control\nVersion         : 0.4.0-1\nPackager        : Omarchy <pkgs@omarchy.org>\n"
+                                      "Validated By    : SHA-256 Sum  Signature\n";
+        const QByteArray githubCopy = "Name            : omarchy-control\nVersion         : 0.4.0-1\nPackager        : Unknown Packager\nValidated By    : None\n";
+        const Updater::Source fromRepo = Updater::sourceFrom(offered, signedCopy);
+        QVERIFY(fromRepo.fromRepository());
+        QCOMPARE(fromRepo.repository, QString("omarchy"));
+        QCOMPARE(fromRepo.version, QString("0.4.1"));
+        // The case that matters: offered by a repository, but installed from GitHub.
+        const Updater::Source fromGithub = Updater::sourceFrom(offered, githubCopy);
+        QCOMPARE(fromGithub.repository, QString("omarchy"));
+        QVERIFY(!fromGithub.fromRepository());
+        QVERIFY(!Updater::sourceFrom("error: package 'omarchy-control' was not found\n", githubCopy).fromRepository());
+        QVERIFY(!Updater::sourceFrom(offered, "error: package 'omarchy-control' was not found\n").fromRepository());
+        QVERIFY(!Updater::sourceFrom("Repository : omarchy\nName : something-else\n", signedCopy).fromRepository());
+    }
     void releaseNotesReadAsPlainText() {
         QCOMPARE(Updater::plainNotes("## What's Changed\n* Fix a jump by @someone in https://github.com/x/y/pull/1\n- Add About\n\n\n**Full Changelog**: https://github.com/x/y/compare/a...b\n"),
                  QString("What's Changed\n• Fix a jump\n• Add About"));
@@ -5310,6 +5330,49 @@ esac)SH");
         QTRY_VERIFY(page.named("compatWarning").isEmpty());
     }
 
+    void aGithubCopyKeepsGithubAndARepositoryCopyUpdatesWithTheSystem() {
+        QCoreApplication::setApplicationVersion("0.3.0");
+        Sandbox s;
+        desktopFixture(s);
+        // pacman answers from two files: what the repository offers, and how the installed
+        // copy was verified.
+        writeFile(s.dir.path() + "/validated", "None");
+        s.command("pacman", "case \"$1\" in\n"
+                            "  -Si) printf 'Repository      : omarchy\\nName            : omarchy-control\\nVersion         : 0.3.1-1\\n';;\n"
+                            "  -Qi) printf 'Name            : omarchy-control\\nVersion         : 0.3.0-1\\nValidated By    : %s\\n' \"$(cat '"
+                                + s.dir.path().toUtf8() + "/validated')\";;\n"
+                            "  *) exit 1;;\nesac");
+        // As curl's -w writes it: the status after the body, with no newline to end it.
+        s.command("curl", "printf '%s\\n200' '{\"tag_name\": \"v0.3.2\", \"assets\": []}'");
+        DesktopPage page(s);
+        QVERIFY(QTest::qWaitForWindowActive(page.window, 3000));
+        page.open("about");
+        auto text = [&](const QString &name) { return page.named(name).isEmpty() ? QString() : page.named(name).first()->property("text").toString(); };
+        // Installed from GitHub: the repository changes nothing, and GitHub is asked as always.
+        QTRY_VERIFY(!page.named("checkUpdates").isEmpty());
+        QTest::qWait(300);
+        QCOMPARE(page.backend.updates()->state(), QString("idle"));
+        QVERIFY(page.named("updateSystem").isEmpty());
+        QMetaObject::invokeMethod(page.named("checkUpdates").first(), "clicked");
+        QTRY_VERIFY2(page.backend.updates()->state() == QLatin1String("available"), qPrintable(page.backend.updates()->error()));
+        QCOMPARE(page.backend.updates()->latestVersion(), QString("0.3.2"));
+        QVERIFY(!s.calls().filter("curl").isEmpty());
+        CommandRunner runner(s.env);
+        QVERIFY(!Updater::sourceBlocking(runner).fromRepository());
+
+        // Installed, signed, by the repository: it updates with the system instead.
+        writeFile(s.dir.path() + "/validated", "SHA-256 Sum  Signature");
+        const int asked = s.calls().filter("curl").size();
+        page.backend.updates()->readSource();
+        QTRY_COMPARE(page.backend.updates()->state(), QString("repository"));
+        QTRY_VERIFY(text("updateStatus").contains("Version 0.3.1 is waiting in the omarchy package repository"));
+        QVERIFY(!page.named("updateSystem").isEmpty());
+        QVERIFY(page.named("checkUpdates").isEmpty());
+        page.backend.updates()->check();
+        QTest::qWait(300);
+        QCOMPARE(s.calls().filter("curl").size(), asked);
+        QVERIFY(Updater::sourceBlocking(runner).fromRepository());
+    }
     void theAboutPageShowsEveryUpdateState() {
         QCoreApplication::setApplicationVersion("0.1.0");
         Sandbox s;

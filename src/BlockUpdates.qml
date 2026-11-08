@@ -10,8 +10,21 @@ AppPanel {
     readonly property var updates: backend.updates
     readonly property string updateState: updates.state
     readonly property bool available: updateState === "available"
+    // This copy came from a package repository, such as Omarchy's own, and updates with
+    // the system. A copy from GitHub never reaches this state, whatever a repository offers.
+    readonly property bool fromRepository: updateState === "repository"
+    readonly property bool waiting: fromRepository && root.newer(updates.repositoryVersion, updates.currentVersion)
+    function newer(a, b) {
+        var x = (a || "").split("."), y = (b || "").split(".")
+        for (var i = 0; i < Math.max(x.length, y.length); ++i) {
+            var d = (parseInt(x[i]) || 0) - (parseInt(y[i]) || 0)
+            if (d !== 0)
+                return d > 0
+        }
+        return false
+    }
     function takeFocus() {
-        var target = installButton.visible ? installButton : restartButton.visible ? restartButton : checkButton
+        var target = installButton.visible ? installButton : restartButton.visible ? restartButton : systemButton.visible ? systemButton : checkButton
         target.forceActiveFocus(Qt.TabFocusReason)
     }
 
@@ -59,7 +72,7 @@ AppPanel {
                 AppIcon {
                     Layout.alignment: Qt.AlignTop
                     Layout.topMargin: 2
-                    visible: root.updateState === "current" || root.updateState === "error" || root.updateState === "restart"
+                    visible: root.updateState === "current" || root.updateState === "error" || root.updateState === "restart" || (root.fromRepository && !root.waiting)
                     name: root.updateState === "error" ? "warning" : "check"
                     size: Math.round(theme.fontSize * 1.15)
                     tint: root.updateState === "error" ? theme.dangerText : theme.goodText
@@ -80,6 +93,9 @@ AppPanel {
                         case "error": return root.updates.error
                         case "available": return qsTr("Version %1 is available. You have %2.").arg(root.updates.latestVersion).arg(root.updates.currentVersion)
                         case "restart": return qsTr("Version %1 is installed. Restart to start using it.").arg(root.updates.latestVersion)
+                        case "repository": return root.waiting
+                            ? qsTr("Version %1 is waiting in the %2 package repository. Update Omarchy to install it.").arg(root.updates.repositoryVersion).arg(root.updates.repository)
+                            : qsTr("This copy came from the %1 package repository, so it updates with the rest of the system.").arg(root.updates.repository)
                         default: return qsTr("Updates are only checked when you ask.")
                         }
                     }
@@ -221,10 +237,24 @@ AppPanel {
                 onClicked: if (root.updates.restart()) win.quitApp()
             }
 
+            // The system's own update, as the Omarchy menu runs it.
+            AppButton {
+                id: systemButton
+                objectName: "updateSystem"
+                visible: root.fromRepository
+                Layout.fillWidth: true
+                implicitHeight: Math.round(theme.fontSize * 3.8)
+                textScale: 1.2
+                style: root.waiting ? "primary" : "outline"
+                leadingIcon: "download"
+                text: qsTr("Update Omarchy")
+                onClicked: win.activate(backend.entry("update.omarchy"))
+            }
+
             AppButton {
                 id: checkButton
                 objectName: "checkUpdates"
-                visible: root.updateState !== "restart"
+                visible: root.updateState !== "restart" && !root.fromRepository
                 enabled: root.updateState !== "checking"
                 Layout.fillWidth: true
                 implicitHeight: Math.round(theme.fontSize * (root.available ? 2.6 : 3.8))
