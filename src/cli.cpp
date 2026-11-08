@@ -148,6 +148,22 @@ int cmdUpdate(const Env &env, const QStringList &args, bool yes, bool json) {
         return 1;
     }
     CommandRunner runner(env);
+    // A copy a package repository installed updates with the system; a GitHub copy, here.
+    const Updater::Source source = Updater::sourceBlocking(runner);
+    if (source.fromRepository()) {
+        const QString current = Updater::currentVersion();
+        const bool waiting = Updater::isNewer(source.version, current);
+        if (json) {
+            printJson(QJsonObject{{"current", current}, {"repository", source.repository}, {"repositoryVersion", source.version}, {"updateAvailable", waiting}});
+        } else {
+            out() << "This copy of Omarchy Control came from the " << source.repository << " package repository and updates with the system.\n";
+            if (waiting)
+                out() << "Version " << source.version << " is waiting there. You have " << current << ".\n";
+            out() << "Update it with: omarchy update\n";
+            out().flush();
+        }
+        return action == QLatin1String("install") ? 1 : 0;
+    }
     const Updater::Check check = Updater::fetchBlocking(runner);
     if (check.outcome == Updater::Check::Failed) {
         err() << check.error << "\n";

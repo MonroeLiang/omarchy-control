@@ -2028,5 +2028,8 @@
  "Change an app's launcher": "Starter einer App ändern",
  "Reset an app's launcher": "Starter einer App zurücksetzen",
  "Update an app's launcher": "Starter einer App aktualisieren",
- "The launcher icon layer, archive import, and launcher editing build on its design. MIT License.": "Die Symbolebene für den Starter, der Archivimport und das Bearbeiten von Startern bauen auf seinem Entwurf auf. MIT-Lizenz."
+ "The launcher icon layer, archive import, and launcher editing build on its design. MIT License.": "Die Symbolebene für den Starter, der Archivimport und das Bearbeiten von Startern bauen auf seinem Entwurf auf. MIT-Lizenz.",
+ "This copy came from the %1 package repository, so it updates with the rest of the system.": "Diese Kopie stammt aus dem Paket-Repository %1 und wird mit dem restlichen System aktualisiert.",
+ "Update Omarchy": "Omarchy aktualisieren",
+ "Version %1 is waiting in the %2 package repository. Update Omarchy to install it.": "Version %1 liegt im Paket-Repository %2 bereit. Aktualisieren Sie Omarchy, um sie zu installieren."
 }

@@ -2028,5 +2028,8 @@
  "Change an app's launcher": "Skift en apps genvej",
  "Reset an app's launcher": "Nulstil en apps genvej",
  "Update an app's launcher": "Opdatér en apps genvej",
- "The launcher icon layer, archive import, and launcher editing build on its design. MIT License.": "Startmenuens ikonlag, arkivimporten og redigering af genveje bygger på dens design. MIT-licens."
+ "The launcher icon layer, archive import, and launcher editing build on its design. MIT License.": "Startmenuens ikonlag, arkivimporten og redigering af genveje bygger på dens design. MIT-licens.",
+ "This copy came from the %1 package repository, so it updates with the rest of the system.": "Denne kopi kom fra pakkearkivet %1, så den opdateres sammen med resten af systemet.",
+ "Update Omarchy": "Opdatér Omarchy",
+ "Version %1 is waiting in the %2 package repository. Update Omarchy to install it.": "Version %1 venter i pakkearkivet %2. Opdatér Omarchy for at installere den."
 }

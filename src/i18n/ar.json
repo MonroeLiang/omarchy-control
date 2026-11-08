@@ -2092,5 +2092,8 @@
  "Change an app's launcher": "تغيير مشغّل تطبيق",
  "Reset an app's launcher": "إعادة ضبط مشغّل تطبيق",
  "Update an app's launcher": "تحديث مشغّل تطبيق",
- "The launcher icon layer, archive import, and launcher editing build on its design. MIT License.": "تقوم طبقة أيقونات المشغّل واستيراد الأرشيفات وتعديل المشغّلات على تصميمه. رخصة MIT."
+ "The launcher icon layer, archive import, and launcher editing build on its design. MIT License.": "تقوم طبقة أيقونات المشغّل واستيراد الأرشيفات وتعديل المشغّلات على تصميمه. رخصة MIT.",
+ "This copy came from the %1 package repository, so it updates with the rest of the system.": "جاءت هذه النسخة من مستودع الحزم %1، لذا تُحدَّث مع بقية النظام.",
+ "Update Omarchy": "تحديث Omarchy",
+ "Version %1 is waiting in the %2 package repository. Update Omarchy to install it.": "الإصدار %1 بانتظارك في مستودع الحزم %2. حدّث Omarchy لتثبيته."
 }
