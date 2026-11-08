@@ -2,6 +2,8 @@
 
 #include <QDateTime>
 #include <QDir>
+#include <algorithm>
+#include <QDirIterator>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
@@ -71,6 +73,11 @@ QJsonObject effectiveJson(const QString &before, bool beforeUnset, const QString
 }
 
 }  // namespace
+
+// The icon folders that are the user's own, where installing and removing happen.
+static QStringList userRoots(const Env &env) {
+    return {env.dataHome + "/icons", env.home + "/.icons"};
+}
 
 QString IconThemeProvider::State::value() const {
     if (managed)
@@ -554,8 +561,14 @@ void IconThemeProvider::readChoices(ChoicesCallback callback) {
     // and it stays possible to come back to it.
     readEffective([this, callback](bool, const QString &value, const QString &) {
         QVariantList choices;
-        for (const IconPack &pack : IconThemes::discover(m_runner->env(), value))
-            choices << QVariantMap{{"value", QString::fromLatin1(PackPrefix) + pack.id}, {"label", pack.name}, {"id", pack.id}};
+        const QStringList own = userRoots(m_runner->env());
+        for (const IconPack &pack : IconThemes::discover(m_runner->env(), value)) {
+            // Only what the user installed can be removed here; the rest is a package's.
+            const bool removable = std::any_of(pack.locations.begin(), pack.locations.end(), [&own](const QString &location) {
+                return own.contains(QFileInfo(location).absolutePath());
+            });
+            choices << QVariantMap{{"value", QString::fromLatin1(PackPrefix) + pack.id}, {"label", pack.name}, {"id", pack.id}, {"removable", removable}};
+        }
         callback(choices);
     });
 }
@@ -900,6 +913,191 @@ int IconThemeProvider::removeIntegration(QString *message) {
     QFile::remove(IconLayer::statePath(m_runner->env()));
     *message += removed.isEmpty() ? tr("Nothing to remove.") : tr("Removed %1. The current icons were left as they are.").arg(removed.join(", "));
     return 0;
+}
+
+IconThemeProvider::Removal IconThemeProvider::planRemoval(const QString &id) const {
+    const Env &env = m_runner->env();
+    Removal plan;
+    const IconPack pack = IconThemes::load(env, id);
+    plan.name = pack.found ? pack.name : id;
+    const QStringList own = userRoots(env);
+    for (const QString &location : pack.locations)
+        if (plan.path.isEmpty() && own.contains(QFileInfo(location).absolutePath()))
+            plan.path = location;
+    if (!IconThemes::isValidId(id) || plan.path.isEmpty()) {
+        plan.reason = tr("%1 came with the system, so only removing its package can remove it.").arg(plan.name);
+        return plan;
+    }
+    if (QFileInfo(plan.path).isSymLink()) {
+        plan.reason = tr("%1 is a link to a pack kept elsewhere, so it was left alone.").arg(plan.name);
+        return plan;
+    }
+    const Policy policy = loadPolicy();
+    if (policy.fixed && policy.theme == id) {
+        plan.reason = tr("%1 is your chosen pack. Choose another one first.").arg(plan.name);
+        return plan;
+    }
+    if (IconThemes::desktopDefault(env) == id) {
+        plan.reason = tr("The current Omarchy theme asks for %1, so it stays.").arg(plan.name);
+        return plan;
+    }
+    CommandOptions read;
+    read.timeoutMs = 5000;
+    const CommandResult current = m_runner->runBlocking({"gsettings", "get", Schema, Key}, read);
+    bool parsed = false;
+    const QString effective = current.ok() ? IconThemes::parseGVariantString(current.out, &parsed) : QString();
+    if (!parsed) {
+        plan.reason = tr("The icons in use could not be read, so nothing was removed.");
+        return plan;
+    }
+    if (effective == id) {
+        plan.reason = tr("%1 is in use. Choose another pack first.").arg(plan.name);
+        return plan;
+    }
+    // Every pack anywhere, hidden ones too: a pack that builds on this one would lose icons.
+    QStringList seen{id};
+    for (const QString &root : IconThemes::searchRoots(env)) {
+        for (const QString &other : QDir(root).entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+            if (seen.contains(other))
+                continue;
+            seen << other;
+            const IconPack dependent = IconThemes::load(env, other);
+            if (dependent.found && dependent.inherits.contains(id)) {
+                plan.reason = tr("%1 builds on %2, so it stays.").arg(dependent.name, plan.name);
+                return plan;
+            }
+        }
+    }
+    // Packs installed together can link into each other, as Papirus-Dark does into Papirus.
+    const QString inside = QFileInfo(plan.path).canonicalFilePath() + "/";
+    for (const QString &root : own) {
+        for (const QString &other : QDir(root).entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+            const QString folder = root + "/" + other;
+            if (QFileInfo(folder).canonicalFilePath() + "/" == inside)
+                continue;
+            QDirIterator it(folder, QDir::AllEntries | QDir::System | QDir::Hidden | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                const QFileInfo entry = it.nextFileInfo();
+                if (entry.isSymLink() && (entry.symLinkTarget() + "/").startsWith(inside)) {
+                    plan.reason = tr("%1 links into %2, so it stays.").arg(IconThemes::load(env, other).name, plan.name);
+                    return plan;
+                }
+            }
+        }
+    }
+    plan.ok = true;
+    return plan;
+}
+
+// The user's Trash, as the freedesktop spec lays it out, in this app's own data root.
+// Qt's moveToTrash reads the process environment rather than this one, so it is not used.
+static QString trashRoot(const Env &env) {
+    return env.dataHome + "/Trash";
+}
+
+void IconThemeProvider::removePack(const QString &id, Finished finished) {
+    const Env &env = m_runner->env();
+    const QString label = QStringLiteral("Remove an icon pack");
+    const Removal plan = planRemoval(id);
+    if (!plan.ok) {
+        Transaction tx = failure(label, plan.reason);
+        tx.settingId = QStringLiteral("appearance.icons.remove");
+        finished(tx);
+        return;
+    }
+    // A name the Trash does not hold yet: Papirus, then Papirus.2, and so on.
+    const QString files = trashRoot(env) + "/files", info = trashRoot(env) + "/info";
+    QString name = id;
+    for (int n = 2; QFileInfo::exists(files + "/" + name) || QFileInfo::exists(info + "/" + name + ".trashinfo"); ++n)
+        name = id + "." + QString::number(n);
+    const QString trashed = files + "/" + name, record = info + "/" + name + ".trashinfo";
+    ChangeCoordinator::Request request;
+    request.settingId = QStringLiteral("appearance.icons.remove");
+    request.label = label;
+    request.kind = QStringLiteral("apply");
+    request.before = id;
+    request.after = QString();
+    request.recovery = QStringLiteral("auto-undo");
+    request.nothingToRestore = true;
+    request.extra["remove"] = QJsonObject{{"id", id}, {"name", plan.name}, {"from", plan.path}, {"trashed", trashed}, {"info", record}};
+    const QString from = plan.path;
+    request.apply = [from, trashed, record, files, info](ChangeCoordinator::Done done) {
+        QDir().mkpath(files);
+        QDir().mkpath(info);
+        // The spec writes the record first, so an interrupted move still leaves it findable.
+        const QByteArray entry = "[Trash Info]\nPath=" + QUrl::toPercentEncoding(from, "/") + "\nDeletionDate="
+                                 + QDateTime::currentDateTime().toString("yyyy-MM-ddThh:mm:ss").toUtf8() + "\n";
+        QString error;
+        if (!FileOps::atomicWrite(record, entry, &error, 0600)) {
+            done(false, error);
+            return;
+        }
+        if (!QDir().rename(from, trashed)) {
+            QFile::remove(record);
+            done(false, IconThemeProvider::tr("%1 could not be moved to the Trash, so it was left as it is.").arg(from));
+            return;
+        }
+        done(true, {});
+    };
+    request.verify = [from, trashed](ChangeCoordinator::Done done) {
+        const bool moved = !QFileInfo::exists(from) && QFileInfo(trashed).isDir();
+        done(moved, moved ? QString() : IconThemeProvider::tr("The pack did not reach the Trash."));
+    };
+    request.rollback = [from, trashed, record](ChangeCoordinator::Done done) {
+        if (QFileInfo(trashed).isDir() && !QFileInfo::exists(from) && QDir().rename(trashed, from))
+            QFile::remove(record);
+        done(true, {});
+    };
+    m_coordinator->submit(std::move(request), [this, finished](const Transaction &tx) {
+        if (tx.phase == QLatin1String("committed"))
+            syncLayer(true);
+        finished(tx);
+    });
+}
+
+void IconThemeProvider::undoRemoval(const Transaction &original, Finished finished) {
+    const QJsonObject removed = original.extra.value("remove").toObject();
+    const QString from = removed.value("from").toString(), trashed = removed.value("trashed").toString(), record = removed.value("info").toString();
+    Transaction failed = failure(original.label, {});
+    failed.settingId = original.settingId;
+    if (from.isEmpty() || !QFileInfo(trashed).isDir()) {
+        failed.message = tr("%1 is no longer in the Trash, so it cannot be brought back.").arg(removed.value("name").toString());
+        finished(failed);
+        return;
+    }
+    if (QFileInfo::exists(from) || QFileInfo(from).isSymLink()) {
+        failed.message = tr("A pack is already at %1, so the removed one was left in the Trash.").arg(from);
+        finished(failed);
+        return;
+    }
+    ChangeCoordinator::Request request;
+    request.settingId = original.settingId;
+    request.label = original.label;
+    request.kind = QStringLiteral("undo");
+    request.before = QString();
+    request.after = original.before;
+    request.recovery = QStringLiteral("auto-undo");
+    request.nothingToRestore = true;
+    request.apply = [from, trashed, record](ChangeCoordinator::Done done) {
+        QDir().mkpath(QFileInfo(from).absolutePath());
+        if (!QDir().rename(trashed, from)) {
+            done(false, IconThemeProvider::tr("%1 could not be brought back from the Trash.").arg(from));
+            return;
+        }
+        QFile::remove(record);
+        done(true, {});
+    };
+    request.verify = [from](ChangeCoordinator::Done done) { done(QFileInfo(from).isDir(), {}); };
+    request.rollback = [from, trashed](ChangeCoordinator::Done done) {
+        if (QFileInfo(from).isDir() && !QFileInfo::exists(trashed))
+            QDir().rename(from, trashed);
+        done(true, {});
+    };
+    m_coordinator->submit(std::move(request), [this, finished](const Transaction &tx) {
+        if (tx.phase == QLatin1String("committed"))
+            syncLayer(true);
+        finished(tx);
+    });
 }
 
 QVariantMap IconThemeProvider::samples(const QString &id) const {

@@ -1,7 +1,7 @@
 {
     "claimedCommands": 301,
     "claimedMenu": 356,
-    "entries": 499,
+    "entries": 500,
     "excludedCommands": 132,
     "excludedMenu": 0,
     "exclusions": {
@@ -11959,10 +11959,39 @@
                 "install icons",
                 "add icon pack",
                 "icon theme folder",
-                "drag and drop icons"
+                "drag and drop icons",
+                "icon zip",
+                "icon archive",
+                "tar.gz",
+                "install icon theme"
             ],
             "source_references": [
                 "omarchy-control icons import"
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "page"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C01",
+            "id": "appearance.icons.remove",
+            "implementation_status": "implemented",
+            "integration_mode": "native",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Remove an icon pack",
+                "delete icon pack",
+                "uninstall icon theme",
+                "remove icons",
+                "trash icon pack"
+            ],
+            "source_references": [
+                "omarchy-control icons remove"
             ],
             "supported_versions": "omarchy 4.5.x",
             "validation_evidence": "route-reviewed",
@@ -11972,7 +12001,7 @@
     "modes": {
         "advanced-config": 22,
         "external-helper": 22,
-        "native": 99,
+        "native": 100,
         "omarchy-panel": 22,
         "omarchy-wizard": 334
     },

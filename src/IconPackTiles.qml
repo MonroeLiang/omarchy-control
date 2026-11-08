@@ -15,6 +15,19 @@ Column {
     property bool loading: false
     signal picked(string value)
 
+    // A pack the user installed can go, unless something needs it, which the app checks
+    // first. It moves to the Trash, and undo in History brings it back.
+    function requestRemoval(id) {
+        var plan = backend.planIconRemoval(id)
+        if (!plan.ok) {
+            toast.show(plan.reason, "warning")
+            return
+        }
+        confirm.open_(qsTr("Remove %1").arg(plan.name),
+                      qsTr("%1 moves to the Trash. Undo in History brings it back.").arg(plan.name),
+                      [plan.path], qsTr("Move to Trash"), true, function () { backend.removeIconPack(id) })
+    }
+
     // Refreshing hands over a fresh list every time. Rebuilding the tiles for one with the
     // same contents would throw away keyboard focus, so it only changes when they do.
     property var packs: []
@@ -147,6 +160,7 @@ Column {
                     readonly property bool follows: modelData.value === "follow-theme"
                     readonly property string packId: follows ? root.desktopPack : (modelData.id || "")
                     readonly property bool selected: modelData.value === root.current
+                    readonly property bool removable: !!modelData.removable && !follows && !selected
                     readonly property var preview: packId.length ? backend.iconSamples(packId) : ({ samples: [], borrowedFrom: "" })
                     width: root.tileWidth
                     height: frame.height + caption.implicitHeight + subcaption.implicitHeight + 8
@@ -162,6 +176,7 @@ Column {
                     ToolTip.text: caption.text
                     ToolTip.delay: 500
                     onClicked: if (!root.busy && (!selected || root.reconcile)) root.picked(modelData.value)
+                    Keys.onDeletePressed: if (removable && !root.busy) root.requestRemoval(packId)
                     background: Item {}
                     contentItem: Column {
                         spacing: 4
@@ -199,6 +214,33 @@ Column {
                                 border.color: tile.selected || tile.visualFocus ? theme.accent
                                             : tile.hovered ? Qt.alpha(theme.foreground, 0.5)
                                             : theme.divider
+                            }
+                            // Only on packs the user installed, and only where a pointer or the
+                            // keyboard is, so the gallery stays calm.
+                            AbstractButton {
+                                objectName: "iconPackRemove"
+                                visible: tile.removable && (tile.hovered || hovered || tile.visualFocus)
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.margins: 6
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+                                focusPolicy: Qt.NoFocus
+                                Accessible.name: qsTr("Remove %1").arg(caption.text)
+                                ToolTip.visible: hovered
+                                ToolTip.text: qsTr("Remove (Delete)")
+                                ToolTip.delay: 400
+                                onClicked: root.requestRemoval(tile.packId)
+                                background: Rectangle {
+                                    radius: Math.min(12, Math.max(3, theme.radius))
+                                    color: parent.hovered ? Qt.alpha(theme.dangerText, 0.22) : Qt.alpha(theme.window, 0.85)
+                                    border.width: 1
+                                    border.color: theme.divider
+                                }
+                                contentItem: Item {
+                                    AppIcon { anchors.centerIn: parent; name: "trash"; size: 13; tint: parent.parent.hovered ? theme.dangerText : theme.muted }
+                                }
                             }
                             Rectangle {
                                 visible: tile.selected

@@ -219,6 +219,14 @@ struct LauncherDesk {
     }
 };
 
+Transaction removeIconPack(IconThemeProvider &icons, const QString &id) {
+    Transaction result;
+    bool done = false;
+    icons.removePack(id, [&](const Transaction &tx) { result = tx; done = true; });
+    QTest::qWaitFor([&] { return done; }, 15000);
+    return result;
+}
+
 // An archive written entry by entry, so a test can make one no real tool would: paths that
 // climb out, links to write through, and devices.
 struct ArchiveItem {
@@ -6738,6 +6746,98 @@ esac)SH");
         IconThemeImporter importer(s.env, &core.coordinator);
         importer.recoverStaging();
         QCOMPARE(QDir(s.env.appCacheDir).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot), QStringList());
+    }
+
+    // ---- Removing a pack ------------------------------------------------------------
+    void removingAPackMovesItToTheTrashAndUndoBringsItBack() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Papirus");
+        addPack(desk.user, "Mine");
+        AppCore core(s.env);
+        // Only what the user installed is offered for removal.
+        QVariantList choices;
+        bool read = false;
+        core.icons.readChoices([&](const QVariantList &list) { choices = list; read = true; });
+        QTest::qWaitFor([&] { return read; }, 5000);
+        QStringList removable;
+        for (const QVariant &choice : choices)
+            if (choice.toMap().value("removable").toBool())
+                removable << choice.toMap().value("id").toString();
+        QCOMPARE(removable, QStringList{"Mine"});
+
+        const Transaction tx = removeIconPack(core.icons, "Mine");
+        QCOMPARE(tx.phase, QString("committed"));
+        QVERIFY(!QFileInfo::exists(desk.user + "/Mine"));
+        const QString trash = s.env.dataHome + "/Trash";
+        QCOMPARE(readAll(trash + "/files/Mine/scalable/apps/folder.svg"), QByteArray(kSvg));
+        const QByteArray info = readAll(trash + "/info/Mine.trashinfo");
+        QVERIFY(info.startsWith("[Trash Info]\nPath=" + QUrl::toPercentEncoding(desk.user + "/Mine", "/") + "\nDeletionDate="));
+        QCOMPARE(core.coordinator.history().first().settingId, QString("appearance.icons.remove"));
+
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QCOMPARE(readAll(desk.user + "/Mine/scalable/apps/folder.svg"), QByteArray(kSvg));
+        QVERIFY(!QFileInfo::exists(trash + "/files/Mine"));
+        QVERIFY(!QFileInfo::exists(trash + "/info/Mine.trashinfo"));
+
+        // A second removal of the same name does not overwrite what the Trash already holds.
+        writeFile(trash + "/files/Mine/keep", "x");
+        writeFile(trash + "/info/Mine.trashinfo", "[Trash Info]\n");
+        QCOMPARE(removeIconPack(core.icons, "Mine").phase, QString("committed"));
+        QVERIFY(QFileInfo(trash + "/files/Mine.2").isDir());
+        QCOMPARE(readAll(trash + "/files/Mine/keep"), QByteArray("x"));
+    }
+
+    void anEmptiedTrashIsSaidPlainlyOnUndo() {
+        Sandbox s;
+        IconDesk desk(s);
+        desk.setEffective("Papirus");
+        addPack(desk.user, "Gone");
+        AppCore core(s.env);
+        const Transaction tx = removeIconPack(core.icons, "Gone");
+        QCOMPARE(tx.phase, QString("committed"));
+        QVERIFY(QDir(s.env.dataHome + "/Trash/files/Gone").removeRecursively());
+        const Transaction undone = undoTx(core.engine, tx.id);
+        QCOMPARE(undone.phase, QString("failed"));
+        QVERIFY(undone.message.contains("no longer in the Trash"));
+    }
+
+    // What is in use, or what another pack needs, stays; and system packs belong to packages.
+    void packsThatAreNeededStay() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(desk.user, "Base");
+        addPack(desk.user, "Child", {"folder"}, "Base");
+        addPack(desk.user, "Target");
+        addPack(desk.user, "Linker", {});
+        QDir().mkpath(desk.user + "/Linker/scalable/apps");
+        QVERIFY(QFile::link("../../../Target/scalable/apps/folder.svg", desk.user + "/Linker/scalable/apps/folder.svg"));
+        addPack(desk.user, "Used");
+        addPack(desk.user, "Asked");
+        addPack(desk.user, "Chosen");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Chosen").phase, QString("committed"));
+        const auto blocked = [&](const QString &id, const QString &words) {
+            const IconThemeProvider::Removal plan = core.icons.planRemoval(id);
+            if (plan.ok || !plan.reason.contains(words)) {
+                qWarning() << id << plan.ok << plan.reason;
+                return false;
+            }
+            // Trying anyway changes nothing.
+            return removeIconPack(core.icons, id).phase == QLatin1String("failed") && (id == QLatin1String("Papirus") || QFileInfo::exists(desk.user + "/" + id));
+        };
+        QVERIFY(blocked("Papirus", "came with the system"));
+        QVERIFY(blocked("Chosen", "your chosen pack"));
+        QVERIFY(blocked("Base", "Child builds on Base"));
+        QVERIFY(blocked("Target", "Linker links into Target"));
+        desk.themeAsks("Asked");
+        QVERIFY(blocked("Asked", "current Omarchy theme asks for"));
+        // Set elsewhere, so it is the pack in use without being this app's choice.
+        writeFile(desk.policy(), "{\"version\":1,\"mode\":\"follow-theme\"}\n");
+        desk.setEffective("Used");
+        QVERIFY(blocked("Used", "is in use"));
+        // With nothing needing it any more, it can go.
+        QVERIFY(core.icons.planRemoval("Child").ok);
     }
 
     void badFoldersAreExplainedAndNothingIsCopied() {

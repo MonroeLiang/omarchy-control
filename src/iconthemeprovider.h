@@ -100,6 +100,16 @@ public:
     QVariantMap layerState() const;
     static QString layerReason(const QVariantMap &state);
     int retireIconic(QString *message) const;
+
+    // Removing a pack the user installed: it goes to the Trash, and undo brings it back.
+    // What is in use, or what another pack needs, stays.
+    struct Removal {
+        bool ok = false;
+        QString reason, name, path;
+    };
+    Removal planRemoval(const QString &id) const;
+    void removePack(const QString &id, Finished finished);
+    void undoRemoval(const Transaction &original, Finished finished);
     int restoreIconic(QString *message) const;
 
 private:

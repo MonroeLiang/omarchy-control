@@ -6,7 +6,7 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 
 | Check | Evidence |
 | --- | --- |
-| 378 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
+| 381 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
 | 105 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
 | Package install, upgrade, and removal | `tools/package-check.sh`, the real package in a disposable pacman root, with real `pacman` under `fakeroot` |
 | All 77 typed settings read correctly on real hardware | `omarchy-control doctor` on Omarchy 4.5.0-3; recorded in `live-evidence.json` |
@@ -55,7 +55,7 @@ These need your real session or hardware. Jason decided on November 6, 2026 to r
 
 ## Languages
 
-Danish, German, and Arabic are 100% translated: 812 interface and 1034 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
+Danish, German, and Arabic are 100% translated: 829 interface and 1036 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
 
 ## First live run
 
@@ -92,9 +92,10 @@ Stop at anything surprising, and use `omarchy-control history` and `undo`. This 
 2. **Keep it:** with Omarchy Control closed, switch themes twice. The pack should stay. Log out and back in. It should still stay.
 3. **Follow:** pick Follow desktop theme, then switch to `catppuccin`, which asks for `Yaru-purple`. Files should follow.
 4. **Undo:** in History, undo each change, newest first. The first undo of all should remove `~/.config/omarchy/hooks/theme-set.d/90-omarchy-control-icons` and `~/.config/omarchy-control/icons.json`, and leave `gsettings get org.gnome.desktop.interface icon-theme` where it started.
-5. **Import:** download a pack. Drag the downloaded archive onto the tiles, and separately use Import archive. Then extract it and do the same with its folder and Import folder. Try one that holds several packs, such as Papirus, whose dark variants link into the main pack: each should arrive, and its dark variant should show icons. Each should say Imported and change nothing until you press Use this pack. An imported pack can change launcher and dock icons even when it is not chosen, because their list reads every pack. To remove a pack, delete its folder from `~/.local/share/icons`.
+5. **Import:** download a pack. Drag the downloaded archive onto the tiles, and separately use Import archive. Then extract it and do the same with its folder and Import folder. Try one that holds several packs, such as Papirus, whose dark variants link into the main pack: each should arrive, and its dark variant should show icons. Each should say Imported and change nothing until you press Use this pack. An imported pack can change launcher and dock icons even when it is not chosen, because their list reads every pack. 
 6. **Launcher icons off and on:** turn off Launcher and dock icons. `~/.icons/omarchy-control` should be gone, and the launcher should go back to mixing packs the next time it opens. Turn it on again.
-7. **Other apps:** open an XWayland GTK 3 app and a KDE app, if any are installed. Note whether they follow the pack now that `~/.config/gtk-3.0/settings.ini` and `~/.config/kdeglobals` name it.
+7. **Remove:** hover a pack you imported and press its trash button, or focus it and press Delete. It should go to the Trash (check your file manager's Trash), and undo in History should bring it back. Try removing the pack in use, and a pack another one builds on: each should explain why it stays.
+8. **Other apps:** open an XWayland GTK 3 app and a KDE app, if any are installed. Note whether they follow the pack now that `~/.config/gtk-3.0/settings.ini` and `~/.config/kdeglobals` name it.
 
 ## Displays page
 

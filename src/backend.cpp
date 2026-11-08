@@ -538,6 +538,21 @@ void Backend::syncIconLayer() {
     worker->start();
 }
 
+QVariantMap Backend::planIconRemoval(const QString &id) const {
+    const IconThemeProvider::Removal plan = m_core->icons.planRemoval(id);
+    return {{"ok", plan.ok}, {"reason", plan.reason}, {"name", plan.name}, {"path", plan.path}};
+}
+
+void Backend::removeIconPack(const QString &id) {
+    m_core->icons.removePack(id, [this](const Transaction &tx) {
+        const bool ok = tx.phase == QLatin1String("committed");
+        const QString name = tx.extra.value("remove").toObject().value("name").toString();
+        emit toast(ok ? tr("Moved %1 to the Trash. Undo in History brings it back.").arg(name) : tx.message, ok ? "ok" : "error");
+        refresh(QStringLiteral("appearance.icons"));
+        refresh(QStringLiteral("appearance.icons.launcher"));
+    });
+}
+
 void Backend::retireIconic() {
     QString message;
     const int code = m_core->icons.retireIconic(&message);
