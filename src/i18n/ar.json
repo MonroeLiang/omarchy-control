@@ -1925,5 +1925,7 @@
  "Installed": "المثبّت",
  "Floating workspaces focus on click. This applies on tiled workspaces.": "مساحات العمل العائمة تركّز عند النقر. ينطبق هذا على مساحات العمل المتجانبة.",
  "Floating workspaces set this themselves. This applies on tiled workspaces.": "تحدد مساحات العمل العائمة هذا بنفسها. ينطبق هذا على مساحات العمل المتجانبة.",
- "Your config": "إعداداتك"
+ "Your config": "إعداداتك",
+ "Open Omarchy Control": "فتح Omarchy Control",
+ "Quit Omarchy Control": "إنهاء Omarchy Control"
 }

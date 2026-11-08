@@ -58,6 +58,7 @@
 #include "systemprovider.h"
 #include "theme.h"
 #include "translator.h"
+#include "trayhost.h"
 #include "updater.h"
 
 namespace {
@@ -3219,6 +3220,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -3226,6 +3228,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -3260,6 +3263,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -3267,6 +3271,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -3353,6 +3358,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -3360,6 +3366,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -3627,6 +3634,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -3634,6 +3642,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -3662,6 +3671,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -3669,6 +3679,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -3700,6 +3711,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -3707,6 +3719,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -3894,6 +3907,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -3901,6 +3915,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -4112,6 +4127,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -4119,6 +4135,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         QObject *window = engine.rootObjects().first();
         auto *dialog = window->findChild<QObject *>("confirmDialog");
@@ -4172,6 +4189,7 @@ esac
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         QStringList warnings;
         connect(&engine, &QQmlApplicationEngine::warnings, this, [&](const QList<QQmlError> &list) {
@@ -4184,6 +4202,7 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         QVERIFY2(!engine.rootObjects().isEmpty(), qPrintable(warnings.join("\n")));
         QObject *window = engine.rootObjects().first();
@@ -4198,13 +4217,17 @@ esac
         QTest::qWait(200);
         QVERIFY2(warnings.isEmpty(), qPrintable(warnings.join("\n")));
     }
-    void keyboardDrivesSearchAndRespectsTyping() {
+    // Tests and the screenshot harness run offscreen on the real session bus, so they must
+    // never put an icon in the real bar. And with no tray to wait in, closing still quits.
+    void withoutATrayClosingTheWindowQuits() {
         Sandbox s;
         fakeDesktop(s);
         QQuickStyle::setStyle("Material");
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
+        QVERIFY(!trayHost.available());
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.rootContext()->setContextProperty("translator", &translator);
@@ -4212,6 +4235,32 @@ esac
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
+        engine.load(QUrl("qrc:/Main.qml"));
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window, 3000));
+        QVERIFY(!window->property("inTray").toBool());
+        QSignalSpy quit(&engine, &QQmlEngine::quit);
+        window->close();
+        QTRY_COMPARE(quit.count(), 1);
+    }
+    void keyboardDrivesSearchAndRespectsTyping() {
+        Sandbox s;
+        fakeDesktop(s);
+        QQuickStyle::setStyle("Material");
+        Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
+        Theme theme(s.env);
+        Backend backend(s.env);
+        TrayHost trayHost;
+        QQmlApplicationEngine engine;
+        engine.addImageProvider("icons", new IconProvider);
+        engine.rootContext()->setContextProperty("translator", &translator);
+        engine.rootContext()->setContextProperty("theme", &theme);
+        engine.rootContext()->setContextProperty("backend", &backend);
+        engine.rootContext()->setContextProperty("initialPage", QString());
+        engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);
@@ -4422,6 +4471,7 @@ private:
         Translator translator;
         Theme theme;
         Backend backend;
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         QQuickWindow *window = nullptr;
         explicit DesktopPage(Sandbox &sandbox)
@@ -4434,6 +4484,7 @@ private:
             engine.rootContext()->setContextProperty("backend", &backend);
             engine.rootContext()->setContextProperty("initialPage", QString());
             engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
             engine.load(QUrl("qrc:/Main.qml"));
             window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
             window->resize(1427, 1102);
@@ -6438,6 +6489,7 @@ esac)SH");
         Translator translator(s.env.configHome + "/omarchy/language", ":/i18n", s.env.omarchyPath + "/default/i18n/locales.json");
         Theme theme(s.env);
         Backend backend(s.env);
+        TrayHost trayHost;
         QQmlApplicationEngine engine;
         engine.addImageProvider("icons", new IconProvider);
         engine.addImageProvider("iconpacks", new IconPackImageProvider(s.env));
@@ -6446,6 +6498,7 @@ esac)SH");
         engine.rootContext()->setContextProperty("backend", &backend);
         engine.rootContext()->setContextProperty("initialPage", QString());
         engine.rootContext()->setContextProperty("initialSetting", QString());
+        engine.rootContext()->setContextProperty("trayHost", &trayHost);
         engine.load(QUrl("qrc:/Main.qml"));
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         QVERIFY(window);

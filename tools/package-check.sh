@@ -26,7 +26,7 @@ pass() { echo "PASS: $*"; }
 (cd "$ROOT/pkgbuild" && PKGDEST="$WORK/v1" BUILDDIR="$WORK/b1" makepkg -f --nodeps --noconfirm >/dev/null 2>&1) || true
 mkdir -p "$WORK/v1"
 (cd "$ROOT/pkgbuild" && PKGDEST="$WORK/v1" makepkg -f --nodeps --noconfirm >"$WORK/make1.log" 2>&1) || fail "package did not build"
-cp "$ROOT/pkgbuild/omarchy-control.desktop" "$ROOT/pkgbuild/omarchy-control.svg" "$UPGRADE/"
+cp "$ROOT/pkgbuild/omarchy-control.desktop" "$ROOT/pkgbuild/omarchy-control.svg" "$ROOT/pkgbuild/omarchy-control-symbolic.svg" "$UPGRADE/"
 sed 's/^pkgrel=.*/pkgrel=2/' "$ROOT/pkgbuild/PKGBUILD" >"$UPGRADE/PKGBUILD"
 mkdir -p "$WORK/v2"
 (cd "$UPGRADE" && PKGDEST="$WORK/v2" makepkg -f --nodeps --noconfirm >"$WORK/make2.log" 2>&1) || fail "upgrade package did not build"
@@ -43,10 +43,10 @@ mkdir -p "$HOME_DIR"
 echo '{"pins":["appearance.theme"]}' >"$HOME_DIR/preferences.json"
 
 pac -U "$V1" >"$WORK/install.log" 2>&1 || fail "install failed: $(tail -4 "$WORK/install.log")"
-for f in usr/bin/omarchy-control usr/share/applications/omarchy-control.desktop usr/share/icons/hicolor/scalable/apps/omarchy-control.svg usr/share/licenses/omarchy-control/LICENSE; do
+for f in usr/bin/omarchy-control usr/share/applications/omarchy-control.desktop usr/share/icons/hicolor/scalable/apps/omarchy-control.svg usr/share/icons/hicolor/symbolic/apps/omarchy-control-symbolic.svg usr/share/licenses/omarchy-control/LICENSE; do
   [ -e "$WORK/root/$f" ] || fail "missing after install: $f"
 done
-pass "install places the binary, launcher entry, icon, and license"
+pass "install places the binary, launcher entry, icons, and license"
 "$WORK/root/usr/bin/omarchy-control" --version | grep -qF "$VERSION" && pass "installed binary runs"
 grep -q 'Exec=omarchy-control open' "$WORK/root/usr/share/applications/omarchy-control.desktop" && grep -q 'Keywords=Settings;Control Panel;Preferences' "$WORK/root/usr/share/applications/omarchy-control.desktop" && pass "launcher opens the window and finds Settings and Control Panel"
 need="$(readelf -d "$WORK/root/usr/bin/omarchy-control" | sed -n 's/.*NEEDED.*\[\(libQt6[A-Za-z]*\).*/\1/p' | sort -u | tr '\n' ' ')"

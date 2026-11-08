@@ -1873,5 +1873,7 @@
  "Installed": "Installiert",
  "Floating workspaces focus on click. This applies on tiled workspaces.": "Schwebende Arbeitsbereiche fokussieren per Klick. Dies gilt für gekachelte Arbeitsbereiche.",
  "Floating workspaces set this themselves. This applies on tiled workspaces.": "Schwebende Arbeitsbereiche legen dies selbst fest. Dies gilt für gekachelte Arbeitsbereiche.",
- "Your config": "Ihre Konfiguration"
+ "Your config": "Ihre Konfiguration",
+ "Open Omarchy Control": "Omarchy Control öffnen",
+ "Quit Omarchy Control": "Omarchy Control beenden"
 }

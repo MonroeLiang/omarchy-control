@@ -104,7 +104,7 @@ Check for a new version and install it from the About page, where <code>pacman</
 
 It also covers services, startup apps, storage, plugins, shortcuts, window rules, file associations, typed Superwhisper settings, and guided firewall routes. Every other Omarchy workflow is one search away, handing off to the right panel, wizard, app, or config file.
 
-The window follows your theme and language live, works by keyboard alone, and mirrors for right-to-left languages. Screenshots use a synthetic machine with fictional values.
+The window follows your theme and language live, works by keyboard alone, and mirrors for right-to-left languages. While it runs, its icon sits in the bar's tray: closing the window keeps it there, and a click brings the window back to the workspace you are on. Quit from the tray's menu, or with <kbd>Q</kbd>. Without a tray, closing quits. Screenshots use a synthetic machine with fictional values.
 
 ### Coverage
 
@@ -143,7 +143,7 @@ Every public Omarchy command and menu row in the 4.5 inventory has a destination
 | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> | Redo |
 | <kbd>Esc</kbd> | Close a dialog, this list, or search |
 | <kbd>?</kbd> | Show shortcuts |
-| <kbd>Q</kbd> or <kbd>Ctrl</kbd> <kbd>Q</kbd> | Quit |
+| <kbd>Q</kbd> or <kbd>Ctrl</kbd> <kbd>Q</kbd> | Quit, including from the tray |
 
 Single-letter keys switch off while you are typing.
 
@@ -188,7 +188,7 @@ Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wa
 ```sh
 bin/build                  # build/omarchy-control
 bin/install                # Build the Arch package from this checkout and install it
-bin/test                   # 361 tests; never touches the real desktop
+bin/test                   # 362 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
 tools/installer-check.sh   # install.sh against real release files in a disposable root

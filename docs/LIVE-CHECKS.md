@@ -6,8 +6,8 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 
 | Check | Evidence |
 | --- | --- |
-| 361 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
-| 87 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
+| 362 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
+| 97 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
 | Package install, upgrade, and removal | `tools/package-check.sh`, the real package in a disposable pacman root, with real `pacman` under `fakeroot` |
 | All 77 typed settings read correctly on real hardware | `omarchy-control doctor` on Omarchy 4.5.0-3; recorded in `live-evidence.json` |
 | 391 of 392 routes resolve to an installed executable | Same run. `omarchy-notes` is not installed on that machine, and the row says so. None were launched |
@@ -31,6 +31,7 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 - **Shell:** plugin toggles and bar widget moves work through it. Five panel routes answer over IPC. With the shell killed, shell-only settings and panels report that plainly.
 - **Helpers:** the config editor, a TUI, and a terminal workflow each open a real window.
 - **A real window:** correct Wayland app ID, no QML warnings. Real key events through a real keymap drive Ctrl+K, search, Enter, `?`, Esc, and Q. A second launch hands over and leaves one window. The accent color and Arabic mirroring follow file changes live.
+- **The tray:** on a private bus that starts nothing on its own, the real shell hosts the app's icon, named for the app. Closing the window keeps the app running in the tray, clicking the icon brings the window back, a launch from the hidden state shows the one window, and Quit in the tray's menu ends the app and removes the icon. No warnings.
 
 It is a nested session: one virtual output and no real devices. The touchpad reported to it is simulated, while the options set on it are real.
 
@@ -53,7 +54,7 @@ These need your real session or hardware. Jason decided on November 6, 2026 to r
 
 ## Languages
 
-Danish, German, and Arabic are 100% translated: 747 interface and 1023 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
+Danish, German, and Arabic are 100% translated: 749 interface and 1023 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
 
 ## First live run
 
