@@ -5,7 +5,7 @@ pkgdesc='One searchable place to understand this computer, change its settings, 
 arch=('x86_64' 'aarch64')
 url='https://github.com/last-refuge/omarchy-control'
 license=('MIT')
-depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-wayland' 'hicolor-icon-theme' 'curl')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-wayland' 'hicolor-icon-theme' 'curl' 'libarchive')
 optdepends=('omarchy: the desktop this manages'
             'hyprland: window, input, and display settings'
             'networkmanager: network settings'

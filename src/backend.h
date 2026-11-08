@@ -29,6 +29,8 @@ public:
 
 // What QML sees. Rows read the live value of a setting from `states`, keyed by
 // stateKey(id); actions go through the same engine the CLI uses.
+class QThread;
+
 class Backend : public QObject {
     Q_OBJECT
     Q_PROPERTY(QQmlPropertyMap *states READ states CONSTANT)
@@ -55,6 +57,7 @@ class Backend : public QObject {
 
 public:
     explicit Backend(const Env &env, QObject *parent = nullptr);
+    ~Backend() override;
 
     QQmlPropertyMap *states() { return &m_states; }
     QVariantList pages() const;
@@ -105,6 +108,9 @@ public:
     Q_INVOKABLE void launch(const QString &id);
     Q_INVOKABLE void togglePin(const QString &id);
     Q_INVOKABLE void clearRestartNotice();
+    // Hands Iconic's icon files over to this app, or puts them back (iconlayer.h).
+    Q_INVOKABLE void retireIconic();
+    Q_INVOKABLE void restoreIconic();
 
 signals:
     void capabilitiesChanged();
@@ -150,5 +156,13 @@ private:
     QString m_currentPage = "overview";
     QFileSystemWatcher m_watcher;
     QTimer m_watchDebounce;
+    // Apps added or removed while this runs get their launcher icon without waiting for
+    // the next theme change or update. Builds run off the window's thread, one at a time.
+    void syncIconLayer();
+    QFileSystemWatcher m_appsWatcher;
+    QTimer m_layerDebounce;
+    bool m_layerRunning = false;
+    QThread *m_layerWorker = nullptr;
+    bool m_layerAgain = false;
     QTimer m_capabilityDebounce;
 };

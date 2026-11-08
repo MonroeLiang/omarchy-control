@@ -1,5 +1,7 @@
 #include "backend.h"
 
+#include <QThread>
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
@@ -65,6 +67,16 @@ Backend::Backend(const Env &env, QObject *parent)
             QTimer::singleShot(2500, this, [this] { refresh(QStringLiteral("appearance.icons")); });
     });
     watchFiles();
+
+    m_layerDebounce.setSingleShot(true);
+    m_layerDebounce.setInterval(3000);
+    connect(&m_layerDebounce, &QTimer::timeout, this, &Backend::syncIconLayer);
+    connect(&m_appsWatcher, &QFileSystemWatcher::directoryChanged, &m_layerDebounce, qOverload<>(&QTimer::start));
+    for (const QString &root : QStringList{env.dataHome} + env.dataDirs)
+        if (QFileInfo(root + "/applications").isDir())
+            m_appsWatcher.addPath(root + "/applications");
+    // Something may have changed while this was closed. After the window has drawn.
+    QTimer::singleShot(1500, this, &Backend::syncIconLayer);
 
     // What a page can do depends on capabilities that arrive after it first draws.
     m_capabilityDebounce.setSingleShot(true);
@@ -496,6 +508,50 @@ QVariantList Backend::problems() const {
     if (!compatible())
         add(tr("This Omarchy version is newer than the one this app was tested with. Changes may not behave as described."), "advanced");
     return rows;
+}
+
+// A build still running reads this app's state, so it finishes before that goes away.
+Backend::~Backend() {
+    if (m_layerWorker)
+        m_layerWorker->wait();
+}
+
+void Backend::syncIconLayer() {
+    if (m_layerRunning) {
+        m_layerAgain = true;
+        return;
+    }
+    m_layerRunning = true;
+    const IconThemeProvider *icons = &m_core->icons;
+    QThread *worker = QThread::create([icons] { icons->syncLayer(true); });
+    m_layerWorker = worker;
+    connect(worker, &QThread::finished, this, [this, worker] {
+        worker->deleteLater();
+        m_layerWorker = nullptr;
+        m_layerRunning = false;
+        refresh(QStringLiteral("appearance.icons.launcher"));
+        if (m_layerAgain) {
+            m_layerAgain = false;
+            syncIconLayer();
+        }
+    });
+    worker->start();
+}
+
+void Backend::retireIconic() {
+    QString message;
+    const int code = m_core->icons.retireIconic(&message);
+    emit toast(message, code == 0 ? "ok" : "error");
+    refresh(QStringLiteral("appearance.icons"));
+    refresh(QStringLiteral("appearance.icons.launcher"));
+}
+
+void Backend::restoreIconic() {
+    QString message;
+    const int code = m_core->icons.restoreIconic(&message);
+    emit toast(message, code == 0 ? "ok" : "error");
+    refresh(QStringLiteral("appearance.icons"));
+    refresh(QStringLiteral("appearance.icons.launcher"));
 }
 
 void Backend::clearRestartNotice() {

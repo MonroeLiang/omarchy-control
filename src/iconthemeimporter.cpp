@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLockFile>
+#include <QProcess>
 #include <QStorageInfo>
 #include <QUuid>
 #include <functional>
@@ -19,6 +20,7 @@
 #include <unistd.h>
 
 #include "fileops.h"
+#include "iconarchive.h"
 
 namespace {
 
@@ -119,7 +121,7 @@ QString scan(const QString &root, const QString &relative, int depth, Manifest *
 // Follows a link the way the filesystem would, component by component, through the pack's
 // other links. Doing it on the text alone could be fooled: x/.. is somewhere else entirely
 // when x is itself a link. Only a target that stays inside the pack is allowed.
-QString checkLink(const QString &path, const Manifest &manifest) {
+QString checkLink(const QString &path, const Manifest &manifest, const QString &id, const QStringList &siblings) {
     QStringList resolved = path.split('/');
     resolved.removeLast();
     QStringList pending = manifest.links.value(path).split('/');
@@ -131,8 +133,29 @@ QString checkLink(const QString &path, const Manifest &manifest) {
         if (part.isEmpty() || part == QLatin1String("."))
             continue;
         if (part == QLatin1String("..")) {
-            if (resolved.isEmpty())
-                return IconThemeImporter::tr("The link %1 points outside the pack, so nothing was imported.").arg(path);
+            if (resolved.isEmpty()) {
+                // Up into the icons folder. Back into this pack is fine; so is a pack that
+                // came in the same archive and is installed beside it, as Papirus-Dark
+                // links into Papirus. That pack's own links are checked when it is imported.
+                const QString into = pending.isEmpty() ? QString() : pending.first();
+                if (into == id) {
+                    pending.removeFirst();
+                    continue;
+                }
+                if (into.isEmpty() || into == QLatin1String("..") || !siblings.contains(into))
+                    return IconThemeImporter::tr("The link %1 points outside the pack, so nothing was imported.").arg(path);
+                pending.removeFirst();
+                int depth = 0;
+                for (const QString &rest : std::as_const(pending)) {
+                    if (rest == QLatin1String(".."))
+                        --depth;
+                    else if (!rest.isEmpty() && rest != QLatin1String("."))
+                        ++depth;
+                    if (depth < 0)
+                        return IconThemeImporter::tr("The link %1 points outside the pack, so nothing was imported.").arg(path);
+                }
+                return {};
+            }
             resolved.removeLast();
             continue;
         }
@@ -214,7 +237,7 @@ bool sameTree(const Manifest &a, const Manifest &b) {
 
 // Builds and checks the copy on its own thread. Everything it needs is copied in, and it
 // reports through the callback, so it shares nothing with the window while it runs.
-QString stageTree(const IconThemeImporter::Inspection &plan, const QString &staging, const std::atomic_bool &cancel, const std::function<void(qreal)> &report) {
+QString stageTree(const IconThemeImporter::Inspection &plan, const QString &staging, const QString &cacheTool, const std::atomic_bool &cancel, const std::function<void(qreal)> &report) {
     Manifest manifest;
     QString error = scan(plan.source, {}, 0, &manifest, cancel);
     if (!error.isEmpty())
@@ -222,7 +245,7 @@ QString stageTree(const IconThemeImporter::Inspection &plan, const QString &stag
     for (const auto &entry : std::as_const(manifest.entries)) {
         if (entry.kind != Entry::Link)
             continue;
-        error = checkLink(entry.path, manifest);
+        error = checkLink(entry.path, manifest, plan.id, plan.siblings);
         if (!error.isEmpty())
             return error;
     }
@@ -280,6 +303,16 @@ QString stageTree(const IconThemeImporter::Inspection &plan, const QString &stag
         return IconThemeImporter::tr("The copy could not be checked, so nothing was imported.");
     if (cancel.load())
         return IconThemeImporter::tr("Import cancelled.");
+    // A cache that came with the pack describes the files where it was made, and a stale
+    // one hides icons. It is made afresh for this copy, or left out if it cannot be.
+    QFile::remove(staging + "/icon-theme.cache");
+    if (!cacheTool.isEmpty()) {
+        QProcess cache;
+        cache.start(cacheTool, {"-f", "-t", "-q", staging});
+        // Without one, lookups are only slower, so a failure here is no reason to stop.
+        if (!cache.waitForFinished(120000))
+            cache.kill();
+    }
     QFile::remove(staging + "/" + OwnerFile);
     ::chmod(local(staging).constData(), 0755);
     // Everything reaches the disk before the pack appears, so that a power cut cannot leave
@@ -330,14 +363,9 @@ IconThemeImporter::Inspection IconThemeImporter::inspect(const QString &folder) 
         return result;
     }
     if (!info.isDir()) {
-        static const QStringList archives{".zip", ".tar", ".tgz", ".txz", ".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".7z", ".rar"};
-        for (const QString &suffix : archives) {
-            if (folder.endsWith(suffix, Qt::CaseInsensitive)) {
-                result.error = tr("This is an archive. Extract it first, then import the folder it contains.");
-                return result;
-            }
-        }
-        result.error = tr("This is a file. Choose the folder that holds the pack's index.theme.");
+        result.error = folder.endsWith(QLatin1String(".rar"), Qt::CaseInsensitive)
+                           ? tr("RAR archives cannot be read here. Extract it first, then import the folder it contains.")
+                           : tr("This is a file. Choose the folder that holds the pack's index.theme, or a .zip, .tar, or .7z archive.");
         return result;
     }
     result.source = info.canonicalFilePath();
@@ -406,7 +434,7 @@ IconThemeImporter::Inspection IconThemeImporter::inspect(const QString &folder) 
 
 void IconThemeImporter::choose(const QUrl &folder) {
     if (!folder.isLocalFile()) {
-        reject(tr("Only a folder on this computer can be imported."));
+        reject(tr("Only a folder or archive on this computer can be imported."));
         return;
     }
     choosePath(folder.toLocalFile());
@@ -416,6 +444,10 @@ void IconThemeImporter::choosePath(const QString &folder) {
     // A second drop while one is copying must not start another.
     if (busy())
         return;
+    if (QFileInfo(folder).isFile() && IconArchive::isArchive(folder)) {
+        startArchive(folder);
+        return;
+    }
     m_inspection = inspect(folder);
     if (!m_inspection.ok) {
         setState(QStringLiteral("failed"), m_inspection.error);
@@ -429,15 +461,23 @@ void IconThemeImporter::choosePath(const QString &folder) {
 }
 
 void IconThemeImporter::confirm() {
-    if (m_state == QLatin1String("confirm"))
+    if (m_state != QLatin1String("confirm"))
+        return;
+    if (m_batch.active)
+        nextFromArchive();
+    else
         start();
 }
 
 void IconThemeImporter::cancel() {
     if (m_cancel)
         m_cancel->store(true);
-    if (m_state == QLatin1String("confirm"))
-        setState(QStringLiteral("idle"), {});
+    if (m_state == QLatin1String("confirm")) {
+        if (m_batch.active)
+            finishArchive({}, true);
+        else
+            setState(QStringLiteral("idle"), {});
+    }
 }
 
 void IconThemeImporter::dismiss() {
@@ -453,22 +493,20 @@ void IconThemeImporter::reject(const QString &message) {
 void IconThemeImporter::start() {
     // Checked again now, since time may have passed waiting for a confirmation.
     const QString source = m_inspection.source;
+    const QStringList siblings = m_inspection.siblings;
     m_inspection = inspect(source);
+    m_inspection.siblings = siblings;
     if (!m_inspection.ok) {
+        if (m_batch.active) {
+            m_batch.notes << m_inspection.error;
+            nextFromArchive();
+            return;
+        }
         setState(QStringLiteral("failed"), m_inspection.error);
         return;
     }
-    // Copying can take a while, so it does not hold the lock other changes wait on, and a
-    // theme change meanwhile still gets its turn. This lock is only for imports. It has no
-    // age limit, so a long copy is never mistaken for one that stopped.
-    m_importLock = std::make_unique<QLockFile>(m_env.appStateDir + "/icon-import.lock");
-    m_importLock->setStaleLockTime(0);
-    if (!m_importLock->tryLock(0)) {
-        m_importLock.reset();
-        setState(QStringLiteral("failed"), tr("Another icon pack is being imported. Try again when it is done."));
-        emit finished(false);
+    if (!lockImports())
         return;
-    }
     m_progress.store(0);
     emit progressChanged();
     m_cancel = std::make_shared<std::atomic_bool>(false);
@@ -478,8 +516,9 @@ void IconThemeImporter::start() {
     const QString staging = QFileInfo(plan.destination).absolutePath() + "/" + StagingPrefix + QUuid::createUuid().toString(QUuid::WithoutBraces).left(12);
     const auto cancelFlag = m_cancel;
     auto outcome = std::make_shared<QString>();
-    m_worker = QThread::create([this, plan, staging, cancelFlag, outcome] {
-        *outcome = stageTree(plan, staging, *cancelFlag, [this](qreal value) {
+    const QString cacheTool = m_env.findExecutable(QStringLiteral("gtk-update-icon-cache"));
+    m_worker = QThread::create([this, plan, staging, cacheTool, cancelFlag, outcome] {
+        *outcome = stageTree(plan, staging, cacheTool, *cancelFlag, [this](qreal value) {
             m_progress.store(value);
             QMetaObject::invokeMethod(this, &IconThemeImporter::progressChanged, Qt::QueuedConnection);
         });
@@ -520,7 +559,125 @@ void IconThemeImporter::start() {
     m_worker->start();
 }
 
+bool IconThemeImporter::lockImports() {
+    // Copying can take a while, so it does not hold the lock other changes wait on, and a
+    // theme change meanwhile still gets its turn. This lock is only for imports. It has no
+    // age limit, so a long copy is never mistaken for one that stopped. An archive holds it
+    // from unpacking to its last pack.
+    if (m_importLock)
+        return true;
+    m_importLock = std::make_unique<QLockFile>(m_env.appStateDir + "/icon-import.lock");
+    m_importLock->setStaleLockTime(0);
+    if (m_importLock->tryLock(0))
+        return true;
+    m_importLock.reset();
+    setState(QStringLiteral("failed"), tr("Another icon pack is being imported. Try again when it is done."));
+    emit finished(false);
+    return false;
+}
+
+void IconThemeImporter::startArchive(const QString &path) {
+    if (!lockImports())
+        return;
+    m_batch = Batch{};
+    m_batch.active = true;
+    m_batch.name = QFileInfo(path).fileName();
+    m_batch.folder = m_env.appCacheDir + "/" + StagingPrefix + QUuid::createUuid().toString(QUuid::WithoutBraces).left(12);
+    QDir().mkpath(m_env.appCacheDir);
+    m_progress.store(0);
+    emit progressChanged();
+    m_cancel = std::make_shared<std::atomic_bool>(false);
+    setState(QStringLiteral("extracting"), tr("Unpacking %1…").arg(m_batch.name));
+    const QString folder = m_batch.folder;
+    const auto cancelFlag = m_cancel;
+    auto unpacked = std::make_shared<IconArchive::Result>();
+    m_worker = QThread::create([this, path, folder, cancelFlag, unpacked] {
+        *unpacked = IconArchive::extract(path, folder, *cancelFlag, [this](qreal value) {
+            m_progress.store(value);
+            QMetaObject::invokeMethod(this, &IconThemeImporter::progressChanged, Qt::QueuedConnection);
+        });
+    });
+    connect(m_worker, &QThread::finished, this, [this, unpacked, cancelFlag] {
+        m_worker->deleteLater();
+        m_worker = nullptr;
+        if (!unpacked->error.isEmpty() || cancelFlag->load()) {
+            finishArchive(unpacked->error, cancelFlag->load());
+            return;
+        }
+        m_batch.queue = unpacked->packs;
+        m_batch.ids = unpacked->ids;
+        m_batch.notes = unpacked->notes;
+        // Asked once for the whole archive, before anything is installed.
+        QStringList shadowed;
+        for (const QString &folder : std::as_const(m_batch.queue)) {
+            const Inspection look = inspect(folder);
+            if (look.ok && !look.shadows.isEmpty())
+                shadowed << tr("%1 is also installed at %2.").arg(look.name, look.shadows.first());
+        }
+        if (!shadowed.isEmpty()) {
+            setState(QStringLiteral("confirm"), shadowed.join(' ') + " " + tr("The copies from this archive will be used in their place."));
+            return;
+        }
+        nextFromArchive();
+    });
+    m_worker->start();
+}
+
+void IconThemeImporter::nextFromArchive() {
+    while (!m_batch.queue.isEmpty()) {
+        m_inspection = inspect(m_batch.queue.takeFirst());
+        if (!m_inspection.ok) {
+            m_batch.notes << m_inspection.error;
+            continue;
+        }
+        m_inspection.siblings = m_batch.ids;
+        start();
+        return;
+    }
+    finishArchive({}, false);
+}
+
+void IconThemeImporter::finishArchive(const QString &error, bool cancelled) {
+    QDir(m_batch.folder).removeRecursively();
+    m_importLock.reset();
+    const Batch batch = m_batch;
+    m_batch = Batch{};
+    QStringList names;
+    for (const Inspection &pack : batch.imported)
+        names << pack.name;
+    QString message;
+    if (!names.isEmpty()) {
+        // "Use this pack" offers the first, which is the one the others build on.
+        m_inspection = batch.imported.first();
+        message = tr("Imported %1 from %2.").arg(names.join(", "), batch.name);
+    }
+    if (!batch.notes.isEmpty())
+        message += (message.isEmpty() ? QString() : QStringLiteral(" ")) + batch.notes.join(' ');
+    if (cancelled)
+        setState(QStringLiteral("idle"), names.isEmpty() ? tr("Import cancelled.") : tr("Import cancelled after %1.").arg(names.join(", ")));
+    else if (!names.isEmpty())
+        setState(QStringLiteral("imported"), message);
+    else
+        setState(QStringLiteral("failed"), error.isEmpty() ? message : error);
+    emit finished(!names.isEmpty());
+}
+
 void IconThemeImporter::conclude(bool ok, bool cancelled, const QString &error) {
+    if (m_batch.active) {
+        if (ok) {
+            m_batch.imported << m_inspection;
+            if (!m_inspection.missingParents.isEmpty())
+                m_batch.notes << tr("%1 builds on %2, which is not installed, so some icons may be missing.").arg(m_inspection.name, m_inspection.missingParents.join(", "));
+        } else if (!cancelled) {
+            m_batch.notes << tr("%1 was not imported: %2").arg(m_inspection.name, error);
+        }
+        if (cancelled) {
+            finishArchive({}, true);
+            return;
+        }
+        nextFromArchive();
+        return;
+    }
     m_importLock.reset();
     if (ok) {
         QString message = tr("Imported %1.").arg(m_inspection.name);
@@ -542,6 +699,16 @@ void IconThemeImporter::conclude(bool ok, bool cancelled, const QString &error) 
 
 QStringList IconThemeImporter::recoverStaging() {
     QStringList messages;
+    // Unpacked archives live in this app's own cache folder, which nothing else writes to.
+    // One left by a run that stopped is removed, unless an import is running right now.
+    const QStringList unpacked = QDir(m_env.appCacheDir).entryList({QString::fromLatin1(StagingPrefix) + "*"}, QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot);
+    if (!unpacked.isEmpty()) {
+        QLockFile lock(m_env.appStateDir + "/icon-import.lock");
+        lock.setStaleLockTime(0);
+        if (lock.tryLock(0))
+            for (const QString &name : unpacked)
+                QDir(m_env.appCacheDir + "/" + name).removeRecursively();
+    }
     const QString root = m_env.dataHome + "/icons";
     const QStringList leftovers = QDir(root).entryList({QString::fromLatin1(StagingPrefix) + "*"}, QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot);
     if (leftovers.isEmpty())

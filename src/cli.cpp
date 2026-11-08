@@ -14,6 +14,7 @@
 #include "coverage.h"
 #include "displayprovider.h"
 #include "fileops.h"
+#include "iconlayer.h"
 #include "helperlauncher.h"
 #include "hypromodule.h"
 #include "pluginsprovider.h"
@@ -68,9 +69,12 @@ const char Usage[] =
     "  selftest display                      Prove display recovery on this machine\n"
     "  skill install                         Install the agent skill\n"
     "  icons list [--json]                   List installed icon packs, and any problems reading them\n"
-    "  icons import <folder> [--yes] [--json]  Copy an extracted icon pack into your icons folder\n"
+    "  icons import <folder|archive> [--yes] [--json]  Install an icon pack from a folder or a .zip, .tar, or .7z\n"
     "  icons reapply [theme]                 Reapply your icon pack choice; the theme hook runs this\n"
-    "  icons remove-integration              Remove the theme hook and saved choice, leaving the icons\n"
+    "  icons remove-integration              Remove the hooks, saved choice, and launcher icons, leaving the icons\n"
+    "  icons layer status [--json]           What the launcher icon layer covers, and why it may be idle\n"
+    "  icons layer sync [--if-stale]         Rebuild the launcher icon layer; the update hook runs this\n"
+    "  icons iconic [status|retire|restore]  Hand Iconic's icon files over to this app, or put them back\n"
     "  update [check] [--json]               Check GitHub for a newer version\n"
     "  update install [--yes]                Download, verify, and install it with pacman\n";
 
@@ -726,6 +730,62 @@ int cmdIcons(AppCore &core, const QStringList &args, bool yes, bool json) {
             err() << message << "\n";
         return code;
     }
+    if (action == QLatin1String("layer")) {
+        const QString verb = args.value(2, QStringLiteral("status"));
+        if (verb == QLatin1String("sync")) {
+            QString message;
+            const int code = core.icons.syncLayer(args.contains(QStringLiteral("--if-stale")), &message);
+            if (!message.isEmpty())
+                err() << message << "\n";
+            return code;
+        }
+        if (verb != QLatin1String("status")) {
+            err() << Usage;
+            return 1;
+        }
+        const QVariantMap state = core.icons.layerState();
+        if (json) {
+            QJsonObject row = QJsonObject::fromVariantMap(state);
+            row["folder"] = IconLayer::folder(core.env);
+            row["reason"] = IconThemeProvider::layerReason(state);
+            printJson(row);
+            return 0;
+        }
+        out() << "Launcher icons: " << (state.value("enabled").toBool() ? "on" : "off") << "\n";
+        if (state.value("built").toBool())
+            out() << state.value("pack").toString() << " covers " << state.value("fromPack").toInt() << " of " << state.value("total").toInt()
+                  << " app icons; " << state.value("own").toInt() << " use the app's own, " << state.value("missing").toInt() << " have none.\n";
+        else
+            out() << "No layer is built.\n";
+        const QString reason = IconThemeProvider::layerReason(state);
+        if (!reason.isEmpty())
+            out() << reason << "\n";
+        return 0;
+    }
+    if (action == QLatin1String("iconic")) {
+        const QString verb = args.value(2, QStringLiteral("status"));
+        QString message;
+        int code = 0;
+        if (verb == QLatin1String("retire")) {
+            code = core.icons.retireIconic(&message);
+        } else if (verb == QLatin1String("restore")) {
+            code = core.icons.restoreIconic(&message);
+        } else if (verb == QLatin1String("status")) {
+            const QStringList paths = IconLayer::iconicPaths(core.env);
+            if (json) {
+                printJson(QJsonObject{{"present", QJsonArray::fromStringList(paths)}, {"retired", IconLayer::iconicRetired(core.env)}});
+                return 0;
+            }
+            message = paths.isEmpty() ? QStringLiteral("Iconic's files are not here.") : "Iconic's files: " + paths.join(", ");
+            if (IconLayer::iconicRetired(core.env))
+                message += "\nAn earlier hand-over is kept and can be restored.";
+        } else {
+            err() << Usage;
+            return 1;
+        }
+        (code == 0 ? out() : err()) << message << "\n";
+        return code;
+    }
     if (action == QLatin1String("remove-integration")) {
         QString message;
         const int code = core.icons.removeIntegration(&message);
@@ -740,16 +800,29 @@ int cmdIcons(AppCore &core, const QStringList &args, bool yes, bool json) {
             err() << message << "\n";
         QEventLoop loop;
         QObject::connect(&importer, &IconThemeImporter::finished, &loop, &QEventLoop::quit);
-        importer.choosePath(args[2]);
-        if (importer.state() == QLatin1String("confirm")) {
-            if (!yes) {
-                err() << importer.message() << "\nRe-run with --yes to go ahead.\n";
-                return 1;
+        // An archive only knows what it holds once unpacked, so the question can come later.
+        bool declined = false;
+        const auto answer = [&] {
+            if (importer.state() != QLatin1String("confirm"))
+                return;
+            if (yes) {
+                importer.confirm();
+                return;
             }
-            importer.confirm();
-        }
-        if (importer.busy())
+            err() << importer.message() << "\nRe-run with --yes to go ahead.\n";
+            declined = true;
+            importer.cancel();
+            loop.quit();
+        };
+        QObject::connect(&importer, &IconThemeImporter::changed, &loop, answer, Qt::QueuedConnection);
+        importer.choosePath(args[2]);
+        answer();
+        if (declined)
+            return 1;
+        if (importer.busy() || importer.state() == QLatin1String("confirm"))
             loop.exec();
+        if (declined)
+            return 1;
         const bool ok = importer.state() == QLatin1String("imported");
         if (json) {
             QJsonObject row;

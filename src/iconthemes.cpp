@@ -172,6 +172,7 @@ IconPack parseIndex(const QByteArray &contents, const QString &id, const QString
         directory.minSize = intValue(*group, "MinSize", directory.size);
         directory.maxSize = intValue(*group, "MaxSize", directory.size);
         directory.threshold = intValue(*group, "Threshold", 2);
+        directory.context = QString::fromUtf8(group->value("Context")).trimmed();
         pack.directories << directory;
     }
     return pack;
@@ -262,6 +263,18 @@ QString findIcon(const Env &env, const QString &id, const QStringList &names, in
         }
     }
     return {};
+}
+
+QList<IconPack> lookupChain(const Env &env, const QString &id) {
+    QStringList seen;
+    QList<IconPack> chain;
+    collectChain(env, id, {}, &seen, &chain, 0);
+    collectChain(env, QStringLiteral("hicolor"), {}, &seen, &chain, 0);
+    return chain;
+}
+
+QList<IconPack::Directory> directoriesFor(const IconPack &pack, int size) {
+    return bySuitability(pack.directories, size);
 }
 
 QString desktopDefault(const Env &env) {

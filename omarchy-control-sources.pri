@@ -2,6 +2,8 @@
 INCLUDEPATH += $$PWD/src
 # The tray icon's host is found on the session bus.
 QT += dbus
+# Icon pack archives are read with libarchive, which pacman itself depends on.
+LIBS += -larchive
 
 HEADERS += \
     $$PWD/src/env.h \
@@ -13,6 +15,8 @@ HEADERS += \
     $$PWD/src/iconthemes.h \
     $$PWD/src/iconthemeprovider.h \
     $$PWD/src/iconthemeimporter.h \
+    $$PWD/src/iconlayer.h \
+    $$PWD/src/iconarchive.h \
     $$PWD/src/catalog.h \
     $$PWD/src/capabilities.h \
     $$PWD/src/hypromodule.h \
@@ -47,6 +51,8 @@ SOURCES += \
     $$PWD/src/iconthemes.cpp \
     $$PWD/src/iconthemeprovider.cpp \
     $$PWD/src/iconthemeimporter.cpp \
+    $$PWD/src/iconlayer.cpp \
+    $$PWD/src/iconarchive.cpp \
     $$PWD/src/catalog.cpp \
     $$PWD/src/capabilities.cpp \
     $$PWD/src/hypromodule.cpp \

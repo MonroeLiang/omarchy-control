@@ -166,6 +166,21 @@ for app in "firefox:Firefox:web-browser:x-scheme-handler/http;text/html" "foot:F
   IFS=: read -r id name icon mimes <<<"$app"
   printf '[Desktop Entry]\nType=Application\nName=%s\nIcon=%s\nExec=%s\nMimeType=%s\n' "$name" "$icon" "$id" "$mimes" >"$A/$id.desktop"
 done
+# Omarchy's launcher, only as far as the launcher icon layer reads it.
+mkdir -p "$ROOT/omarchy/shell/services"
+cat >"$ROOT/omarchy/shell/services/AppLibrary.qml" <<'T'
+  function iconSource(icon) {
+    var found = root.iconIndex[value]
+    var themed = Quickshell.iconPath(value, true)
+  }
+  function iconIndexScanCommand() {
+    return [
+      'dirs="$HOME/.icons $HOME/.local/share/icons";',
+      'find "$base" -path "*/apps/*" -o -path "*/devices/*"',
+      'awk /.svg$/ { print; next } { png[++n] = $0 }'
+    ].join(' ')
+  }
+T
 cp "$HERE/fake-gsettings" "$ROOT/bin/gsettings"
 cp "$HERE/fake-dconf" "$ROOT/bin/dconf"
 cp "$HERE/fake-omarchy" "$ROOT/bin/omarchy"
