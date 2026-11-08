@@ -250,6 +250,22 @@ void SettingsEngine::read(const QString &id, ReadCallback callback) {
         });
         return;
     }
+    // The launcher icon layer's switch, with what the layer covers and why it may be idle.
+    if (entry->read.value("kind").toString() == QLatin1String("iconlayer")) {
+        ReadResult result;
+        if (!m_icons) {
+            result.status = "unavailable";
+            callback(result);
+            return;
+        }
+        const QVariantMap state = m_icons->layerState();
+        result.status = "ok";
+        result.value = state.value("enabled").toBool() ? QStringLiteral("true") : QStringLiteral("false");
+        result.reason = IconThemeProvider::layerReason(state);
+        result.extra = state;
+        callback(result);
+        return;
+    }
     const QString kind = entry->read.value("kind").toString();
     if (kind == QLatin1String("hypr")) {
         const QStringList argv = m_runner->env().hyprctl({"-j", "getoption", entry->read.value("option").toString()});
@@ -858,8 +874,14 @@ void SettingsEngine::submitJson(const CatalogEntry &entry, const QString &value,
     const QJsonObject write = entry.write;
     const QString fallback = entry.read.value("fallbackFile").toString();
     const QString id = entry.id;
-    const QJsonValue typed = write.value("valueType").toString() == QLatin1String("int") ? QJsonValue(value.toDouble()) : QJsonValue(value);
-    request.apply = [this, file, path, typed, write, remove, fallback](ChangeCoordinator::Done done) {
+    const QString valueType = write.value("valueType").toString();
+    const QJsonValue typed = valueType == QLatin1String("int")    ? QJsonValue(value.toDouble())
+                             : valueType == QLatin1String("bool") ? QJsonValue(value == QLatin1String("true"))
+                                                                  : QJsonValue(value);
+    // Some app settings drive work of this app's own once saved, done here rather than by
+    // running a copy of this app that may be another version.
+    const bool iconLayer = write.value("internal").toString() == QLatin1String("icons.layer");
+    request.apply = [this, file, path, typed, write, remove, fallback, iconLayer](ChangeCoordinator::Done done) {
         QByteArray document;
         const Env &env = m_runner->env();
         // A missing or empty config starts from Omarchy's defaults, exactly as
@@ -872,6 +894,8 @@ void SettingsEngine::submitJson(const CatalogEntry &entry, const QString &value,
             done(false, error);
             return;
         }
+        if (iconLayer && m_icons)
+            m_icons->syncLayer(false);
         const QJsonArray after = write.value("after").toArray();
         if (after.isEmpty()) {
             done(true, {});
@@ -890,7 +914,10 @@ void SettingsEngine::submitJson(const CatalogEntry &entry, const QString &value,
         request.settled = [settled] { return *settled; };
     }
     const QJsonArray after = write.value("after").toArray();
-    request.rollback = [this, after](ChangeCoordinator::Done done) {
+    request.rollback = [this, after, iconLayer](ChangeCoordinator::Done done) {
+        // The file is already back, so the layer follows it back too.
+        if (iconLayer && m_icons)
+            m_icons->syncLayer(false);
         if (after.isEmpty()) {
             done(true, {});
             return;

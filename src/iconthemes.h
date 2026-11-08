@@ -15,6 +15,7 @@
 struct IconPack {
     struct Directory {
         QString subdir, type = QStringLiteral("Threshold");
+        QString context;  // Applications, Devices, Actions and so on, as the pack declares it.
         int size = 0, scale = 1, minSize = 0, maxSize = 0, threshold = 2;
         int distance(int wanted) const;
     };
@@ -53,6 +54,11 @@ QList<IconPack> discover(const Env &env, const QString &alwaysInclude = {}, QStr
 // hicolor. Only that chain is searched, so a preview can never show another pack's icons.
 // `fromTheme` says which pack it really came from.
 QString findIcon(const Env &env, const QString &id, const QStringList &names, int size, QString *fromTheme = nullptr);
+
+// The pack, what it inherits in order, then hicolor: the lookup order the spec gives.
+QList<IconPack> lookupChain(const Env &env, const QString &id);
+// A pack's folders, nearest to `size` first.
+QList<IconPack::Directory> directoriesFor(const IconPack &pack, int size);
 
 // What the current Omarchy theme asks for, with the same fallback omarchy-theme-set-gnome uses.
 QString desktopDefault(const Env &env);

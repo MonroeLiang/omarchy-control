@@ -7,6 +7,7 @@
 #include "cli.h"
 #include "env.h"
 #include "gui.h"
+#include "version.h"
 
 int main(int argc, char *argv[]) {
     const QString command = argc > 1 ? QString::fromLocal8Bit(argv[1]) : QString();

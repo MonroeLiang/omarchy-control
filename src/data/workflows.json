@@ -4885,8 +4885,8 @@
   "integration": "omarchy-wizard",
   "description": "",
   "keywords": [
-   "xbox controllers (󰂯)",
-   "remove xbox controllers (󰂯)"
+   "xbox controllers (\udb80\udcaf)",
+   "remove xbox controllers (\udb80\udcaf)"
   ],
   "sources": [
    "remove.gaming.xbox-controllers",
@@ -9513,6 +9513,73 @@
   "icon": "balance"
  },
  {
+  "id": "app.credits.iconic",
+  "page": "about",
+  "section": "Credits",
+  "label": "Iconic by UnderStackDev",
+  "type": "action",
+  "domain": "C18",
+  "integration": "external-helper",
+  "description": "The launcher icon layer and archive import build on its design. MIT License.",
+  "keywords": [
+   "iconic",
+   "credits",
+   "icon layer",
+   "understackdev",
+   "acknowledgements"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "url",
+   "url": "https://github.com/UnderStackDev/omarchy_iconic"
+  },
+  "icon": "git"
+ },
+ {
+  "id": "app.credits.inter",
+  "page": "about",
+  "section": "Credits",
+  "label": "Inter by Rasmus Andersson",
+  "type": "action",
+  "domain": "C18",
+  "integration": "external-helper",
+  "description": "The interface font. SIL Open Font License.",
+  "keywords": [
+   "font",
+   "inter",
+   "credits",
+   "typeface"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "url",
+   "url": "https://rsms.me/inter/"
+  },
+  "icon": "type"
+ },
+ {
+  "id": "app.credits.omarchy",
+  "page": "about",
+  "section": "Credits",
+  "label": "Omarchy",
+  "type": "action",
+  "domain": "C18",
+  "integration": "external-helper",
+  "description": "The desktop this manages, by David Heinemeier Hansson and contributors. MIT License.",
+  "keywords": [
+   "omarchy",
+   "credits",
+   "dhh",
+   "basecamp"
+  ],
+  "sources": [],
+  "launch": {
+   "kind": "url",
+   "url": "https://github.com/omacom/omarchy"
+  },
+  "icon": "desktop"
+ },
+ {
   "id": "appearance.icons.import",
   "page": "appearance",
   "section": "Icons",
@@ -9520,12 +9587,16 @@
   "type": "action",
   "domain": "C01",
   "integration": "native",
-  "description": "Copy an extracted icon pack from a folder into your icons folder.",
+  "description": "Install an icon pack from a folder, or from a .zip, .tar, or .7z archive, into your icons folder.",
   "keywords": [
    "install icons",
    "add icon pack",
    "icon theme folder",
-   "drag and drop icons"
+   "drag and drop icons",
+   "icon zip",
+   "icon archive",
+   "tar.gz",
+   "install icon theme"
   ],
   "sources": [
    "omarchy-control icons import"

@@ -1,7 +1,7 @@
 {
     "claimedCommands": 301,
     "claimedMenu": 356,
-    "entries": 495,
+    "entries": 499,
     "excludedCommands": 132,
     "excludedMenu": 0,
     "exclusions": {
@@ -504,6 +504,37 @@
             "supported_versions": "omarchy 4.5.x",
             "validation_evidence": "fixture-tests; live read ok 2026-11-06 (Omarchy 4.5.0-3)",
             "write_or_launch_method": "icons"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C01",
+            "id": "appearance.icons.launcher",
+            "implementation_status": "implemented",
+            "integration_mode": "native",
+            "known_limitation": "",
+            "read_method": "iconlayer",
+            "recovery_class": "auto-undo",
+            "searchable_labels": [
+                "Launcher and dock icons",
+                "launcher icons",
+                "dock icons",
+                "app menu icons",
+                "app grid icons",
+                "iconic",
+                "icon layer",
+                "wrong app icons",
+                "mixed icons"
+            ],
+            "source_references": [
+                "omarchy-control icons layer",
+                "~/.icons/omarchy-control",
+                "shell/services/AppLibrary.qml"
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "fixture-tests",
+            "write_or_launch_method": "json"
         },
         {
             "applicable_capability": [
@@ -2317,7 +2348,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Screensaver",
+                "Start screensaver",
                 "screensaver"
             ],
             "source_references": [
@@ -3065,6 +3096,7 @@
         },
         {
             "applicable_capability": [
+                "internaldisplay",
                 "externalmonitor"
             ],
             "apply_restart_semantics": "",
@@ -3090,6 +3122,7 @@
         },
         {
             "applicable_capability": [
+                "internaldisplay",
                 "externalmonitor"
             ],
             "apply_restart_semantics": "",
@@ -4162,7 +4195,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Set up Fido2",
+                "Set up FIDO2",
                 "fido2"
             ],
             "source_references": [
@@ -6395,7 +6428,7 @@
             "read_method": "none",
             "recovery_class": "no-undo",
             "searchable_labels": [
-                "Remove Fido2",
+                "Remove FIDO2",
                 "fido2"
             ],
             "source_references": [
@@ -8892,7 +8925,9 @@
         },
         {
             "applicable_capability": [
-                "laptop"
+                "internaldisplay",
+                "internaloff",
+                "noexternalmonitor"
             ],
             "apply_restart_semantics": "",
             "domain": "C04",
@@ -11839,6 +11874,79 @@
             "applicable_capability": [
             ],
             "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.credits.iconic",
+            "implementation_status": "implemented",
+            "integration_mode": "external-helper",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Iconic by UnderStackDev",
+                "iconic",
+                "credits",
+                "icon layer",
+                "understackdev",
+                "acknowledgements"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "url"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.credits.inter",
+            "implementation_status": "implemented",
+            "integration_mode": "external-helper",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Inter by Rasmus Andersson",
+                "font",
+                "inter",
+                "credits",
+                "typeface"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "url"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C18",
+            "id": "app.credits.omarchy",
+            "implementation_status": "implemented",
+            "integration_mode": "external-helper",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Omarchy",
+                "omarchy",
+                "credits",
+                "dhh",
+                "basecamp"
+            ],
+            "source_references": [
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "url"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
             "domain": "C01",
             "id": "appearance.icons.import",
             "implementation_status": "implemented",
@@ -11863,8 +11971,8 @@
     ],
     "modes": {
         "advanced-config": 22,
-        "external-helper": 19,
-        "native": 98,
+        "external-helper": 22,
+        "native": 99,
         "omarchy-panel": 22,
         "omarchy-wizard": 334
     },

@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
+#include <QImage>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
@@ -59,6 +60,11 @@
 #include "theme.h"
 #include "translator.h"
 #include "trayhost.h"
+#include "iconlayer.h"
+#include "iconarchive.h"
+
+#include <archive.h>
+#include <archive_entry.h>
 #include "updater.h"
 
 namespace {
@@ -169,6 +175,101 @@ struct IconDesk {
         return count;
     }
 };
+
+// Omarchy's launcher as the layer expects it, the launchers it shows, and an app whose only
+// icon is its own PNG in hicolor.
+const char kAppLibrary[] =
+    "  function iconSource(icon) {\n"
+    "    var found = root.iconIndex[value]\n"
+    "    var themed = Quickshell.iconPath(value, true)\n"
+    "  }\n"
+    "  function iconIndexScanCommand() {\n"
+    "    return [\n"
+    "      'dirs=\"$HOME/.icons $HOME/.local/share/icons\";',\n"
+    "      'find \"$base\" -path \"*/apps/*\" -o -path \"*/devices/*\"',\n"
+    "      'awk /.svg$/ { print; next } { png[++n] = $0 }'\n"
+    "    ].join(' ')\n"
+    "  }\n";
+
+void addLauncher(const QString &folder, const QString &id, const QString &name, const QString &icon, const QByteArray &extra = {}) {
+    writeFile(folder + "/" + id + ".desktop", "[Desktop Entry]\nType=Application\nName=" + name.toUtf8() + "\nIcon=" + icon.toUtf8() + "\nExec=true\n" + extra);
+}
+
+struct LauncherDesk {
+    QString apps, layer;
+    explicit LauncherDesk(Sandbox &s) : apps(s.env.dataDirs.last() + "/applications"), layer(s.env.home + "/.icons/omarchy-control") {
+        writeFile(s.env.omarchyPath + "/shell/services/AppLibrary.qml", kAppLibrary);
+        const QString hicolor = s.env.dataDirs.last() + "/icons/hicolor";
+        writeFile(hicolor + "/index.theme", "[Icon Theme]\nName=Hicolor\nDirectories=256x256/apps\n\n[256x256/apps]\nSize=256\nContext=Applications\nType=Threshold\n");
+        QDir().mkpath(hicolor + "/256x256/apps");
+        QImage own(300, 200, QImage::Format_ARGB32);
+        own.fill(Qt::blue);
+        own.save(hicolor + "/256x256/apps/ownapp.png");
+        addLauncher(apps, "terminal", "Terminal", "utilities-terminal");
+        // Called by its last name in most packs.
+        addLauncher(apps, "org.example.Browser", "Browser", "org.example.web-browser");
+        addLauncher(apps, "own", "Own App", "ownapp");
+        addLauncher(apps, "nothing", "Nothing", "no-such-icon");
+        addLauncher(apps, "hidden", "Hidden Helper", "folder", "NoDisplay=true\n");
+        // A path is the app's own file, and the launcher shows it as it is.
+        addLauncher(apps, "path", "Path App", "/opt/app/icon.png");
+    }
+    QStringList entries(const Sandbox &s) const {
+        return QDir(s.env.home + "/.icons").entryList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
+    }
+};
+
+// An archive written entry by entry, so a test can make one no real tool would: paths that
+// climb out, links to write through, and devices.
+struct ArchiveItem {
+    QString path;
+    char type = 'f';  // f file, d folder, l link, h hard link, c device
+    QByteArray data;
+    QString target;
+    qint64 declaredSize = -1;
+};
+
+void writeArchive(const QString &file, const QList<ArchiveItem> &items) {
+    QDir().mkpath(QFileInfo(file).absolutePath());
+    struct archive *writer = archive_write_new();
+    if (file.endsWith(".zip")) {
+        archive_write_set_format_zip(writer);
+    } else {
+        archive_write_set_format_pax_restricted(writer);
+        archive_write_add_filter_gzip(writer);
+    }
+    archive_write_open_filename(writer, QFile::encodeName(file).constData());
+    for (const ArchiveItem &item : items) {
+        struct archive_entry *entry = archive_entry_new();
+        archive_entry_set_pathname(entry, item.path.toUtf8().constData());
+        archive_entry_set_perm(entry, item.type == 'd' ? 0755 : 0644);
+        if (item.type == 'd') {
+            archive_entry_set_filetype(entry, AE_IFDIR);
+        } else if (item.type == 'l') {
+            archive_entry_set_filetype(entry, AE_IFLNK);
+            archive_entry_set_symlink(entry, item.target.toUtf8().constData());
+        } else if (item.type == 'h') {
+            archive_entry_set_filetype(entry, AE_IFREG);
+            archive_entry_set_hardlink(entry, item.target.toUtf8().constData());
+        } else if (item.type == 'c') {
+            archive_entry_set_filetype(entry, AE_IFCHR);
+        } else {
+            archive_entry_set_filetype(entry, AE_IFREG);
+            archive_entry_set_size(entry, item.declaredSize >= 0 ? item.declaredSize : item.data.size());
+        }
+        archive_write_header(writer, entry);
+        if (item.type == 'f' && !item.data.isEmpty())
+            archive_write_data(writer, item.data.constData(), size_t(item.data.size()));
+        archive_entry_free(entry);
+    }
+    archive_write_close(writer);
+    archive_write_free(writer);
+}
+
+QByteArray packIndex(const QString &name, const QString &inherits = {}) {
+    return "[Icon Theme]\nName=" + name.toUtf8() + "\n" + (inherits.isEmpty() ? QByteArray() : "Inherits=" + inherits.toUtf8() + "\n")
+           + "Directories=scalable/apps\n\n[scalable/apps]\nSize=48\nMinSize=8\nMaxSize=512\nType=Scalable\nContext=Applications\n";
+}
 
 QString importPack(IconThemeImporter &importer, const QString &folder) {
     QSignalSpy finished(&importer, &IconThemeImporter::finished);
@@ -5206,9 +5307,9 @@ esac)SH");
         QTRY_VERIFY(shown("aboutVersion"));
         QVERIFY(text("aboutVersion").contains("0.1.0"));
         QCOMPARE(text("aboutName"), QString("Omarchy Control"));
-        // Five facts, four project links with their icons, and no jump bar on a page without sections to jump to.
+        // Five facts, four project links and three credits with their icons, and no jump bar on a page without sections to jump to.
         QCOMPARE(page.named("aboutDetail").size(), 5);
-        QCOMPARE(page.rowIds(), QStringList({"app.website", "app.releases", "app.issues", "app.license"}));
+        QCOMPARE(page.rowIds(), QStringList({"app.website", "app.releases", "app.issues", "app.license", "app.credits.iconic", "app.credits.inter", "app.credits.omarchy"}));
         for (const QString &id : page.rowIds())
             QVERIFY(!page.backend.entry(id).value("icon").toString().isEmpty());
         QVERIFY(page.named("sectionLinks").isEmpty());
@@ -5599,6 +5700,30 @@ esac)SH");
         QCOMPARE(twice, QByteArray("[A]\nk=1\nk=2\n"));
     }
 
+    void iniUpsertAddsAMissingKeyWhereItBelongs() {
+        // After the group's last line, before the next group, everything else as it was.
+        QByteArray doc = "# mine\n[Settings]\ngtk-theme-name=Adwaita\n\n[Other]\nx=1\n";
+        QVERIFY(FileOps::iniUpsert(&doc, "Settings", "gtk-icon-theme-name", "Papirus"));
+        QCOMPARE(doc, QByteArray("# mine\n[Settings]\ngtk-theme-name=Adwaita\ngtk-icon-theme-name=Papirus\n\n[Other]\nx=1\n"));
+        // An existing key is replaced in place, like iniSet.
+        QVERIFY(FileOps::iniUpsert(&doc, "Settings", "gtk-icon-theme-name", "Numix"));
+        QVERIFY(doc.contains("gtk-icon-theme-name=Numix\n\n[Other]"));
+        // A missing group goes at the end; an empty file becomes just that group.
+        QByteArray kde = "[General]\nName=x";
+        QVERIFY(FileOps::iniUpsert(&kde, "Icons", "Theme", "Papirus"));
+        QCOMPARE(kde, QByteArray("[General]\nName=x\n\n[Icons]\nTheme=Papirus\n"));
+        QByteArray empty;
+        QVERIFY(FileOps::iniUpsert(&empty, "Settings", "gtk-icon-theme-name", "Papirus"));
+        QCOMPARE(empty, QByteArray("[Settings]\ngtk-icon-theme-name=Papirus\n"));
+        // A group that ends the file without a newline, and a CRLF file, stay well formed.
+        QByteArray last = "[Settings]\r\na=1";
+        QVERIFY(FileOps::iniUpsert(&last, "Settings", "b", "2"));
+        QCOMPARE(last, QByteArray("[Settings]\r\na=1\r\nb=2\r\n"));
+        QByteArray twice = "[A]\nk=1\nk=2\n";
+        QVERIFY(!FileOps::iniUpsert(&twice, "A", "k", "3"));
+        QCOMPARE(twice, QByteArray("[A]\nk=1\nk=2\n"));
+    }
+
     void openingAppearanceChangesNothing() {
         Sandbox s;
         IconDesk desk(s);
@@ -5916,7 +6041,9 @@ esac)SH");
         QCOMPARE(core.icons.samples("Papirus").value("samples").toList().size(), 4);
     }
 
-    void configFilesAreOnlyTouchedWhenTheyAlreadyNameAnIconTheme() {
+    // As Iconic does: the GTK files and kdeglobals always name the pack, made if missing,
+    // and the qt*ct files only where they exist. Undo puts back exactly what was there.
+    void configFilesNameThePackAsIconicDoes() {
         Sandbox s;
         IconDesk desk(s);
         const QString gtk3 = s.env.configHome + "/gtk-3.0/settings.ini";
@@ -5927,35 +6054,248 @@ esac)SH");
         const QByteArray gtk4Text = "[Settings]\ngtk-theme-name=Adwaita\n";
         writeFile(gtk3, gtk3Text);
         writeFile(gtk4, gtk4Text);
-        writeFile(kde, "[Icons]\nTheme=Old\n[General]\nName=x\n");
-        // Qt is on the gtk3 platform theme, as Omarchy sets it, so qt6ct has no say.
+        // Present, so it counts, whatever Qt's platform theme is.
         writeFile(qt6, "[Appearance]\nicon_theme=Old\n");
         AppCore core(s.env);
         desk.setEffective("Numix");
         const ReadResult mixed = readSetting(core.engine, "appearance.icons");
         QVERIFY(mixed.extra.value("mixed").toBool());
-        QVERIFY(mixed.extra.value("reconcile").toBool());
         QVERIFY(mixed.reason.contains("GTK 3"));
+        // A file that names no pack yet is no disagreement.
+        QVERIFY(!mixed.reason.contains("GTK 4"));
+        const QStringList effects = core.engine.plan("appearance.icons", "pack:Papirus", {QVariantMap{{"value", "pack:Papirus"}}}).effects;
+        QVERIFY(effects.join(' ').contains("Creates KDE"));
+        QVERIFY(effects.join(' ').contains("Adds the pack to GTK 4"));
 
         const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
         QCOMPARE(tx.phase, QString("committed"));
         QCOMPARE(readAll(gtk3), QByteArray("# mine\n[Settings]\ngtk-icon-theme-name=Papirus\ngtk-theme-name=Adwaita\n"));
-        QCOMPARE(readAll(gtk4), gtk4Text);
-        QCOMPARE(readAll(kde), QByteArray("[Icons]\nTheme=Papirus\n[General]\nName=x\n"));
-        QCOMPARE(readAll(qt6), QByteArray("[Appearance]\nicon_theme=Old\n"));
+        QCOMPARE(readAll(gtk4), QByteArray("[Settings]\ngtk-theme-name=Adwaita\ngtk-icon-theme-name=Papirus\n"));
+        QCOMPARE(readAll(kde), QByteArray("[Icons]\nTheme=Papirus\n"));
+        QCOMPARE(readAll(qt6), QByteArray("[Appearance]\nicon_theme=Papirus\n"));
         QVERIFY(!QFile::exists(s.env.configHome + "/qt5ct/qt5ct.conf"));
         QVERIFY(readSetting(core.engine, "appearance.icons").reason.isEmpty());
 
         QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
         QCOMPARE(readAll(gtk3), gtk3Text);
+        QCOMPARE(readAll(gtk4), gtk4Text);
+        QVERIFY(!QFile::exists(kde));
+        QCOMPARE(readAll(qt6), QByteArray("[Appearance]\nicon_theme=Old\n"));
         QCOMPARE(desk.effective(), QString("Numix"));
+    }
 
-        // When Qt is told to use it, it counts.
-        Env qtEnv = s.env;
-        qtEnv.process.insert("QT_QPA_PLATFORMTHEME", "qt6ct");
-        AppCore qtCore(qtEnv);
-        QCOMPARE(applySetting(qtCore.engine, "appearance.icons", "Papirus").phase, QString("committed"));
-        QCOMPARE(readAll(qt6), QByteArray("[Appearance]\nicon_theme=Papirus\n"));
+    // A theme change fills in a file that names no pack, and leaves one someone edited.
+    void aThemeChangeFillsMissingFilesButNotEditedOnes() {
+        Sandbox s;
+        IconDesk desk(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        const QString gtk3 = s.env.configHome + "/gtk-3.0/settings.ini";
+        const QString kde = s.env.configHome + "/kdeglobals";
+        QFile::remove(kde);
+        writeFile(gtk3, "[Settings]\ngtk-icon-theme-name=Mine\n");
+        desk.setEffective("Yaru-blue");
+        QString message;
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        QCOMPARE(readAll(kde), QByteArray("[Icons]\nTheme=Papirus\n"));
+        QCOMPARE(readAll(gtk3), QByteArray("[Settings]\ngtk-icon-theme-name=Mine\n"));
+    }
+
+    // ---- The launcher icon layer -------------------------------------------------
+    void choosingAPackGivesTheLauncherItsIcons() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        AppCore core(s.env);
+        // Nothing chosen yet: Omarchy is in charge, and there is nothing to follow.
+        const ReadResult before = readSetting(core.engine, "appearance.icons.launcher");
+        QCOMPARE(before.value, QString("true"));
+        QVERIFY(before.reason.contains("Starts once you choose"));
+        QVERIFY(!QFileInfo::exists(launchers.layer));
+
+        const Transaction tx = applySetting(core.engine, "appearance.icons", "Papirus");
+        QCOMPARE(tx.phase, QString("committed"));
+        const QString apps = launchers.layer + "/apps/";
+        QCOMPARE(readAll(apps + "utilities-terminal.svg"), QByteArray(kSvg));
+        QCOMPARE(readAll(apps + "org.example.web-browser.svg"), QByteArray(kSvg));
+        // A PNG becomes an SVG, so it comes before every PNG in the shell's index, and it
+        // is no larger than the launcher needs.
+        const QByteArray wrapped = readAll(apps + "ownapp.svg");
+        QVERIFY(wrapped.startsWith("<svg"));
+        QVERIFY(wrapped.contains("data:image/png;base64,"));
+        QVERIFY(wrapped.contains("width=\"256\""));
+        QVERIFY(!QFileInfo::exists(apps + "no-such-icon.svg"));
+        QVERIFY(QFileInfo::exists(apps + "folder.svg"));
+        // Only the finished layer is ever where the shell looks.
+        QCOMPARE(launchers.entries(s), QStringList{"omarchy-control"});
+        QVERIFY(QFileInfo::exists(s.env.configHome + "/omarchy/hooks/post-update.d/90-omarchy-control-icons"));
+
+        const ReadResult row = readSetting(core.engine, "appearance.icons.launcher");
+        QVERIFY(row.reason.isEmpty());
+        QCOMPARE(row.extra.value("pack").toString(), QString("Papirus"));
+        // Shown launchers only: the hidden helper is in the layer but not in the count.
+        QCOMPARE(row.extra.value("total").toInt(), 4);
+        QCOMPARE(row.extra.value("fromPack").toInt(), 2);
+        QCOMPARE(row.extra.value("own").toInt(), 1);
+        QCOMPARE(row.extra.value("missing").toInt(), 1);
+        QCOMPARE(row.extra.value("gaps").toList().first().toMap().value("apps").toStringList(), QStringList{"Nothing"});
+
+        // Undoing the first choice hands icons back to Omarchy, and the layer goes with it.
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QVERIFY(!QFileInfo::exists(launchers.layer));
+        QVERIFY(!QFileInfo::exists(s.env.configHome + "/omarchy/hooks/post-update.d/90-omarchy-control-icons"));
+    }
+
+    // An app's icon from the pack, never an action icon of the same name.
+    void aPacksActionIconDoesNotStandInForAnApp() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        writeFile(desk.system + "/Actiony/index.theme", "[Icon Theme]\nName=Actiony\nDirectories=scalable/actions,scalable/apps\n\n"
+                                                        "[scalable/actions]\nSize=48\nContext=Actions\nType=Scalable\n\n"
+                                                        "[scalable/apps]\nSize=48\nContext=Applications\nType=Scalable\n");
+        writeFile(desk.system + "/Actiony/scalable/actions/zoom.svg", kSvg);
+        writeFile(desk.system + "/Actiony/scalable/apps/utilities-terminal.svg", kSvg);
+        addLauncher(launchers.apps, "zoom", "Zoom", "zoom");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Actiony").phase, QString("committed"));
+        QVERIFY(QFileInfo::exists(launchers.layer + "/apps/utilities-terminal.svg"));
+        QVERIFY(!QFileInfo::exists(launchers.layer + "/apps/zoom.svg"));
+    }
+
+    void theLauncherSwitchRemovesAndRestoresTheLayer() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        const Transaction off = applySetting(core.engine, "appearance.icons.launcher", "false");
+        QCOMPARE(off.phase, QString("committed"));
+        QVERIFY(!QFileInfo::exists(launchers.layer));
+        QCOMPARE(readSetting(core.engine, "appearance.icons.launcher").value, QString("false"));
+        QCOMPARE(QJsonDocument::fromJson(readAll(s.env.appConfigDir + "/icon-layer.json")).object().value("enabled"), QJsonValue(false));
+        // The pack itself is untouched.
+        QCOMPARE(desk.effective(), QString("Papirus"));
+        // Off stays off through a theme change.
+        QString message;
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QVERIFY(!QFileInfo::exists(launchers.layer));
+        QCOMPARE(undoTx(core.engine, off.id).phase, QString("committed"));
+        QVERIFY(QFileInfo::exists(launchers.layer + "/apps/utilities-terminal.svg"));
+    }
+
+    void aThemeChangeMovesTheLauncherToTheNewPack() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        addPack(desk.system, "Numix", {"utilities-terminal"});
+        writeFile(desk.system + "/Numix/scalable/apps/utilities-terminal.svg", "<svg id=\"numix\"/>");
+        desk.themeAsks("Papirus");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "follow-theme").phase, QString("committed"));
+        QCOMPARE(readSetting(core.engine, "appearance.icons.launcher").extra.value("pack").toString(), QString("Papirus"));
+        // Omarchy switches theme with this app closed: its script sets the new pack, then
+        // the hook runs.
+        desk.themeAsks("Numix");
+        desk.setEffective("Numix");
+        QString message;
+        QCOMPARE(core.icons.reapply(&message), 0);
+        QCOMPARE(readAll(launchers.layer + "/apps/utilities-terminal.svg"), QByteArray("<svg id=\"numix\"/>"));
+        QCOMPARE(IconLayer::status(s.env).value("pack").toString(), QString("Numix"));
+    }
+
+    void anOutOfDateLayerIsRebuiltAndACurrentOneLeftAlone() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        const QByteArray manifest = readAll(launchers.layer + "/manifest.json");
+        QTest::qWait(20);
+        QCOMPARE(core.icons.syncLayer(true), 0);
+        QCOMPARE(readAll(launchers.layer + "/manifest.json"), manifest);
+        // An app installed later, as an update or a web app would add it.
+        addLauncher(s.env.dataHome + "/applications", "late", "Late App", "text-x-generic");
+        QCOMPARE(core.icons.syncLayer(true), 0);
+        QVERIFY(QFileInfo::exists(launchers.layer + "/apps/text-x-generic.svg"));
+    }
+
+    void aLauncherThatIndexesDifferentlyPausesTheLayer() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QVERIFY(QFileInfo::exists(launchers.layer));
+        // As if Omarchy's index followed the chosen pack, as upstream #9408 proposes.
+        writeFile(s.env.omarchyPath + "/shell/services/AppLibrary.qml", "function iconSource(icon) { return Quickshell.iconPath(value, true) }\n");
+        QCOMPARE(core.icons.syncLayer(true), 0);
+        QVERIFY(!QFileInfo::exists(launchers.layer));
+        QVERIFY(readSetting(core.engine, "appearance.icons.launcher").reason.contains("changed how its launcher finds icons"));
+    }
+
+    void aLayerFolderThatIsNotOursIsLeftAlone() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        writeFile(launchers.layer + "/apps/mine.svg", kSvg);
+        AppCore core(s.env);
+        // The choice itself still goes through.
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QCOMPARE(QDir(launchers.layer + "/apps").entryList(QDir::Files), QStringList{"mine.svg"});
+        QVERIFY(readSetting(core.engine, "appearance.icons.launcher").reason.contains("not made by Omarchy Control"));
+        QString message;
+        core.icons.removeIntegration(&message);
+        QVERIFY(QFileInfo::exists(launchers.layer + "/apps/mine.svg"));
+    }
+
+    void removingTheIntegrationTakesTheLayerAndHooks() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        QString message;
+        QCOMPARE(core.icons.removeIntegration(&message), 0);
+        QVERIFY(!QFileInfo::exists(launchers.layer));
+        QVERIFY(!QFileInfo::exists(desk.hook()));
+        QVERIFY(!QFileInfo::exists(s.env.configHome + "/omarchy/hooks/post-update.d/90-omarchy-control-icons"));
+        QCOMPARE(desk.effective(), QString("Papirus"));
+    }
+
+    // Iconic's hook runs after this app's, so both are never left fighting: its files are
+    // handed over, kept, and can be put back exactly.
+    void iconicIsHandedOverAndCanBeRestored() {
+        Sandbox s;
+        IconDesk desk(s);
+        LauncherDesk launchers(s);
+        const QString iconicLayer = s.env.home + "/.icons/iconic-apps/apps/utilities-terminal.svg";
+        const QString iconicHook = s.env.configHome + "/omarchy/hooks/theme-set.d/iconic";
+        const QString iconicConfig = s.env.configHome + "/iconic/config.toml";
+        writeFile(iconicLayer, kSvg);
+        writeFile(iconicHook, "#!/bin/bash\nexec iconic hook theme-set\n");
+        writeFile(iconicConfig, "mode = \"lock\"\n");
+        AppCore core(s.env);
+        QCOMPARE(applySetting(core.engine, "appearance.icons", "Papirus").phase, QString("committed"));
+        const ReadResult row = readSetting(core.engine, "appearance.icons.launcher");
+        QVERIFY(row.reason.contains("Iconic"));
+        QCOMPARE(row.extra.value("iconic").toStringList().size(), 3);
+
+        QString message;
+        QCOMPARE(core.icons.retireIconic(&message), 0);
+        QVERIFY(!QFileInfo::exists(iconicLayer) && !QFileInfo::exists(iconicHook) && !QFileInfo::exists(iconicConfig));
+        QCOMPARE(launchers.entries(s), QStringList{"omarchy-control"});
+        QVERIFY(readSetting(core.engine, "appearance.icons.launcher").reason.isEmpty());
+        QVERIFY(IconLayer::iconicRetired(s.env));
+        // A second hand-over would mix two sets, so it waits for a restore.
+        QCOMPARE(core.icons.retireIconic(&message), 1);
+
+        QCOMPARE(core.icons.restoreIconic(&message), 0);
+        QCOMPARE(readAll(iconicLayer), QByteArray(kSvg));
+        QCOMPARE(readAll(iconicHook), QByteArray("#!/bin/bash\nexec iconic hook theme-set\n"));
+        QCOMPARE(readAll(iconicConfig), QByteArray("mode = \"lock\"\n"));
+        QVERIFY(!IconLayer::iconicRetired(s.env));
     }
 
     void anAmbiguousConfigIsReportedAndLeftAlone() {
@@ -6285,6 +6625,121 @@ esac)SH");
         QCOMPARE(applySetting(core.engine, "appearance.icons", "Fresh").phase, QString("committed"));
     }
 
+    // ---- Archives -------------------------------------------------------------------
+    void anArchiveWithSeveralPacksImportsEachInOrder() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString file = s.dir.path() + "/downloads/dawn-icons.tar.gz";
+        // Dark first in the archive, but it builds on Dawn, so Dawn goes in first; and its
+        // icon is a link into Dawn, which is allowed for a pack from the same archive.
+        writeArchive(file, {
+            {"dawn-icons-1.0/Dawn-Dark/index.theme", 'f', packIndex("Dawn Dark", "Dawn,hicolor")},
+            {"dawn-icons-1.0/Dawn-Dark/scalable/apps", 'd'},
+            {"dawn-icons-1.0/Dawn-Dark/scalable/apps/utilities-terminal.svg", 'l', {}, "../../../Dawn/scalable/apps/utilities-terminal.svg"},
+            {"dawn-icons-1.0/Dawn/index.theme", 'f', packIndex("Dawn")},
+            {"dawn-icons-1.0/Dawn/scalable/apps/utilities-terminal.svg", 'f', kSvg},
+            {"dawn-icons-1.0/Dawn/scalable/apps/web-browser.svg", 'h', {}, "dawn-icons-1.0/Dawn/scalable/apps/utilities-terminal.svg"},
+            {"dawn-icons-1.0/Dawn/icon-theme.cache", 'f', "stale"},
+            {"dawn-icons-1.0/Cursors/index.theme", 'f', "[Icon Theme]\nName=Dawn Cursors\n"},
+            {"dawn-icons-1.0/dev", 'c'},
+            {"__MACOSX/dawn-icons-1.0/._Dawn", 'f', "junk"},
+        });
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QCOMPARE(importPack(importer, file), QString("imported"));
+        QVERIFY(importer.message().contains("Imported Dawn, Dawn Dark from dawn-icons.tar.gz"));
+        QVERIFY(importer.message().contains("Dawn Cursors has no icon folders"));
+        QVERIFY(importer.message().contains("special files"));
+        QCOMPARE(importer.themeId(), QString("Dawn"));
+        QCOMPARE(readAll(desk.user + "/Dawn-Dark/scalable/apps/utilities-terminal.svg"), QByteArray(kSvg));
+        QVERIFY(QFileInfo(desk.user + "/Dawn-Dark/scalable/apps/utilities-terminal.svg").isSymLink());
+        // A hard link becomes a file of its own.
+        QCOMPARE(readAll(desk.user + "/Dawn/scalable/apps/web-browser.svg"), QByteArray(kSvg));
+        QVERIFY(!QFileInfo(desk.user + "/Dawn/scalable/apps/web-browser.svg").isSymLink());
+        // A cache made elsewhere is dropped; no tool here makes a new one.
+        QVERIFY(!QFile::exists(desk.user + "/Dawn/icon-theme.cache"));
+        QCOMPARE(QDir(desk.user).entryList(QDir::AllDirs | QDir::Hidden | QDir::NoDotAndDotDot), QStringList({"Dawn", "Dawn-Dark"}));
+        // The unpacked copy is gone.
+        QCOMPARE(QDir(s.env.appCacheDir).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot), QStringList());
+        // Each pack is a change of its own in History.
+        int imports = 0;
+        for (const Transaction &tx : core.coordinator.history())
+            imports += tx.settingId == QLatin1String("appearance.icons.import") && tx.phase == QLatin1String("committed");
+        QCOMPARE(imports, 2);
+    }
+
+    // A pack at the archive's top level is named after the archive, and a zip works too.
+    void aPackAtTheTopOfAZipIsNamedAfterIt() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString file = s.dir.path() + "/downloads/Sunny.zip";
+        writeArchive(file, {{"index.theme", 'f', packIndex("Sunny")}, {"scalable/apps/folder.svg", 'f', kSvg}});
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QCOMPARE(importPack(importer, file), QString("imported"));
+        QCOMPARE(importer.themeId(), QString("Sunny"));
+        QCOMPARE(readAll(desk.user + "/Sunny/scalable/apps/folder.svg"), QByteArray(kSvg));
+    }
+
+    void aPackAlreadyInstalledIsSkippedAndTheRestImported() {
+        Sandbox s;
+        IconDesk desk(s);
+        addPack(desk.user, "Old");
+        const QString file = s.dir.path() + "/downloads/two.tar.gz";
+        writeArchive(file, {{"Old/index.theme", 'f', packIndex("Old")}, {"Old/scalable/apps/a.svg", 'f', kSvg},
+                            {"New/index.theme", 'f', packIndex("New")}, {"New/scalable/apps/a.svg", 'f', kSvg}});
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        QCOMPARE(importPack(importer, file), QString("imported"));
+        QVERIFY(importer.message().contains("Imported New"));
+        QVERIFY(importer.message().contains("A pack called Old is already in your icons folder"));
+        QCOMPARE(readAll(desk.user + "/Old/scalable/apps/folder.svg"), QByteArray(kSvg));
+    }
+
+    // Archives that try to reach outside, or to pass for something else: nothing is
+    // installed, nothing outside is touched, and the unpacked copy is gone.
+    void hostileArchivesInstallNothing() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString in = s.dir.path() + "/downloads";
+        const QString outside = s.dir.path() + "/outside";
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        const auto refused = [&](const QString &name, const QList<ArchiveItem> &items, const QString &words) {
+            writeArchive(in + "/" + name, items);
+            const QString state = importPack(importer, in + "/" + name);
+            const bool clean = QDir(desk.user).entryList(QDir::AllDirs | QDir::Hidden | QDir::NoDotAndDotDot).isEmpty() && !QFileInfo::exists(outside)
+                               && QDir(s.env.appCacheDir).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot).isEmpty();
+            if (state != QLatin1String("failed") || !importer.message().contains(words) || !clean) {
+                qWarning() << name << state << importer.message() << clean;
+                return false;
+            }
+            return true;
+        };
+        const ArchiveItem index{"Evil/index.theme", 'f', packIndex("Evil")};
+        QVERIFY(refused("climb.tar.gz", {index, {"Evil/../../outside", 'f', "x"}}, "outside itself"));
+        QVERIFY(refused("absolute.tar.gz", {index, {outside, 'f', "x"}}, "outside itself"));
+        // A link the archive makes, then a file written through it.
+        QVERIFY(refused("through.tar.gz", {index, {"Evil/door", 'l', {}, "../../../.."}, {"Evil/door/outside", 'f', "x"}}, "writes through a link"));
+        QVERIFY(refused("abslink.tar.gz", {index, {"Evil/scalable/apps/a.svg", 'l', {}, "/etc/passwd"}}, "points outside the archive"));
+        QVERIFY(refused("hardlink.tar.gz", {index, {"Evil/scalable/apps/a.svg", 'h', {}, "../../etc/passwd"}}, "not a file in it"));
+        // A relative link out of the pack is unpacked, then refused by the importer's own check.
+        QVERIFY(refused("escape.tar.gz", {index, {"Evil/scalable/apps/a.svg", 'l', {}, "../../../../../../outside"}}, "points outside the pack"));
+        QVERIFY(refused("huge.tar.gz", {index, {"Evil/scalable/apps/big.svg", 'f', {}, {}, qint64(65) * 1024 * 1024}}, "too large"));
+        QVERIFY(refused("empty.tar.gz", {{"readme.txt", 'f', "hello"}}, "no icon pack in it"));
+        QVERIFY(!QFileInfo::exists(outside));
+    }
+
+    void anUnpackedArchiveLeftBehindIsCleanedUp() {
+        Sandbox s;
+        IconDesk desk(s);
+        writeFile(s.env.appCacheDir + "/.omarchy-control-import-abc/content/Pack/index.theme", "x");
+        AppCore core(s.env);
+        IconThemeImporter importer(s.env, &core.coordinator);
+        importer.recoverStaging();
+        QCOMPARE(QDir(s.env.appCacheDir).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot), QStringList());
+    }
+
     void badFoldersAreExplainedAndNothingIsCopied() {
         Sandbox s;
         IconDesk desk(s);
@@ -6301,8 +6756,11 @@ esac)SH");
         };
 
         QVERIFY(refused(in + "/nothing-here", "could not be found"));
+        // Not really an archive, whatever its name says.
         writeFile(in + "/pack.tar.gz", "x");
-        QVERIFY(refused(in + "/pack.tar.gz", "Extract it first"));
+        QVERIFY(refused(in + "/pack.tar.gz", "pack.tar.gz"));
+        writeFile(in + "/pack.rar", "x");
+        QVERIFY(refused(in + "/pack.rar", "RAR archives cannot be read here"));
         writeFile(in + "/file.txt", "x");
         QVERIFY(refused(in + "/file.txt", "This is a file"));
         QDir().mkpath(in + "/empty");

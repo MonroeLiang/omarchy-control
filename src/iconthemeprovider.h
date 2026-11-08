@@ -24,6 +24,8 @@ public:
     struct Consumer {
         QString id, label, path, group, key, value;
         QString blocked;  // Why it cannot be written, when it cannot.
+        bool present = true;  // The file is there. A missing one is created.
+        bool named = true;    // The file names an icon theme. A missing key is added.
     };
 
     struct State {
@@ -86,6 +88,19 @@ public:
     QString hookPath() const;
     QString runtimeStatePath() const;
     static QByteArray hookScript();
+    QString postUpdateHookPath() const;
+    static QByteArray postUpdateHookScript();
+
+    // The launcher icon layer (iconlayer.h). It follows the saved choice: the fixed pack,
+    // or what the desktop theme names. With no choice saved there is nothing to follow.
+    QString layerPack(QString *why = nullptr) const;
+    // Builds, refreshes, or removes the layer to match the switch and the choice. Only
+    // reads files and holds its own lock, so it is safe on a worker thread.
+    int syncLayer(bool ifStale, QString *message = nullptr) const;
+    QVariantMap layerState() const;
+    static QString layerReason(const QVariantMap &state);
+    int retireIconic(QString *message) const;
+    int restoreIconic(QString *message) const;
 
 private:
     struct Policy {

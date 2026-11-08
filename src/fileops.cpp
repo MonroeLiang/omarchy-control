@@ -528,4 +528,51 @@ bool iniSet(QByteArray *document, const QString &group, const QString &key, cons
     return true;
 }
 
+bool iniUpsert(QByteArray *document, const QString &group, const QString &key, const QString &value, QString *error) {
+    const QList<IniSpan> spans = iniSpans(*document, group.toUtf8(), key.toUtf8());
+    if (spans.size() > 1) {
+        if (error)
+            *error = QStringLiteral("The key %1 appears more than once in this file.").arg(key);
+        return false;
+    }
+    if (spans.size() == 1)
+        return iniSet(document, group, key, value, error);
+    // Matches the file's own line endings, so a CRLF file stays CRLF.
+    const QByteArray newline = document->contains("\r\n") ? "\r\n" : "\n";
+    const QByteArray line = key.toUtf8() + "=" + value.toUtf8() + newline;
+    const QByteArray wanted = group.toUtf8();
+    // Where the group's last non-blank line ends, so the key joins the group it belongs to.
+    qsizetype insertAt = -1;
+    bool inGroup = false;
+    qsizetype position = 0;
+    while (position < document->size()) {
+        qsizetype end = document->indexOf('\n', position);
+        const qsizetype next = end < 0 ? document->size() : end + 1;
+        const QByteArray trimmed = document->mid(position, (end < 0 ? document->size() : end) - position).trimmed();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            inGroup = trimmed.mid(1, trimmed.size() - 2).trimmed() == wanted;
+            if (inGroup)
+                insertAt = next;
+        } else if (inGroup && !trimmed.isEmpty()) {
+            insertAt = next;
+        }
+        position = next;
+    }
+    if (insertAt >= 0) {
+        // A group that ends the file without a final newline needs one before the new line.
+        if (insertAt == document->size() && !document->endsWith('\n')) {
+            document->append(newline);
+            insertAt = document->size();
+        }
+        document->insert(insertAt, line);
+        return true;
+    }
+    if (!document->isEmpty() && !document->endsWith('\n'))
+        document->append(newline);
+    if (!document->isEmpty())
+        document->append(newline);
+    document->append("[" + wanted + "]" + newline + line);
+    return true;
+}
+
 }  // namespace FileOps

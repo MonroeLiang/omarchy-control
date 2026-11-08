@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include "fileops.h"
+#include "iconlayer.h"
 
 namespace {
 
@@ -89,8 +90,9 @@ bool IconThemeProvider::State::conflict() const {
 
 QStringList IconThemeProvider::State::disagreeing() const {
     QStringList labels;
+    // A file that names no pack yet is not a disagreement: the next choice fills it in.
     for (const Consumer &consumer : consumers)
-        if (consumer.blocked.isEmpty() && consumer.value != effective)
+        if (consumer.blocked.isEmpty() && consumer.named && consumer.value != effective)
             labels << consumer.label;
     return labels;
 }
@@ -120,7 +122,8 @@ QString IconThemeProvider::State::reason() const {
 QVariantMap IconThemeProvider::State::toVariant() const {
     QVariantList rows;
     for (const Consumer &consumer : consumers)
-        rows << QVariantMap{{"id", consumer.id}, {"label", consumer.label}, {"path", consumer.path}, {"value", consumer.value}, {"blocked", consumer.blocked}};
+        rows << QVariantMap{{"id", consumer.id}, {"label", consumer.label}, {"path", consumer.path}, {"value", consumer.value}, {"blocked", consumer.blocked},
+                            {"present", consumer.present}, {"named", consumer.named}};
     return {{"mode", !managed ? "unmanaged" : fixed ? "fixed" : "follow-theme"},
             {"selected", selected},
             {"selectedInstalled", selectedInstalled},
@@ -158,6 +161,119 @@ QByteArray IconThemeProvider::hookScript() {
            "  omarchy-control icons reapply \"$1\"\n"
            "fi\n"
            "exit 0\n";
+}
+
+QString IconThemeProvider::postUpdateHookPath() const {
+    return m_runner->env().configHome + "/omarchy/hooks/post-update.d/90-omarchy-control-icons";
+}
+
+// An update can bring new apps, whose icons the layer does not have yet.
+QByteArray IconThemeProvider::postUpdateHookScript() {
+    return "#!/bin/bash\n"
+           "# Installed by Omarchy Control. Gives apps added by an update their icon from your pack\n"
+           "# in the launcher. `omarchy-control icons remove-integration` removes it.\n"
+           "if command -v omarchy-control >/dev/null; then\n"
+           "  omarchy-control icons layer sync --if-stale\n"
+           "fi\n"
+           "exit 0\n";
+}
+
+QString IconThemeProvider::layerPack(QString *why) const {
+    const Env &env = m_runner->env();
+    const Policy policy = loadPolicy();
+    if (!policy.valid) {
+        if (why)
+            *why = tr("Starts once you choose a pack, or Follow desktop theme, above.");
+        return {};
+    }
+    const QString pack = policy.fixed ? policy.theme : IconThemes::desktopDefault(env);
+    if (!IconThemes::load(env, pack).found) {
+        if (why)
+            *why = tr("%1 is not installed, so the launcher keeps the icons it finds itself.").arg(pack);
+        return {};
+    }
+    return pack;
+}
+
+static void saveLayerError(const Env &env, const QString &error) {
+    if (error.isEmpty())
+        QFile::remove(IconLayer::statePath(env));
+    else
+        FileOps::atomicWrite(IconLayer::statePath(env), QJsonDocument(QJsonObject{{"error", error}}).toJson(), nullptr, 0600);
+}
+
+int IconThemeProvider::syncLayer(bool ifStale, QString *message) const {
+    const Env &env = m_runner->env();
+    QString ignored;
+    QString &out = message ? *message : ignored;
+    // A build and the hooks' builds take turns, each reading the state once it has its turn.
+    ScopedFlock lock(env.runtimeDir + "/omarchy-control-icon-layer.lock", LOCK_EX, 30000, true);
+    if (!lock.held()) {
+        out = tr("Another update of the launcher icons is still running.");
+        return 1;
+    }
+    const QString pack = IconLayer::enabled(env) && IconLayer::incompatibility(env).isEmpty() ? layerPack() : QString();
+    QString error;
+    if (pack.isEmpty()) {
+        const bool removed = IconLayer::remove(env, &error);
+        saveLayerError(env, error);
+        out = error;
+        return removed ? 0 : 1;
+    }
+    if (ifStale && IconLayer::exists(env)) {
+        const QVariantMap status = IconLayer::status(env);
+        if (status.value("pack").toString() == pack && status.value("stamp").toString() == IconLayer::stamp(env, pack))
+            return 0;
+    }
+    const IconLayer::Build build = IconLayer::build(env, pack);
+    saveLayerError(env, build.ok ? QString() : build.error);
+    out = build.error;
+    return build.ok ? 0 : 1;
+}
+
+QVariantMap IconThemeProvider::layerState() const {
+    const Env &env = m_runner->env();
+    QVariantMap state = IconLayer::status(env);
+    QString why;
+    const QString wanted = layerPack(&why);
+    state["enabled"] = IconLayer::enabled(env);
+    state["paused"] = IconLayer::incompatibility(env);
+    state["wanted"] = wanted;
+    state["why"] = why;
+    QByteArray contents;
+    FileOps::readFile(IconLayer::statePath(env), &contents);
+    state["error"] = QJsonDocument::fromJson(contents).object().value("error").toString();
+    state["iconic"] = IconLayer::iconicPaths(env);
+    state["iconicRetired"] = IconLayer::iconicRetired(env);
+    return state;
+}
+
+QString IconThemeProvider::layerReason(const QVariantMap &state) {
+    if (!state.value("enabled").toBool())
+        return {};
+    if (!state.value("paused").toString().isEmpty())
+        return state.value("paused").toString();
+    if (!state.value("iconic").toStringList().isEmpty())
+        return tr("Iconic is also managing icons, and its theme hook runs after this app's, so the two undo each other. Hand icons over to Omarchy Control below.");
+    if (!state.value("error").toString().isEmpty())
+        return tr("The launcher icons could not be updated: %1").arg(state.value("error").toString());
+    return state.value("why").toString();
+}
+
+int IconThemeProvider::retireIconic(QString *message) const {
+    if (!IconLayer::retireIconic(m_runner->env(), message))
+        return 1;
+    *message = tr("Iconic's layer, theme hook, and settings are kept in %1. Restore them there at any time.").arg(m_runner->env().appStateDir + "/retired/iconic");
+    QString ignored;
+    syncLayer(false, &ignored);
+    return 0;
+}
+
+int IconThemeProvider::restoreIconic(QString *message) const {
+    if (!IconLayer::restoreIconic(m_runner->env(), message))
+        return 1;
+    *message = tr("Iconic's files are back where they were.");
+    return 0;
 }
 
 QString IconThemeProvider::normalizeChoice(const QString &value) {
@@ -205,40 +321,59 @@ QString IconThemeProvider::hookState() const {
     return contents == hookScript() ? QStringLiteral("owned") : QStringLiteral("edited");
 }
 
+// Whether a file that is not there yet could be made: the nearest folder that exists has
+// to be writable.
+static bool creatable(const QString &path) {
+    QFileInfo folder(QFileInfo(path).absolutePath());
+    while (!folder.exists() && folder.absoluteFilePath() != folder.absolutePath())
+        folder = QFileInfo(folder.absolutePath());
+    return folder.isDir() && folder.isWritable();
+}
+
+// Every file that names an icon theme for apps that do not read GSettings, as Iconic
+// writes them: the GTK files and kdeglobals always, made if missing, and the qt*ct
+// files only where they already exist, since making one changes nothing on its own.
 QList<IconThemeProvider::Consumer> IconThemeProvider::consumers() const {
     const Env &env = m_runner->env();
     const QString config = env.process.value("XDG_CONFIG_HOME", env.configHome);
-    const QString platform = env.process.value("QT_QPA_PLATFORMTHEME");
     struct Candidate {
         const char *id;
         QString label, path;
         const char *group, *key;
-        bool active;
+        bool always;
     };
     const QList<Candidate> candidates{
         {"gtk3", tr("GTK 3 settings.ini"), config + "/gtk-3.0/settings.ini", "Settings", "gtk-icon-theme-name", true},
         {"gtk4", tr("GTK 4 settings.ini"), config + "/gtk-4.0/settings.ini", "Settings", "gtk-icon-theme-name", true},
-        // These tools only have a say when Qt is told to use them.
-        {"qt5ct", QStringLiteral("qt5ct"), config + "/qt5ct/qt5ct.conf", "Appearance", "icon_theme", platform.contains(QLatin1String("qt5ct"))},
-        {"qt6ct", QStringLiteral("qt6ct"), config + "/qt6ct/qt6ct.conf", "Appearance", "icon_theme", platform.contains(QLatin1String("qt6ct"))},
+        {"qt5ct", QStringLiteral("qt5ct"), config + "/qt5ct/qt5ct.conf", "Appearance", "icon_theme", false},
+        {"qt6ct", QStringLiteral("qt6ct"), config + "/qt6ct/qt6ct.conf", "Appearance", "icon_theme", false},
         {"kde", QStringLiteral("KDE"), config + "/kdeglobals", "Icons", "Theme", true},
     };
     QList<Consumer> rows;
     for (const Candidate &candidate : candidates) {
-        if (!candidate.active)
+        const QFileInfo info(candidate.path);
+        // A dangling link is still someone's file, and is reported rather than replaced.
+        const bool present = info.exists() || info.isSymLink();
+        if (!present && !candidate.always)
             continue;
+        Consumer consumer{QString::fromLatin1(candidate.id), candidate.label, candidate.path, QString::fromLatin1(candidate.group), QString::fromLatin1(candidate.key), {}, {}};
+        consumer.present = present;
+        consumer.named = false;
         QByteArray contents;
-        if (!FileOps::readFile(candidate.path, &contents))
+        if (present && !FileOps::readFile(candidate.path, &contents)) {
+            consumer.blocked = tr("%1 could not be read, so it was left as it is.").arg(candidate.label);
+            rows << consumer;
             continue;
+        }
         const FileOps::IniValue value = FileOps::iniGet(contents, QString::fromLatin1(candidate.group), QString::fromLatin1(candidate.key));
-        // A file that does not name an icon theme leaves it to GSettings, and is left alone.
-        if (!value.found)
-            continue;
-        Consumer consumer{QString::fromLatin1(candidate.id), candidate.label, candidate.path, QString::fromLatin1(candidate.group), QString::fromLatin1(candidate.key), value.value, {}};
+        consumer.value = value.value;
+        consumer.named = value.found;
         if (value.ambiguous)
             consumer.blocked = tr("%1 names an icon theme more than once, so it was left as it is.").arg(candidate.label);
-        else if (!QFileInfo(candidate.path).isWritable())
+        else if (present && !info.isWritable())
             consumer.blocked = tr("%1 is read-only, so it was left as it is.").arg(candidate.label);
+        else if (!present && !creatable(candidate.path))
+            consumer.blocked = tr("%1 cannot be created there, so it was left out.").arg(candidate.label);
         rows << consumer;
     }
     return rows;
@@ -265,14 +400,16 @@ void IconThemeProvider::saveReapplied(const Reapplied &state) const {
 
 bool IconThemeProvider::patchConsumers(const QString &target, QString *error, const QString &from) const {
     for (const Consumer &consumer : consumers()) {
-        if (!consumer.blocked.isEmpty() || consumer.value == target)
+        if (!consumer.blocked.isEmpty() || (consumer.named && consumer.value == target))
             continue;
-        if (!from.isEmpty() && consumer.value != from)
+        // A file holding a pack this app did not write was edited by someone. A missing
+        // file or key is not an edit, so it is filled in.
+        if (!from.isEmpty() && consumer.named && consumer.value != from)
             continue;
         QByteArray contents;
-        if (!FileOps::readFile(consumer.path, &contents, error))
+        if (consumer.present && !FileOps::readFile(consumer.path, &contents, error))
             return false;
-        if (!FileOps::iniSet(&contents, consumer.group, consumer.key, target, error) || !FileOps::atomicWrite(consumer.path, contents, error))
+        if (!FileOps::iniUpsert(&contents, consumer.group, consumer.key, target, error) || !FileOps::atomicWrite(consumer.path, contents, error, 0644))
             return false;
     }
     return true;
@@ -424,7 +561,7 @@ void IconThemeProvider::readChoices(ChoicesCallback callback) {
 }
 
 QStringList IconThemeProvider::plannedFiles() const {
-    QStringList files{policyPath(), hookPath()};
+    QStringList files{policyPath(), hookPath(), postUpdateHookPath()};
     for (const Consumer &consumer : consumers())
         if (consumer.blocked.isEmpty() && !files.contains(consumer.path))
             files << consumer.path;
@@ -435,8 +572,18 @@ QStringList IconThemeProvider::plannedEffects() const {
     QStringList effects;
     if (hookState() == QLatin1String("absent"))
         effects << tr("Adds a theme hook, so your choice survives a theme change with this app closed. Undoing this removes it again.");
-    for (const Consumer &consumer : consumers())
-        effects << (consumer.blocked.isEmpty() ? tr("Updates the icon theme named in %1.").arg(consumer.label) : consumer.blocked);
+    if (!QFileInfo::exists(postUpdateHookPath()) && IconLayer::enabled(m_runner->env()))
+        effects << tr("Gives Omarchy's launcher and dock their app icons from this pack, through %1, and adds an update hook so new apps get theirs. The switch below turns this off.").arg(IconLayer::folder(m_runner->env()));
+    for (const Consumer &consumer : consumers()) {
+        if (!consumer.blocked.isEmpty())
+            effects << consumer.blocked;
+        else if (!consumer.present)
+            effects << tr("Creates %1 naming the pack, for apps that do not read GSettings.").arg(consumer.label);
+        else if (!consumer.named)
+            effects << tr("Adds the pack to %1.").arg(consumer.label);
+        else
+            effects << tr("Updates the icon theme named in %1.").arg(consumer.label);
+    }
     return effects;
 }
 
@@ -490,6 +637,12 @@ void IconThemeProvider::submit(const QString &choice, const QString &kind, const
                             return;
                         }
                     }
+                    if (!QFileInfo::exists(postUpdateHookPath()) && !QFileInfo(postUpdateHookPath()).isSymLink()) {
+                        if (!FileOps::atomicWrite(postUpdateHookPath(), postUpdateHookScript(), &error, 0755)) {
+                            done(false, error);
+                            return;
+                        }
+                    }
                     writeEffective(target, false, [this, target, done](bool ok, const QString &writeError) {
                         if (!ok) {
                             done(false, writeError);
@@ -506,8 +659,12 @@ void IconThemeProvider::submit(const QString &choice, const QString &kind, const
             };
             request.verify = [this, target](ChangeCoordinator::Done done) {
                 verifyEffective(target, 8, [this, target, done](bool ok, const QString &error) {
-                    if (ok)
+                    if (ok) {
                         settle(target);
+                        // Derived from the choice: a layer that could not be built is reported
+                        // on its own row, and does not undo the choice.
+                        syncLayer(false);
+                    }
                     done(ok, error);
                 });
             };
@@ -557,7 +714,7 @@ void IconThemeProvider::undo(const Transaction &original, Finished finished) {
             if (FileOps::fingerprint(it.key()) != entry.value("after").toString()) {
                 // Someone's edit to the hook is theirs to keep, and is no reason to refuse
                 // the rest. Their copy stays, as it would if they had added it themselves.
-                if (it.key() == hookPath())
+                if (it.key() == hookPath() || it.key() == postUpdateHookPath())
                     continue;
                 finished(failure(original.label, changedSince));
                 return;
@@ -607,8 +764,10 @@ void IconThemeProvider::undo(const Transaction &original, Finished finished) {
                     done(false, readError);
                     return;
                 }
-                if (value == before)
+                if (value == before) {
                     settle(before);
+                    syncLayer(false);
+                }
                 done(value == before, value == before ? QString() : IconThemeProvider::tr("The icons did not change. GSettings still says %1.").arg(value));
             });
         };
@@ -708,6 +867,10 @@ int IconThemeProvider::reapply(QString *message, const QString &forTheme) {
     }
     state.lastApplied = target;
     saveReapplied(state);
+    // A new theme can name a new pack, and the launcher follows it.
+    QString layerError;
+    if (syncLayer(false, &layerError) != 0)
+        *message = layerError;
     return 0;
 }
 
@@ -717,9 +880,24 @@ int IconThemeProvider::removeIntegration(QString *message) {
         removed << hookPath();
     else if (hookState() == QLatin1String("edited"))
         *message = tr("The hook was edited, so it was left alone: %1").arg(hookPath()) + "\n";
+    QByteArray script;
+    if (FileOps::readFile(postUpdateHookPath(), &script)) {
+        if (script == postUpdateHookScript() && QFile::remove(postUpdateHookPath()))
+            removed << postUpdateHookPath();
+        else if (script != postUpdateHookScript())
+            *message += tr("The hook was edited, so it was left alone: %1").arg(postUpdateHookPath()) + "\n";
+    }
     if (QFile::remove(policyPath()))
         removed << policyPath();
     QFile::remove(runtimeStatePath());
+    QString layerError;
+    if (IconLayer::exists(m_runner->env())) {
+        if (IconLayer::remove(m_runner->env(), &layerError))
+            removed << IconLayer::folder(m_runner->env());
+        else
+            *message += layerError + "\n";
+    }
+    QFile::remove(IconLayer::statePath(m_runner->env()));
     *message += removed.isEmpty() ? tr("Nothing to remove.") : tr("Removed %1. The current icons were left as they are.").arg(removed.join(", "));
     return 0;
 }

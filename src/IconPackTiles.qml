@@ -125,7 +125,7 @@ Column {
                 if (root.importer.busy)
                     return
                 if (event.urls.length !== 1)
-                    root.importer.reject(qsTr("Drop one folder at a time."))
+                    root.importer.reject(qsTr("Drop one folder or archive at a time."))
                 else
                     root.importer.choose(event.urls[0])
                 event.accept(Qt.CopyAction)
@@ -248,7 +248,7 @@ Column {
             border.color: theme.accent
             AppText {
                 anchors.centerIn: parent
-                text: qsTr("Drop an icon pack folder to import it")
+                text: qsTr("Drop an icon pack folder or archive to import it")
                 font.weight: Font.DemiBold
             }
         }
@@ -268,7 +268,7 @@ Column {
     AppText {
         width: root.width
         visible: root.noOtherPacks
-        text: qsTr("No other icon packs are installed. Import an extracted pack's folder here, or put it in %1.").arg(backend.iconsFolder())
+        text: qsTr("No other icon packs are installed. Import a pack's folder or archive here, or put it in %1.").arg(backend.iconsFolder())
         secondary: true
         scale_: 0.88
         wrapMode: Text.Wrap
@@ -290,6 +290,17 @@ Column {
             }
         }
         AppButton {
+            objectName: "iconImportArchiveButton"
+            text: qsTr("Import archive…")
+            iconName: "download"
+            enabled: !root.importer.busy
+            onClicked: {
+                root.importer.dismiss()
+                archiveDialog.active = true
+                archiveDialog.item.open()
+            }
+        }
+        AppButton {
             visible: root.packs.length > root.limit && !root.query.trim().length
             style: "flat"
             text: root.showAll ? qsTr("Show fewer") : qsTr("Show all %1").arg(root.packs.length)
@@ -305,6 +316,11 @@ Column {
         active: false
         source: "qrc:/IconFolderDialog.qml"
     }
+    Loader {
+        id: archiveDialog
+        active: false
+        source: "qrc:/IconArchiveDialog.qml"
+    }
 
     // Where an import reports back. Importing and using a pack are separate decisions, so
     // even a successful one changes nothing until Use this pack is pressed.
@@ -312,11 +328,12 @@ Column {
         id: importStatus
         objectName: "iconImportStatus"
         readonly property string state_: root.importer.state
+        readonly property bool working: state_ === "copying" || state_ === "extracting"
         visible: state_ !== "idle" || root.importer.message.length > 0
         width: root.width
         spacing: 8
         AppIcon {
-            visible: importStatus.state_ !== "copying"
+            visible: !importStatus.working
             name: importStatus.state_ === "failed" ? "warning" : importStatus.state_ === "imported" ? "check" : "info"
             tint: importStatus.state_ === "failed" ? theme.dangerText : theme.muted
             size: 14
@@ -329,7 +346,7 @@ Column {
             text: root.importer.message
         }
         Rectangle {
-            visible: importStatus.state_ === "copying"
+            visible: importStatus.working
             Layout.preferredWidth: theme.fontSize * 8
             Layout.preferredHeight: 4
             radius: theme.rounded ? 2 : 0
@@ -362,7 +379,7 @@ Column {
             }
         }
         AppButton {
-            visible: importStatus.state_ === "copying" || importStatus.state_ === "confirm"
+            visible: importStatus.working || importStatus.state_ === "confirm"
             style: "flat"
             text: qsTr("Cancel")
             onClicked: root.importer.cancel()

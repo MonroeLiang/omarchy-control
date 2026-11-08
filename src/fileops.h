@@ -45,5 +45,8 @@ struct IniValue {
 };
 IniValue iniGet(const QByteArray &document, const QString &group, const QString &key);
 bool iniSet(QByteArray *document, const QString &group, const QString &key, const QString &value, QString *error = nullptr);
+// The same, except that a missing key is added: after the group's last line, or in a new
+// group at the end. Other lines stay exactly as they were. Duplicates are still refused.
+bool iniUpsert(QByteArray *document, const QString &group, const QString &key, const QString &value, QString *error = nullptr);
 
 }  // namespace FileOps

@@ -5,7 +5,10 @@ TARGET = omarchy-control
 TEMPLATE = app
 
 VERSION = 0.2.0
-DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+# version.h, from version.h.in. qmake rewrites it only when the version changes, so a new
+# version rebuilds main.cpp, where a define would leave an old object in place.
+QMAKE_SUBSTITUTES += src/version.h.in
+INCLUDEPATH += $$OUT_PWD/src
 
 include(omarchy-control-sources.pri)
 

@@ -351,6 +351,16 @@ Item {
             }
         }
 
+        // Under the launcher icons switch: what the layer covers, and Iconic if it is here too.
+        Loader {
+            Layout.fillWidth: true
+            Layout.topMargin: 4
+            Layout.bottomMargin: 2
+            active: root.rich && root.entryId === "appearance.icons.launcher" && root.status === "ok"
+            visible: active
+            sourceComponent: IconLayerStatus { details: root.st.extra || ({}) }
+        }
+
         AppText {
             // Only worth a line when it explains something: an inherited value is the
             // normal case, and saying so on every row is noise.

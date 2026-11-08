@@ -56,7 +56,7 @@ omarchy-control update install    # Download, verify, and install it
 
 ```sh
 omarchy-control integrate menu --remove   # If you added it to the menu
-omarchy-control icons remove-integration  # If you chose an icon pack; keeps the icons as they are
+omarchy-control icons remove-integration  # If you chose an icon pack; removes the launcher icons and hooks, keeps the icons as they are
 sudo pacman -R omarchy-control
 ```
 
@@ -80,7 +80,7 @@ Packages are built for x86_64 by [a public workflow](.github/workflows/release.y
 <td width="50%" valign="top">
 <img src="docs/screens/appearance.png" alt="The Appearance page, choosing a theme from tiles"><br><br>
 <b>See a theme before you pick it</b><br>
-Themes, backgrounds, and icon packs are tiles, not filenames. Import a pack you downloaded by dropping its folder in. The same live, verified settings cover fonts, windows, the bar and dock, idle timers, power profiles, input, DNS, and language.
+Themes, backgrounds, and icon packs are tiles, not filenames. Install a pack you downloaded by dropping in its folder, or the .zip or .tar it came in. Your pack reaches Omarchy's launcher and dock too, which otherwise mix icons from every installed pack, using an idea from [Iconic](https://github.com/UnderStackDev/omarchy_iconic). The same live, verified settings cover fonts, windows, the bar and dock, idle timers, power profiles, input, DNS, and language.
 </td>
 <td width="50%" valign="top">
 <img src="docs/screens/sound.png" alt="The Sound and devices page"><br><br>
@@ -174,7 +174,7 @@ omarchy-control rule add firefox float
 omarchy-control display preview DP-1 1920 0 --keep
 omarchy-control launch panel.network
 omarchy-control icons list
-omarchy-control icons import ~/Downloads/SomePack
+omarchy-control icons import ~/Downloads/SomePack.tar.gz
 omarchy-control update check
 omarchy-control skill install
 ```
@@ -188,7 +188,7 @@ Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wa
 ```sh
 bin/build                  # build/omarchy-control
 bin/install                # Build the Arch package from this checkout and install it
-bin/test                   # 362 tests; never touches the real desktop
+bin/test                   # 378 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
 tools/installer-check.sh   # install.sh against real release files in a disposable root

@@ -12,7 +12,7 @@ Hyprland runs nested as a window on the current desktop. Isolation:
 Usage: tools/nested-check.py [--record] [screenshot-dir]
 --record marks what passed as verified in docs/live-evidence.json.
 """
-import json, os, shutil, signal, stat, subprocess, sys, tempfile, time
+import json, os, re, shutil, signal, stat, subprocess, sys, tempfile, threading, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = ROOT + "/build/omarchy-control"
@@ -438,6 +438,105 @@ try:
     check("Q quits a real window", quit_ok)
     bad = [line for line in output_text.splitlines() if "qrc:/" in line or "QML" in line]
     check("no QML warnings in the real window", not bad, "; ".join(bad)[:400])
+
+    # The launcher icon layer, judged by the real shell's own index command. GSettings is a
+    # file in this session's home from here on, and the hooks reach this build of the app.
+    shutil.copy(ROOT + "/tools/fake-gsettings", GUARD + "/gsettings")
+    os.symlink(APP, GUARD + "/omarchy-control")
+    layer = H + "/.icons/omarchy-control"
+
+    def index_command():
+        text = open(OMARCHY + "/shell/services/AppLibrary.qml").read()
+        body = text[text.index("function iconIndexScanCommand()"):]
+        body = body[body.index("return [") + len("return ["):body.index("].join(' ')")]
+        return " ".join(re.sub(r"\\(.)", r"\1", part) for part in re.findall(r"'((?:[^'\\]|\\.)*)'", body))
+
+    def index():
+        """Each icon name to its file, as the shell keeps them: the first line per name."""
+        found = {}
+        out = subprocess.run(["bash", "-c", index_command()], env=app_env, capture_output=True, text=True, timeout=60).stdout
+        for line in out.splitlines():
+            base = os.path.basename(line)
+            dot = base.rfind(".")
+            found.setdefault(base[:dot] if dot > 0 else base, line)
+        return found
+
+    def layer_names():
+        return sorted(f[:-4] for f in os.listdir(layer + "/apps")) if os.path.isdir(layer + "/apps") else []
+
+    def manifest():
+        return json.load(open(layer + "/manifest.json")) if os.path.exists(layer + "/manifest.json") else {}
+
+    chosen = json.loads(app("apply", "appearance.icons", "Yaru-blue", "--yes").stdout or "{}")
+    names = layer_names()
+    check("choosing a pack builds launcher icons from the real packs and launchers", chosen.get("phase") == "committed" and names, str(chosen)[:200])
+    shell_index = index()
+    lost = [n for n in names if not shell_index.get(n, "").startswith(layer + "/")]
+    check("the shell's own index takes every layer icon first", names and not lost, str([(n, shell_index.get(n)) for n in lost[:4]]))
+    from_pack = [i["name"] for i in manifest().get("icons", []) if i["kind"] == "pack"]
+    check("Yaru, a PNG pack, reaches the launcher as SVG", from_pack and all(shell_index.get(n, "").endswith(".svg") for n in from_pack), str(from_pack[:6]))
+    gtk = H + "/.config/gtk-3.0/settings.ini"
+    check("choosing a pack names it in the GTK and KDE files", "gtk-icon-theme-name=Yaru-blue" in (open(gtk).read() if os.path.exists(gtk) else "")
+          and "Theme=Yaru-blue" in (open(H + "/.config/kdeglobals").read() if os.path.exists(H + "/.config/kdeglobals") else ""))
+    run("omarchy-menu", "summon", "root")
+    time.sleep(1.5)
+    shot("real-launcher-layer")
+    run("omarchy-menu", "close")
+
+    # Rebuilds while the shell scans: it must only ever see the old layer or the new one.
+    halted, glimpses = [], []
+    def scan_loop():
+        while not halted:
+            seen = index()
+            missing = [n for n in names if not seen.get(n, "").startswith(layer + "/")]
+            staged = [p for p in seen.values() if ".omarchy-control-next" in p]
+            if missing or staged:
+                glimpses.append((missing[:3], staged[:3]))
+    scanner = threading.Thread(target=scan_loop)
+    scanner.start()
+    for _ in range(12):
+        run(APP, "icons", "layer", "sync")
+    halted.append(True)
+    scanner.join()
+    check("rebuilding never shows the shell a half-built or missing layer", not glimpses, str(glimpses[:2]))
+
+    # A new app after an update gets its icon, through Omarchy's own post-update hook.
+    yaru_apps = {f[:-4] for d in os.listdir("/usr/share/icons/Yaru") if os.path.isdir(f"/usr/share/icons/Yaru/{d}/apps") for f in os.listdir(f"/usr/share/icons/Yaru/{d}/apps")}
+    fresh = next(n for n in ("accessories-calculator", "org.gnome.Calculator", "accessories-dictionary", "gnome-calculator") if n in yaru_apps and n not in names)
+    os.makedirs(H + "/.local/share/applications", exist_ok=True)
+    open(H + "/.local/share/applications/nested-late.desktop", "w").write(f"[Desktop Entry]\nType=Application\nName=Late\nIcon={fresh}\nExec=true\n")
+    hooked = run("omarchy-hook", "post-update")
+    check("after an update, a new app gets its icon from the pack", os.path.exists(f"{layer}/apps/{fresh}.svg"), hooked.stdout + hooked.stderr)
+
+    # A theme switch with this app closed moves the launcher to the theme's pack.
+    followed = json.loads(app("apply", "appearance.icons", "follow-theme", "--yes").stdout or "{}")
+    current_pack = manifest().get("pack")
+    theme_dir = None
+    for name in sorted(os.listdir(OMARCHY + "/themes")):
+        icons_file = f"{OMARCHY}/themes/{name}/icons.theme"
+        pack = open(icons_file).read().strip() if os.path.exists(icons_file) else ""
+        if pack and pack != current_pack and os.path.exists(f"/usr/share/icons/{pack}/index.theme"):
+            theme_dir, theme_pack = name, pack
+            break
+    switched_icons = False
+    if theme_dir:
+        # The real switch swaps the theme, then runs its hooks in a detached batch after
+        # the retints, which in this session never finish. So the hooks are then run the
+        # way that batch runs them, through Omarchy's own runner, with the theme's name.
+        run("omarchy-theme-set", theme_dir, timeout=120)
+        run("omarchy-hook", "theme-set", theme_dir, timeout=120)
+        for _ in range(60):
+            if manifest().get("pack") == theme_pack:
+                switched_icons = True
+                break
+            time.sleep(0.5)
+    check("a theme switch with this app closed moves the launcher to the theme's pack", followed.get("phase") == "committed" and switched_icons,
+          f"theme={theme_dir} want={theme_dir and theme_pack} have={manifest().get('pack')}")
+
+    off = json.loads(app("apply", "appearance.icons.launcher", "false", "--yes").stdout or "{}")
+    check("turning the switch off removes the layer, and the shell's index falls back", off.get("phase") == "committed" and not os.path.exists(layer)
+          and not any(p.startswith(layer) for p in index().values()))
+    app("icons", "remove-integration")
 
     # The tray. The session above has no D-Bus, so the shell hosts no tray and closing
     # quits. Here it gets a private bus that starts nothing on its own, and the real shell

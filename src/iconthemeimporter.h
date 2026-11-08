@@ -32,6 +32,7 @@ public:
         QString source, id, name, destination;
         QStringList shadows;         // The same pack elsewhere, which this copy will win over.
         QStringList missingParents;  // Reported, and never downloaded.
+        QStringList siblings;        // Packs from the same archive, which its links may reach.
         bool hidden = false;
     };
 
@@ -43,7 +44,7 @@ public:
     QString themeId() const { return m_inspection.id; }
     QString themeName() const { return m_inspection.name; }
     qreal progress() const { return m_progress.load(); }
-    bool busy() const { return m_state == QLatin1String("copying"); }
+    bool busy() const { return m_state == QLatin1String("copying") || m_state == QLatin1String("extracting"); }
     bool usable() const { return m_state == QLatin1String("imported") && !m_inspection.hidden; }
 
     Inspection inspect(const QString &folder) const;
@@ -71,6 +72,20 @@ private:
     void setState(const QString &state, const QString &message);
     void start();
     void conclude(bool ok, bool cancelled, const QString &error);
+    // An archive is unpacked into the cache, then each pack in it is imported in turn,
+    // through the same steps as a folder.
+    void startArchive(const QString &path);
+    void nextFromArchive();
+    void finishArchive(const QString &error, bool cancelled);
+    bool lockImports();
+
+    struct Batch {
+        bool active = false;
+        QString name, folder;
+        QStringList queue, ids, notes;
+        QList<Inspection> imported;
+    };
+    Batch m_batch;
 
     Env m_env;
     ChangeCoordinator *m_coordinator;
