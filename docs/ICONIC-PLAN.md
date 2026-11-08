@@ -1,6 +1,6 @@
 # Bringing Iconic into Appearance › Icons
 
-Status: L1 and L2 implemented on November 8, 2026, with their automated, visual, and nested checks done; what is left of them needs a real session (see [LIVE-CHECKS.md](LIVE-CHECKS.md#icon-packs)). L3 is next. Decisions settled by Jason on November 8, 2026 (see [§10](#10-decisions)). Written November 8, 2026, against Omarchy 4.5 and [Iconic](https://github.com/UnderStackDev/omarchy_iconic) at `bce1cd2`. It continues the [icon themes plan](ICON-THEMES-PLAN.md), whose I0–I2 shipped.
+Status: L1, L2, and L3 implemented on November 8, 2026, with their automated, visual, and nested checks done; what is left of them needs a real session (see [LIVE-CHECKS.md](LIVE-CHECKS.md#icon-packs)). L4 is next. Decisions settled by Jason on November 8, 2026 (see [§10](#10-decisions)). Written November 8, 2026, against Omarchy 4.5 and [Iconic](https://github.com/UnderStackDev/omarchy_iconic) at `bce1cd2`. It continues the [icon themes plan](ICON-THEMES-PLAN.md), whose I0–I2 shipped.
 
 Iconic is a separate Omarchy app (MIT, © 2026 UnderStackDev) that picks icon themes, installs theme archives, and edits app launchers. Its key idea is a small icon layer that makes Omarchy's launcher and dock show the chosen pack, which on Omarchy they otherwise do not. This plan takes what Iconic does that Control lacks, fixes the weak spots found in its code, and keeps what Control already does better.
 
@@ -210,7 +210,8 @@ L1's nested checks confirm which apps actually gain from each file, but the resu
 
 - **What can be removed:** only packs under the user's icon folders. The tile menu offers Remove; the CLI is `icons remove <id>`.
 - **When it is refused:** when the pack is the one in use, the fixed choice, or what the current Omarchy theme names. Also when another installed pack inherits it, which Iconic doesn't check, or when another pack's symlink points into it.
-- **Where it goes:** to the Trash with `QFile::moveToTrash`, recorded in History. Undo restores it while the trashed copy is unchanged, so a mistake is never permanent.
+- **Where it goes:** to the Trash, laid out as the freedesktop spec says under the user's data folder, and recorded in History. Undo brings it back while it is still in the Trash and nothing has taken its place. Qt's `moveToTrash` is not used: it reads the process environment, so a test would reach the real Trash.
+- **In the window:** a trash button on tiles of packs the user installed, shown on hover or keyboard focus, and the Delete key. A confirmation names the folder. The CLI is `icons remove <id> --yes`.
 
 ---
 

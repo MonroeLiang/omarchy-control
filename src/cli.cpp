@@ -72,6 +72,7 @@ const char Usage[] =
     "  icons import <folder|archive> [--yes] [--json]  Install an icon pack from a folder or a .zip, .tar, or .7z\n"
     "  icons reapply [theme]                 Reapply your icon pack choice; the theme hook runs this\n"
     "  icons remove-integration              Remove the hooks, saved choice, and launcher icons, leaving the icons\n"
+    "  icons remove <id> [--yes]             Move an icon pack you installed to the Trash; undo brings it back\n"
     "  icons layer status [--json]           What the launcher icon layer covers, and why it may be idle\n"
     "  icons layer sync [--if-stale]         Rebuild the launcher icon layer; the update hook runs this\n"
     "  icons iconic [status|retire|restore]  Hand Iconic's icon files over to this app, or put them back\n"
@@ -729,6 +730,31 @@ int cmdIcons(AppCore &core, const QStringList &args, bool yes, bool json) {
         if (!message.isEmpty())
             err() << message << "\n";
         return code;
+    }
+    if (action == QLatin1String("remove") && args.size() >= 3) {
+        const IconThemeProvider::Removal plan = core.icons.planRemoval(args[2]);
+        if (!plan.ok) {
+            err() << plan.reason << "\n";
+            return 1;
+        }
+        if (!yes) {
+            err() << plan.name << " (" << plan.path << ") would move to the Trash. Re-run with --yes to go ahead.\n";
+            return 1;
+        }
+        Transaction result;
+        QEventLoop loop;
+        core.icons.removePack(args[2], [&](const Transaction &tx) {
+            result = tx;
+            loop.quit();
+        });
+        if (result.phase.isEmpty())
+            loop.exec();
+        const bool ok = result.phase == QLatin1String("committed");
+        if (json)
+            printJson(QJsonObject{{"ok", ok}, {"id", result.id}, {"message", result.message}});
+        else
+            (ok ? out() : err()) << (ok ? "Moved " + plan.name + " to the Trash. Undo with: omarchy-control undo " + result.id : result.message) << "\n";
+        return ok ? 0 : 1;
     }
     if (action == QLatin1String("layer")) {
         const QString verb = args.value(2, QStringLiteral("status"));

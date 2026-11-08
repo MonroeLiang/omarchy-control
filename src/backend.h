@@ -109,6 +109,9 @@ public:
     Q_INVOKABLE void togglePin(const QString &id);
     Q_INVOKABLE void clearRestartNotice();
     // Hands Iconic's icon files over to this app, or puts them back (iconlayer.h).
+    // Removing an installed icon pack: what stands in the way, then the move to the Trash.
+    Q_INVOKABLE QVariantMap planIconRemoval(const QString &id) const;
+    Q_INVOKABLE void removeIconPack(const QString &id);
     Q_INVOKABLE void retireIconic();
     Q_INVOKABLE void restoreIconic();
 

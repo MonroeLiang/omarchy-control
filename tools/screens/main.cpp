@@ -1,6 +1,7 @@
 // Usage: screens <sandbox-root|--real> <output-dir> <page[:focus[:WxH[:steps]]]>...
 //
 // Steps, joined by "+", set up a state before the picture: select=OUT, stage=OUT/field/value,
+// focus=NAME or NAME@N (the Nth visible item of that name), click=NAME, text=NAME/VALUE,
 // preview, check, discard, refresh, unplug=OUT, details=ID, scroll=PX, rescan, connect=UUID/NAME,
 // keep, goback, wait=MS. They act only on the sandbox's fake
 // displays: unplug drops a display from the fake Hyprland's list and refreshes.
@@ -70,10 +71,14 @@ static void runSteps(QQuickWindow *window, Backend &backend, const QString &home
                     QMetaObject::invokeMethod(item, "click");
             });
         else if (name == QLatin1String("focus")) {
-            // The first visible item of that name, as Tab would reach it.
+            // The first visible item of that name, as Tab would reach it, or the Nth with name@N.
+            // Only an active window holds keyboard focus, offscreen or not.
+            window->requestActivate();
+            const QString wanted = value.section('@', 0, 0);
+            int skip = value.contains('@') ? value.section('@', 1).toInt() : 0;
             bool done = false;
             visit(window->contentItem(), [&](QQuickItem *item) {
-                if (!done && item->objectName() == value && item->isVisible()) {
+                if (!done && item->objectName() == wanted && item->isVisible() && skip-- <= 0) {
                     item->forceActiveFocus(Qt::TabFocusReason);
                     done = true;
                 }

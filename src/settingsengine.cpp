@@ -1137,6 +1137,15 @@ void SettingsEngine::undo(const QString &transactionId, ApplyCallback callback) 
         callback(failed);
         return;
     }
+    // A removed icon pack comes back out of the Trash.
+    if (original.settingId == QLatin1String("appearance.icons.remove") && m_icons) {
+        m_icons->undoRemoval(original, [this, callback, transactionId](const Transaction &result) {
+            if (result.phase == QLatin1String("committed"))
+                m_coordinator->markUndoneBy(transactionId, result.id);
+            callback(result);
+        });
+        return;
+    }
     if (entry->write.value("kind").toString() == QLatin1String("icons")) {
         if (!m_icons) {
             failed.message = QCoreApplication::translate("SettingsEngine", "This change cannot be undone automatically.");

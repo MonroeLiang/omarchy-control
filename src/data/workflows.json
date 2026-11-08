@@ -9606,5 +9606,29 @@
    "page": "appearance",
    "focus": "appearance.icons"
   }
+ },
+ {
+  "id": "appearance.icons.remove",
+  "page": "appearance",
+  "section": "Icons",
+  "label": "Remove an icon pack",
+  "type": "action",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Move an icon pack you installed to the Trash. Undo in History brings it back.",
+  "keywords": [
+   "delete icon pack",
+   "uninstall icon theme",
+   "remove icons",
+   "trash icon pack"
+  ],
+  "sources": [
+   "omarchy-control icons remove"
+  ],
+  "launch": {
+   "kind": "page",
+   "page": "appearance",
+   "focus": "appearance.icons"
+  }
  }
 ]
