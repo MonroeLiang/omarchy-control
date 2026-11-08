@@ -102,7 +102,7 @@ Check for a new version and install it from the About page, where <code>pacman</
 </tr>
 </table>
 
-It also covers services, startup apps, storage, plugins, shortcuts, window rules, file associations, typed Superwhisper settings, and guided firewall routes. Every other Omarchy workflow is one search away, handing off to the right panel, wizard, app, or config file.
+Any app can be renamed, given another icon, or hidden from the launcher, through a copy of its launcher that notices package updates and leaves the package's own untouched. It also covers services, startup apps, storage, plugins, shortcuts, window rules, file associations, typed Superwhisper settings, and guided firewall routes. Every other Omarchy workflow is one search away, handing off to the right panel, wizard, app, or config file.
 
 The window follows your theme and language live, works by keyboard alone, and mirrors for right-to-left languages. While it runs, its icon sits in the bar's tray: closing the window keeps it there, and a click brings the window back to the workspace you are on. Quit from the tray's menu, or with <kbd>Q</kbd>. Without a tray, closing quits. Screenshots use a synthetic machine with fictional values.
 
@@ -175,6 +175,7 @@ omarchy-control display preview DP-1 1920 0 --keep
 omarchy-control launch panel.network
 omarchy-control icons list
 omarchy-control icons import ~/Downloads/SomePack.tar.gz
+omarchy-control apps launcher set firefox.desktop --name Browser --icon web-browser
 omarchy-control update check
 omarchy-control skill install
 ```
@@ -188,7 +189,7 @@ Building from source needs `qt6-base`, `qt6-declarative`, `qt6-svg`, and `qt6-wa
 ```sh
 bin/build                  # build/omarchy-control
 bin/install                # Build the Arch package from this checkout and install it
-bin/test                   # 381 tests; never touches the real desktop
+bin/test                   # 384 tests; never touches the real desktop
 tools/nested-check.py      # Real Hyprland and Omarchy scripts in an isolated session
 tools/package-check.sh     # Install, upgrade, and remove in a disposable pacman root
 tools/installer-check.sh   # install.sh against real release files in a disposable root

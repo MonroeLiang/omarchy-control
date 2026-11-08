@@ -1,4 +1,5 @@
 #include "settingsengine.h"
+#include "launchereditor.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -1135,6 +1136,15 @@ void SettingsEngine::undo(const QString &transactionId, ApplyCallback callback) 
     if (!entry) {
         failed.message = QCoreApplication::translate("SettingsEngine", "This setting no longer exists.");
         callback(failed);
+        return;
+    }
+    // A launcher change puts back the files it wrote.
+    if (original.settingId == QLatin1String("apps.launcher.edit") && m_launchers) {
+        m_launchers->undo(original, [this, callback, transactionId](const Transaction &result) {
+            if (result.phase == QLatin1String("committed"))
+                m_coordinator->markUndoneBy(transactionId, result.id);
+            callback(result);
+        });
         return;
     }
     // A removed icon pack comes back out of the Trash.

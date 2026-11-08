@@ -44,6 +44,12 @@ Backend::Backend(const Env &env, QObject *parent)
     connect(&m_system, &SystemProvider::message, this, relay);
     connect(&m_updates, &UpdateProvider::message, this, relay);
     connect(&m_windowRules, &WindowRulesProvider::message, this, relay);
+    connect(&m_core->launchers, &LauncherEditor::message, this, [this](const QString &text, const QString &kind) { emit toast(text, kind); });
+    // A launcher added, removed, or edited elsewhere shows in the list.
+    connect(&m_appsWatcher, &QFileSystemWatcher::directoryChanged, &m_core->launchers, [this] {
+        if (!m_core->launchers.entries().isEmpty())
+            m_core->launchers.reload();
+    });
     connect(&m_iconImporter, &IconThemeImporter::finished, this, [this] { refresh(QStringLiteral("appearance.icons")); });
     // The display tools describe the displays themselves, which change on their own.
     connect(&m_displays, &DisplayProvider::monitorsChanged, this, [this] {
@@ -514,6 +520,10 @@ QVariantList Backend::problems() const {
 Backend::~Backend() {
     if (m_layerWorker)
         m_layerWorker->wait();
+}
+
+LauncherEditor *Backend::launchers() {
+    return &m_core->launchers;
 }
 
 void Backend::syncIconLayer() {

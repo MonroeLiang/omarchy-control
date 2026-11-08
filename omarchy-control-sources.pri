@@ -17,6 +17,7 @@ HEADERS += \
     $$PWD/src/iconthemeimporter.h \
     $$PWD/src/iconlayer.h \
     $$PWD/src/iconarchive.h \
+    $$PWD/src/launchereditor.h \
     $$PWD/src/catalog.h \
     $$PWD/src/capabilities.h \
     $$PWD/src/hypromodule.h \
@@ -53,6 +54,7 @@ SOURCES += \
     $$PWD/src/iconthemeimporter.cpp \
     $$PWD/src/iconlayer.cpp \
     $$PWD/src/iconarchive.cpp \
+    $$PWD/src/launchereditor.cpp \
     $$PWD/src/catalog.cpp \
     $$PWD/src/capabilities.cpp \
     $$PWD/src/hypromodule.cpp \

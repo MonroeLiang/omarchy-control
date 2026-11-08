@@ -9249,6 +9249,34 @@
   }
  },
  {
+  "id": "apps.launcher.edit",
+  "page": "apps",
+  "section": "Default apps",
+  "label": "Rename, re-icon, or hide an app",
+  "type": "action",
+  "domain": "C14",
+  "integration": "native",
+  "description": "Change how an app appears in Omarchy's launcher and dock, without changing the app.",
+  "keywords": [
+   "rename app",
+   "change app icon",
+   "app icon",
+   "hide app",
+   "launcher entry",
+   "desktop file",
+   "desktop entry",
+   "iconic"
+  ],
+  "sources": [
+   "omarchy-control apps launcher"
+  ],
+  "launch": {
+   "kind": "page",
+   "page": "apps",
+   "focus": "block.installedApps"
+  }
+ },
+ {
   "id": "native.mime",
   "page": "apps",
   "section": "Default apps",
@@ -9520,7 +9548,7 @@
   "type": "action",
   "domain": "C18",
   "integration": "external-helper",
-  "description": "The launcher icon layer and archive import build on its design. MIT License.",
+  "description": "The launcher icon layer, archive import, and launcher editing build on its design. MIT License.",
   "keywords": [
    "iconic",
    "credits",
@@ -9630,5 +9658,30 @@
    "page": "appearance",
    "focus": "appearance.icons"
   }
+ },
+ {
+  "id": "appearance.icons.apps",
+  "page": "appearance",
+  "section": "Icons",
+  "label": "Change one app's icon",
+  "type": "action",
+  "domain": "C01",
+  "integration": "native",
+  "description": "Give a single app another icon from your pack, or an image of your own.",
+  "keywords": [
+   "app icon",
+   "one app",
+   "missing icon",
+   "custom icon"
+  ],
+  "sources": [
+   "omarchy-control apps launcher"
+  ],
+  "launch": {
+   "kind": "page",
+   "page": "apps",
+   "focus": "block.installedApps"
+  },
+  "icon": "apps"
  }
 ]

@@ -62,6 +62,7 @@
 #include "trayhost.h"
 #include "iconlayer.h"
 #include "iconarchive.h"
+#include "launchereditor.h"
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -223,6 +224,14 @@ Transaction removeIconPack(IconThemeProvider &icons, const QString &id) {
     Transaction result;
     bool done = false;
     icons.removePack(id, [&](const Transaction &tx) { result = tx; done = true; });
+    QTest::qWaitFor([&] { return done; }, 15000);
+    return result;
+}
+
+Transaction launcherChange(const std::function<void(ChangeCoordinator::Finished)> &start) {
+    Transaction result;
+    bool done = false;
+    start([&](const Transaction &tx) { result = tx; done = true; });
     QTest::qWaitFor([&] { return done; }, 15000);
     return result;
 }
@@ -1880,13 +1889,14 @@ esac)SH");
             else
                 expected << entry->id;
         }
-        QCOMPARE(expected.size() + natives.size(), 194);
+        QCOMPARE(expected.size() + natives.size(), 195);
         QCOMPARE(placed.size(), QSet<QString>(placed.begin(), placed.end()).size());
         placed.sort();
         expected.sort();
         QCOMPARE(placed, expected);
         natives.sort();
-        QCOMPARE(natives, QStringList({"block.associations", "block.installedApps"}));
+        // Installed apps is reached both as the list and as where launchers are changed.
+        QCOMPARE(natives, QStringList({"block.associations", "block.installedApps", "block.installedApps"}));
         QCOMPARE(blocks, QStringList({"associations", "installedApps"}));
         QCOMPARE(agents, 26);
         QVERIFY(agentsCollapsible);
@@ -6746,6 +6756,135 @@ esac)SH");
         IconThemeImporter importer(s.env, &core.coordinator);
         importer.recoverStaging();
         QCOMPARE(QDir(s.env.appCacheDir).entryList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot), QStringList());
+    }
+
+    // ---- Editing an app's launcher --------------------------------------------------
+    void aPackagesLauncherIsChangedThroughACopy() {
+        Sandbox s;
+        IconDesk desk(s);
+        s.env.process.insert("LANG", "de_DE.UTF-8");
+        const QString package = s.env.dataDirs.last() + "/applications/org.example.Web.desktop";
+        const QByteArray original = "[Desktop Entry]\nType=Application\nName=Web\nName[de]=Netz\nName[fr]=Toile\nIcon=web-browser\nExec=web %u\n\n"
+                                    "[Desktop Action new]\nName=New Window\nName[de]=Neues Fenster\n";
+        writeFile(package, original);
+        AppCore core(s.env);
+        LauncherEditor::Edit edit;
+        edit.name = QStringLiteral("  Browser  ");
+        edit.hidden = true;
+        const Transaction tx = launcherChange([&](auto done) { core.launchers.apply("org.example.Web", edit, done); });
+        QCOMPARE(tx.phase, QString("committed"));
+        // The package's own file is exactly as installed.
+        QCOMPARE(readAll(package), original);
+        const QString copy = s.env.dataHome + "/applications/org.example.Web.desktop";
+        const QByteArray changed = readAll(copy);
+        QVERIFY(changed.contains("\nName=Browser\n"));
+        // This session's language takes the new name; every other keeps its own, and the
+        // actions are untouched.
+        QVERIFY(changed.contains("\nName[de]=Browser\n"));
+        QVERIFY(changed.contains("\nName[fr]=Toile\n"));
+        QVERIFY(changed.contains("[Desktop Action new]\nName=New Window\nName[de]=Neues Fenster\n"));
+        QVERIFY(changed.contains("NoDisplay=true"));
+        QVERIFY(changed.contains("X-OmarchyControl-Source=" + package.toUtf8()));
+        QVERIFY(changed.contains("X-OmarchyControl-Changed=Name;NoDisplay;"));
+        const LauncherEditor::Entry entry = core.launchers.find("org.example.Web");
+        QCOMPARE(entry.kind, QString("override"));
+        QCOMPARE(entry.name, QString("Browser"));
+        QVERIFY(entry.modified && !entry.visible && !entry.outdated);
+        QCOMPARE(core.coordinator.history().first().before, QString("Netz"));
+        QCOMPARE(core.coordinator.history().first().after, QString("Browser"));
+
+        // Undo takes the copy away again.
+        QCOMPARE(undoTx(core.engine, tx.id).phase, QString("committed"));
+        QVERIFY(!QFileInfo::exists(copy));
+        QCOMPARE(core.launchers.find("org.example.Web").kind, QString("package"));
+
+        // A package update is noticed, and brought in with the same changes.
+        edit = {};
+        edit.icon = QStringLiteral("utilities-terminal");
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.apply("org.example.Web", edit, done); }).phase, QString("committed"));
+        writeFile(package, original + "Keywords=new;\n");
+        QVERIFY(core.launchers.find("org.example.Web").outdated);
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.update("org.example.Web", done); }).phase, QString("committed"));
+        const QByteArray updated = readAll(copy);
+        QVERIFY(updated.contains("Keywords=new;"));
+        QVERIFY(updated.contains("\nIcon=utilities-terminal\n"));
+        QVERIFY(!core.launchers.find("org.example.Web").outdated);
+
+        // Reset takes the copy away; with the package gone, the copy is an orphan.
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.reset("org.example.Web", done); }).phase, QString("committed"));
+        QVERIFY(!QFileInfo::exists(copy));
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.apply("org.example.Web", edit, done); }).phase, QString("committed"));
+        QFile::remove(package);
+        QCOMPARE(core.launchers.find("org.example.Web").kind, QString("orphan"));
+    }
+
+    // A launcher of the user's own, such as a web app, is edited where it is, after one
+    // backup that Reset goes back to.
+    void anOwnLauncherIsEditedInPlaceAndResetFromItsBackup() {
+        Sandbox s;
+        IconDesk desk(s);
+        const QString path = s.env.dataHome + "/applications/HEY.desktop";
+        const QByteArray original = "[Desktop Entry]\nType=Application\nName=HEY\nExec=omarchy-launch-webapp https://hey.com\nIcon=/home/me/hey.png\n";
+        writeFile(path, original);
+        AppCore core(s.env);
+        LauncherEditor::Edit edit;
+        edit.name = QStringLiteral("Mail");
+        const Transaction tx = launcherChange([&](auto done) { core.launchers.apply("HEY.desktop", edit, done); });
+        QCOMPARE(tx.phase, QString("committed"));
+        QVERIFY(readAll(path).contains("Name=Mail"));
+        QVERIFY(!readAll(path).contains("X-OmarchyControl"));
+        QCOMPARE(readAll(core.launchers.backupPath("HEY.desktop")), original);
+        QCOMPARE(core.launchers.find("HEY").kind, QString("own"));
+        // A second change keeps the first backup: Reset goes all the way back.
+        edit.name = QStringLiteral("Post");
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.apply("HEY", edit, done); }).phase, QString("committed"));
+        QCOMPARE(readAll(core.launchers.backupPath("HEY.desktop")), original);
+        const Transaction reset = launcherChange([&](auto done) { core.launchers.reset("HEY", done); });
+        QCOMPARE(reset.phase, QString("committed"));
+        QCOMPARE(readAll(path), original);
+        QVERIFY(!QFileInfo::exists(core.launchers.backupPath("HEY.desktop")));
+        // Undoing the reset brings the edit and its backup back.
+        QCOMPARE(undoTx(core.engine, reset.id).phase, QString("committed"));
+        QVERIFY(readAll(path).contains("Name=Post"));
+        QCOMPARE(readAll(core.launchers.backupPath("HEY.desktop")), original);
+    }
+
+    void aChosenImageIsCopiedInAndBadInputRefused() {
+        Sandbox s;
+        IconDesk desk(s);
+        writeFile(s.env.dataDirs.last() + "/applications/tool.desktop", "[Desktop Entry]\nType=Application\nName=Tool\nIcon=tool\nExec=tool\n");
+        const QString picture = s.dir.path() + "/Pictures/my icon.png";
+        QDir().mkpath(QFileInfo(picture).absolutePath());
+        QImage image(32, 32, QImage::Format_ARGB32);
+        image.fill(Qt::red);
+        QVERIFY(image.save(picture));
+        AppCore core(s.env);
+        QString error;
+        const QString copy = core.launchers.importIcon(picture, &error);
+        QVERIFY2(copy.startsWith(core.launchers.iconFolder() + "/my_icon-"), qPrintable(copy + error));
+        QVERIFY(core.launchers.importIcon(s.dir.path() + "/Pictures/nope.png", &error).isEmpty());
+        writeFile(s.dir.path() + "/notes.txt", "x");
+        QVERIFY(core.launchers.importIcon(s.dir.path() + "/notes.txt", &error).isEmpty());
+
+        LauncherEditor::Edit edit;
+        edit.icon = copy;
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.apply("tool", edit, done); }).phase, QString("committed"));
+        QVERIFY(readAll(s.env.dataHome + "/applications/tool.desktop").contains("Icon=" + copy.toUtf8()));
+        // An image nothing uses any more goes; one in use stays.
+        const QString unused = core.launchers.importIcon(picture.left(picture.lastIndexOf('/')) + "/../Pictures/my icon.png", &error);
+        writeFile(core.launchers.iconFolder() + "/stale-0000000000.png", "x");
+        core.launchers.cleanIcons();
+        QVERIFY(QFileInfo::exists(copy));
+        QCOMPARE(unused, copy);
+        QVERIFY(!QFileInfo::exists(core.launchers.iconFolder() + "/stale-0000000000.png"));
+
+        edit = {};
+        edit.name = QStringLiteral("   ");
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.apply("tool", edit, done); }).phase, QString("failed"));
+        edit = {};
+        edit.icon = QStringLiteral("/no/such/icon.png");
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.apply("tool", edit, done); }).phase, QString("failed"));
+        QCOMPARE(launcherChange([&](auto done) { core.launchers.apply("missing-app", edit, done); }).phase, QString("failed"));
     }
 
     // ---- Removing a pack ------------------------------------------------------------

@@ -6,8 +6,8 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 
 | Check | Evidence |
 | --- | --- |
-| 381 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
-| 105 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
+| 384 automated tests | `bin/test`, all passing on repeated runs, against fake commands in a temporary root. PATH there holds only fakes and plain file utilities, so a test cannot reach the desktop |
+| 108 checks against real Hyprland 0.56.2, the real Omarchy shell, and real Omarchy scripts | `tools/nested-check.py`, details below |
 | Package install, upgrade, and removal | `tools/package-check.sh`, the real package in a disposable pacman root, with real `pacman` under `fakeroot` |
 | All 77 typed settings read correctly on real hardware | `omarchy-control doctor` on Omarchy 4.5.0-3; recorded in `live-evidence.json` |
 | 391 of 392 routes resolve to an installed executable | Same run. `omarchy-notes` is not installed on that machine, and the row says so. None were launched |
@@ -33,6 +33,7 @@ The plan requires recording what was actually tested. As of November 6, 2026.
 - **A real window:** correct Wayland app ID, no QML warnings. Real key events through a real keymap drive Ctrl+K, search, Enter, `?`, Esc, and Q. A second launch hands over and leaves one window. The accent color and Arabic mirroring follow file changes live.
 - **The tray:** on a private bus that starts nothing on its own, the real shell hosts the app's icon, named for the app. Closing the window keeps the app running in the tray, clicking the icon brings the window back, a launch from the hidden state shows the one window, and Quit in the tray's menu ends the app and removes the icon. No warnings.
 - **Launcher and dock icons:** choosing Yaru-blue through the app builds the layer from the real packs and launchers, and the real shell's own index command, taken from its `AppLibrary.qml`, takes every layer icon first. Yaru's PNG icons reach it as SVG. Twelve rebuilds while that index runs in a loop never show it a half-built or missing layer. After a real theme switch, Omarchy's hook runner moves the layer to the new theme's pack, and Omarchy's `post-update` hook gives a newly added app its icon. The pack is named in the GTK files and `kdeglobals`. Turning the switch off removes the layer, and the index falls back. The theme switch's own detached batch runs its hooks after the retints, which never finish in this session, so the hooks were run the way that batch runs them.
+- **App launchers:** renaming and hiding a real package's launcher through the app makes a copy that Omarchy's own `hidden-entries.sh` reports as hidden, with the package's file untouched. Omarchy's own Remove on that copy takes it away and brings the package's launcher back, the same as Reset.
 
 It is a nested session: one virtual output and no real devices. The touchpad reported to it is simulated, while the options set on it are real.
 
@@ -55,7 +56,7 @@ These need your real session or hardware. Jason decided on November 6, 2026 to r
 
 ## Languages
 
-Danish, German, and Arabic are 100% translated: 829 interface and 1036 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
+Danish, German, and Arabic are 100% translated: 864 interface and 1040 catalog strings. Those translations are machine-written and not reviewed by a native speaker. The other 47 Omarchy languages fall back to English per string, with the framework, plurals, and layout direction ready. The plan treats language-switch support and translation coverage as separate facts. Jason decided on November 6, 2026 to leave those languages on the English fallback rather than ship unreviewed machine translation.
 
 ## First live run
 
@@ -95,7 +96,8 @@ Stop at anything surprising, and use `omarchy-control history` and `undo`. This 
 5. **Import:** download a pack. Drag the downloaded archive onto the tiles, and separately use Import archive. Then extract it and do the same with its folder and Import folder. Try one that holds several packs, such as Papirus, whose dark variants link into the main pack: each should arrive, and its dark variant should show icons. Each should say Imported and change nothing until you press Use this pack. An imported pack can change launcher and dock icons even when it is not chosen, because their list reads every pack. 
 6. **Launcher icons off and on:** turn off Launcher and dock icons. `~/.icons/omarchy-control` should be gone, and the launcher should go back to mixing packs the next time it opens. Turn it on again.
 7. **Remove:** hover a pack you imported and press its trash button, or focus it and press Delete. It should go to the Trash (check your file manager's Trash), and undo in History should bring it back. Try removing the pack in use, and a pack another one builds on: each should explain why it stays.
-8. **Other apps:** open an XWayland GTK 3 app and a KDE app, if any are installed. Note whether they follow the pack now that `~/.config/gtk-3.0/settings.ini` and `~/.config/kdeglobals` name it.
+8. **An app's launcher:** in Apps, open Installed apps and edit an app from a package: rename it, give it an icon from your pack, and save. The launcher should show the new name and icon the next time it opens, and `/usr/share/applications` should be unchanged. Hide another app and check it leaves the launcher. Undo both in History. Then edit a web app, and use Reset.
+9. **Other apps:** open an XWayland GTK 3 app and a KDE app, if any are installed. Note whether they follow the pack now that `~/.config/gtk-3.0/settings.ini` and `~/.config/kdeglobals` name it.
 
 ## Displays page
 

@@ -2,17 +2,24 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Every installed app, closed behind its count until asked. This only reads the desktop
-// entries and opens apps; installing and removing live in the Software library.
+// Every installed app, closed behind its count until asked. Each can be opened, or given
+// another name or icon, or hidden from the launcher; a package's own launcher is never
+// edited, and every change is in History. Installing and removing live in the Software
+// library.
 AppPanel {
     id: root
-    readonly property var system: backend.system
-    readonly property var shownApps: system.apps.filter(function (a) { return !a.hidden })
+    readonly property var launchers: backend.launchers
+    readonly property var all: launchers.entries
     property bool expanded: false
+    property bool showHidden: false
     property string filter: ""
-    readonly property var visibleApps: shownApps.filter(function (a) {
-        return !filter.length || (a.name + " " + a.comment).toLowerCase().indexOf(filter.toLowerCase()) >= 0
+    property string editing: ""
+    readonly property var shownApps: all.filter(function (a) { return a.visible && !a.omarchyHidden })
+    readonly property int hiddenCount: all.length - shownApps.length
+    readonly property var visibleApps: (showHidden ? all : shownApps).filter(function (a) {
+        return !filter.length || (a.name + " " + a.comment + " " + a.id).toLowerCase().indexOf(filter.toLowerCase()) >= 0
     })
+    Component.onCompleted: launchers.reload()
     // Search for Installed apps lands here, open and ready to type.
     function takeFocus() {
         expanded = true
@@ -53,7 +60,7 @@ AppPanel {
                     Layout.fillWidth: true
                     spacing: 2
                     AppText { Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Installed apps"); font.weight: Font.DemiBold; scale_: 1.45 }
-                    AppText { Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Browse and open installed applications."); secondary: true; scale_: 0.9 }
+                    AppText { Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Open an app, or change its name, icon, or place in the launcher."); secondary: true; scale_: 0.9 }
                 }
                 CountPill { count: root.shownApps.length }
                 AppIcon {
@@ -73,15 +80,26 @@ AppPanel {
         Item {
             width: parent.width
             height: field.implicitHeight + 24
-            AppField {
-                id: field
-                objectName: "installedAppsFilter"
+            RowLayout {
                 x: 16
                 width: parent.width - 32
                 anchors.verticalCenter: parent.verticalCenter
-                label: qsTr("Filter apps")
-                placeholderText: qsTr("Filter apps")
-                onTextChanged: root.filter = text
+                spacing: 12
+                AppField {
+                    id: field
+                    objectName: "installedAppsFilter"
+                    Layout.fillWidth: true
+                    label: qsTr("Filter apps")
+                    placeholderText: qsTr("Filter apps")
+                    onTextChanged: root.filter = text
+                }
+                AppSwitch {
+                    objectName: "installedAppsShowHidden"
+                    visible: root.hiddenCount > 0
+                    on: root.showHidden
+                    label: qsTr("Show hidden (%1)").arg(root.hiddenCount)
+                    onClicked: root.showHidden = !root.showHidden
+                }
             }
         }
         AppText {
@@ -91,48 +109,88 @@ AppPanel {
             height: visible ? implicitHeight + 20 : 0
             wrapMode: Text.Wrap
             secondary: true
-            text: root.shownApps.length ? qsTr("No app matches that.") : qsTr("No apps found.")
+            text: root.all.length ? qsTr("No app matches that.") : qsTr("No apps found.")
         }
         Repeater {
             model: root.expanded ? root.visibleApps.slice(0, 200) : []
-            delegate: Item {
+            delegate: Column {
+                id: app
                 objectName: "installedApp"
                 width: parent ? parent.width : 400
-                implicitHeight: Math.max(theme.rowHeight, names.implicitHeight + 16)
-                height: implicitHeight
-                RowDivider {}
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 14
-                    spacing: 12
-                    Item {
-                        implicitWidth: Math.round(theme.fontSize * 1.8)
-                        implicitHeight: implicitWidth
-                        Image {
-                            id: appIcon
-                            anchors.fill: parent
-                            visible: status === Image.Ready
-                            source: modelData.icon || ""
-                            sourceSize.width: width * 2
-                            sourceSize.height: height * 2
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
+                readonly property bool editing: root.editing === modelData.id
+                Item {
+                    width: parent.width
+                    implicitHeight: Math.max(theme.rowHeight, names.implicitHeight + 16)
+                    height: implicitHeight
+                    RowDivider {}
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 14
+                        spacing: 12
+                        Item {
+                            implicitWidth: Math.round(theme.fontSize * 1.8)
+                            implicitHeight: implicitWidth
+                            opacity: modelData.visible ? 1 : 0.5
+                            Image {
+                                id: appIcon
+                                anchors.fill: parent
+                                visible: status === Image.Ready
+                                source: modelData.iconUrl || ""
+                                sourceSize.width: width * 2
+                                sourceSize.height: height * 2
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                            }
+                            AppIcon { anchors.centerIn: parent; visible: !appIcon.visible; name: "apps"; size: Math.round(theme.fontSize * 1.3); tint: theme.muted }
                         }
-                        AppIcon { anchors.centerIn: parent; visible: !appIcon.visible; name: "apps"; size: Math.round(theme.fontSize * 1.3); tint: theme.muted }
+                        ColumnLayout {
+                            id: names
+                            Layout.fillWidth: true
+                            spacing: 1
+                            AppText { Layout.fillWidth: true; wrapMode: Text.Wrap; text: modelData.name; secondary: !modelData.visible }
+                            AppText {
+                                Layout.fillWidth: true
+                                // What makes this launcher different, in words.
+                                readonly property var notes: [
+                                    modelData.outdated ? qsTr("Out of date") : "",
+                                    modelData.kind === "orphan" ? qsTr("Its app was removed") : "",
+                                    modelData.modified && !modelData.outdated && modelData.kind !== "orphan" ? qsTr("Changed") : "",
+                                    !modelData.visible ? qsTr("Hidden") : "",
+                                    modelData.omarchyHidden ? qsTr("Hidden by Omarchy") : ""
+                                ].filter(function (n) { return n.length })
+                                visible: text.length > 0
+                                secondary: true
+                                scale_: 0.88
+                                wrapMode: Text.Wrap
+                                text: notes.length ? notes.join(" · ") : modelData.comment
+                                color: modelData.outdated ? theme.warningText : theme.muted
+                            }
+                        }
+                        AppButton {
+                            objectName: "editLauncher"
+                            style: app.editing ? "primary" : "outline"
+                            iconName: "edit"
+                            text: qsTr("Edit")
+                            Accessible.name: qsTr("Edit %1").arg(modelData.name)
+                            onClicked: root.editing = app.editing ? "" : modelData.id
+                        }
+                        AppButton {
+                            text: qsTr("Open")
+                            iconName: "external"
+                            visible: modelData.visible
+                            Accessible.name: qsTr("Open %1").arg(modelData.name)
+                            onClicked: backend.system.launchApp(modelData.id)
+                        }
                     }
-                    ColumnLayout {
-                        id: names
-                        Layout.fillWidth: true
-                        spacing: 1
-                        AppText { Layout.fillWidth: true; wrapMode: Text.Wrap; text: modelData.name }
-                        AppText { Layout.fillWidth: true; visible: text.length > 0; secondary: true; scale_: 0.88; wrapMode: Text.Wrap; text: modelData.comment }
-                    }
-                    AppButton {
-                        text: qsTr("Open")
-                        iconName: "external"
-                        Accessible.name: qsTr("Open %1").arg(modelData.name)
-                        onClicked: root.system.launchApp(modelData.id)
+                }
+                Loader {
+                    width: parent.width
+                    active: app.editing
+                    visible: active
+                    sourceComponent: LauncherEditorPanel {
+                        entry: modelData
+                        onDone: root.editing = ""
                     }
                 }
             }

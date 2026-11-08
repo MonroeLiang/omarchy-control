@@ -13,6 +13,8 @@
 #include "hypromodule.h"
 #include "iconthemeprovider.h"
 
+class LauncherEditor;
+
 struct ReadResult {
     QString status = "unknown";  // ok, unknown, custom, unavailable
     QString value;
@@ -52,6 +54,7 @@ public:
     // Icon packs need more than a command or a file can describe, and the same path has
     // to serve the window and the CLI, so the shared provider is plugged in here.
     void setIconThemes(IconThemeProvider *icons) { m_icons = icons; }
+    void setLaunchers(LauncherEditor *launchers) { m_launchers = launchers; }
 
     void read(const QString &id, ReadCallback callback);
     void readChoices(const QString &id, ChoicesCallback callback);
@@ -92,5 +95,6 @@ private:
     ChangeCoordinator *m_coordinator;
     Compat *m_compat;
     IconThemeProvider *m_icons = nullptr;
+    LauncherEditor *m_launchers = nullptr;
     QHash<QString, QVariantList> m_lastChoices;
 };

@@ -538,6 +538,21 @@ try:
           and not any(p.startswith(layer) for p in index().values()))
     app("icons", "remove-integration")
 
+    # An app's launcher, changed here, as Omarchy's own scripts see it.
+    target_app = next((a for a in ("chromium.desktop", "org.gnome.Nautilus.desktop", "mpv.desktop") if os.path.exists("/usr/share/applications/" + a)), None)
+    if target_app:
+        changed = json.loads(app("apps", "launcher", "set", target_app, "--name", "Nested Renamed", "--hide").stdout or "{}")
+        copy = H + "/.local/share/applications/" + target_app
+        hidden = run(OMARCHY + "/shell/services/hidden-entries.sh", "Hyprland").stdout.split()
+        check("an app hidden here is one Omarchy's launcher hides", changed.get("ok") and target_app[:-8] in hidden and "Name=Nested Renamed" in open(copy).read(),
+              f"{changed} hidden={target_app[:-8] in hidden}")
+        check("the package's own launcher is untouched", "Nested Renamed" not in open("/usr/share/applications/" + target_app).read())
+        # Omarchy's own Remove on a copy made here takes the copy away, which is a reset.
+        run("omarchy-remove-launcher-entry", target_app, "Nested Renamed")
+        listed = {e["id"]: e for e in json.loads(app("apps", "launcher", "list").stdout or "{}").get("launchers", [])}
+        check("Omarchy's own Remove on a changed launcher brings the package's back", not os.path.exists(copy) and listed.get(target_app, {}).get("kind") == "package",
+              str(listed.get(target_app)))
+
     # The tray. The session above has no D-Bus, so the shell hosts no tray and closing
     # quits. Here it gets a private bus that starts nothing on its own, and the real shell
     # comes back on it to host the app's icon.

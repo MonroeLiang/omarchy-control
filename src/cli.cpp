@@ -72,6 +72,10 @@ const char Usage[] =
     "  icons import <folder|archive> [--yes] [--json]  Install an icon pack from a folder or a .zip, .tar, or .7z\n"
     "  icons reapply [theme]                 Reapply your icon pack choice; the theme hook runs this\n"
     "  icons remove-integration              Remove the hooks, saved choice, and launcher icons, leaving the icons\n"
+    "  apps launcher list [--modified|--hidden] [--json]   Every app's launcher, and what was changed\n"
+    "  apps launcher set <id> [--name N] [--icon NAME|FILE] [--hide|--show]   Rename, re-icon, or hide an app\n"
+    "  apps launcher reset <id>              Put an app's launcher back as its package made it\n"
+    "  apps launcher update <id>             Take a package's newer launcher, with the same changes\n"
     "  icons remove <id> [--yes]             Move an icon pack you installed to the Trash; undo brings it back\n"
     "  icons layer status [--json]           What the launcher icon layer covers, and why it may be idle\n"
     "  icons layer sync [--if-stale]         Rebuild the launcher icon layer; the update hook runs this\n"
@@ -868,6 +872,101 @@ int cmdIcons(AppCore &core, const QStringList &args, bool yes, bool json) {
     return 1;
 }
 
+// Waits for a change the coordinator runs, and reports it as every other command does.
+int finishChange(AppCore &core, const std::function<void(ChangeCoordinator::Finished)> &start, bool json) {
+    Q_UNUSED(core);
+    Transaction result;
+    QEventLoop loop;
+    start([&](const Transaction &tx) {
+        result = tx;
+        loop.quit();
+    });
+    if (result.phase.isEmpty())
+        loop.exec();
+    const bool ok = result.phase == QLatin1String("committed");
+    if (json)
+        printJson(QJsonObject{{"ok", ok}, {"id", result.id}, {"message", result.message}});
+    else
+        (ok ? out() : err()) << (ok ? "Done. Undo with: omarchy-control undo " + result.id : result.message) << "\n";
+    return ok ? 0 : 1;
+}
+
+int cmdApps(AppCore &core, QStringList args, bool json) {
+    if (args.value(1) != QLatin1String("launcher")) {
+        err() << Usage;
+        return 1;
+    }
+    const QString verb = args.value(2, QStringLiteral("list"));
+    const QString id = args.value(3);
+    if (verb == QLatin1String("list")) {
+        const bool modified = args.contains(QStringLiteral("--modified")), hidden = args.contains(QStringLiteral("--hidden"));
+        QJsonArray rows;
+        for (const LauncherEditor::Entry &entry : core.launchers.scan()) {
+            if ((modified && !entry.modified) || (hidden && entry.visible))
+                continue;
+            if (json) {
+                rows << QJsonObject{{"id", entry.id}, {"name", entry.name}, {"icon", entry.icon}, {"kind", entry.kind}, {"visible", entry.visible},
+                                    {"modified", entry.modified}, {"outdated", entry.outdated}, {"omarchyHidden", entry.omarchyHidden}, {"path", entry.path}};
+                continue;
+            }
+            QStringList notes;
+            if (entry.modified)
+                notes << "changed";
+            if (entry.outdated)
+                notes << "out of date";
+            if (!entry.visible)
+                notes << "hidden";
+            out() << entry.id << "\t" << entry.name << (notes.isEmpty() ? QString() : "\t(" + notes.join(", ") + ")") << "\n";
+        }
+        if (json)
+            printJson(QJsonObject{{"launchers", rows}});
+        return 0;
+    }
+    if (id.isEmpty()) {
+        err() << Usage;
+        return 1;
+    }
+    if (verb == QLatin1String("set")) {
+        LauncherEditor::Edit edit;
+        const auto option = [&args](const QString &flag) -> std::optional<QString> {
+            const qsizetype at = args.indexOf(flag);
+            if (at < 0 || at + 1 >= args.size())
+                return std::nullopt;
+            return args[at + 1];
+        };
+        edit.name = option(QStringLiteral("--name"));
+        if (const auto icon = option(QStringLiteral("--icon"))) {
+            // A file is copied in first, so the launcher keeps it if the original moves.
+            if (icon->contains('/')) {
+                QString error;
+                const QString copy = core.launchers.importIcon(QFileInfo(*icon).absoluteFilePath(), &error);
+                if (copy.isEmpty()) {
+                    err() << error << "\n";
+                    return 1;
+                }
+                edit.icon = copy;
+            } else {
+                edit.icon = *icon;
+            }
+        }
+        if (args.contains(QStringLiteral("--hide")))
+            edit.hidden = true;
+        else if (args.contains(QStringLiteral("--show")))
+            edit.hidden = false;
+        if (!edit.name && !edit.icon && !edit.hidden) {
+            err() << "Nothing to change. Use --name, --icon, --hide, or --show.\n";
+            return 1;
+        }
+        return finishChange(core, [&](ChangeCoordinator::Finished done) { core.launchers.apply(id, edit, done); }, json);
+    }
+    if (verb == QLatin1String("reset"))
+        return finishChange(core, [&](ChangeCoordinator::Finished done) { core.launchers.reset(id, done); }, json);
+    if (verb == QLatin1String("update"))
+        return finishChange(core, [&](ChangeCoordinator::Finished done) { core.launchers.update(id, done); }, json);
+    err() << Usage;
+    return 1;
+}
+
 int cmdSkillInstall(AppCore &core) {
     QByteArray skill;
     if (!FileOps::readFile(":/data/skill.md", &skill)) {
@@ -889,7 +988,7 @@ int cmdSkillInstall(AppCore &core) {
 namespace Cli {
 
 bool isCliCommand(const QString &command) {
-    static const QStringList commands{"catalog", "search", "get", "plan", "apply", "reset", "history", "undo", "doctor", "coverage", "compat", "shortcut", "rule", "display", "plugin", "widget", "launch", "integrate", "selftest", "skill", "display-watchdog", "icons", "help", "--help", "-h", "--version"};
+    static const QStringList commands{"catalog", "search", "get", "plan", "apply", "reset", "history", "undo", "doctor", "coverage", "compat", "shortcut", "rule", "display", "plugin", "widget", "launch", "integrate", "selftest", "skill", "display-watchdog", "icons", "apps", "help", "--help", "-h", "--version"};
     return commands.contains(command);
 }
 
@@ -931,6 +1030,8 @@ int run(const Env &env, const QStringList &arguments) {
         return cmdCompat(core, args, json);
     if (command == QLatin1String("icons"))
         return cmdIcons(core, args, yes, json);
+    if (command == QLatin1String("apps"))
+        return cmdApps(core, args, json);
     if (command == QLatin1String("plugin"))
         return cmdPlugin(core, args, json);
     if (command == QLatin1String("widget"))
