@@ -53,6 +53,7 @@ class Backend : public QObject {
     Q_PROPERTY(WindowRulesProvider *windowRules READ windowRules CONSTANT)
     Q_PROPERTY(UpdateProvider *updates READ updates CONSTANT)
     Q_PROPERTY(IconThemeImporter *iconImporter READ iconImporter CONSTANT)
+    Q_PROPERTY(LauncherEditor *launchers READ launchers CONSTANT)
     Q_PROPERTY(QVariantList compatChanges READ compatChanges NOTIFY problemsChanged)
 
 public:
@@ -80,6 +81,7 @@ public:
     WindowRulesProvider *windowRules() { return &m_windowRules; }
     UpdateProvider *updates() { return &m_updates; }
     IconThemeImporter *iconImporter() { return &m_iconImporter; }
+    LauncherEditor *launchers();
     Q_INVOKABLE QVariantMap iconSamples(const QString &pack) const { return m_core->icons.samples(pack); }
     Q_INVOKABLE QString iconsFolder() const { return m_core->env.dataHome + "/icons"; }
     QVariantList compatChanges() const;

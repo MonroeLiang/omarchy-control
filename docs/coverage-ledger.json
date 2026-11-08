@@ -1,7 +1,7 @@
 {
     "claimedCommands": 301,
     "claimedMenu": 356,
-    "entries": 500,
+    "entries": 502,
     "excludedCommands": 132,
     "excludedMenu": 0,
     "exclusions": {
@@ -11587,6 +11587,35 @@
             ],
             "apply_restart_semantics": "",
             "domain": "C14",
+            "id": "apps.launcher.edit",
+            "implementation_status": "implemented",
+            "integration_mode": "native",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Rename, re-icon, or hide an app",
+                "rename app",
+                "change app icon",
+                "app icon",
+                "hide app",
+                "launcher entry",
+                "desktop file",
+                "desktop entry",
+                "iconic"
+            ],
+            "source_references": [
+                "omarchy-control apps launcher"
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "page"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C14",
             "id": "native.mime",
             "implementation_status": "implemented",
             "integration_mode": "native",
@@ -11996,12 +12025,37 @@
             "supported_versions": "omarchy 4.5.x",
             "validation_evidence": "route-reviewed",
             "write_or_launch_method": "page"
+        },
+        {
+            "applicable_capability": [
+            ],
+            "apply_restart_semantics": "",
+            "domain": "C01",
+            "id": "appearance.icons.apps",
+            "implementation_status": "implemented",
+            "integration_mode": "native",
+            "known_limitation": "",
+            "read_method": "none",
+            "recovery_class": "no-undo",
+            "searchable_labels": [
+                "Change one app's icon",
+                "app icon",
+                "one app",
+                "missing icon",
+                "custom icon"
+            ],
+            "source_references": [
+                "omarchy-control apps launcher"
+            ],
+            "supported_versions": "omarchy 4.5.x",
+            "validation_evidence": "route-reviewed",
+            "write_or_launch_method": "page"
         }
     ],
     "modes": {
         "advanced-config": 22,
         "external-helper": 22,
-        "native": 100,
+        "native": 102,
         "omarchy-panel": 22,
         "omarchy-wizard": 334
     },

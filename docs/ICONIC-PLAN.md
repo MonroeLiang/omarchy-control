@@ -1,6 +1,6 @@
 # Bringing Iconic into Appearance › Icons
 
-Status: L1, L2, and L3 implemented on November 8, 2026, with their automated, visual, and nested checks done; what is left of them needs a real session (see [LIVE-CHECKS.md](LIVE-CHECKS.md#icon-packs)). L4 is next. Decisions settled by Jason on November 8, 2026 (see [§10](#10-decisions)). Written November 8, 2026, against Omarchy 4.5 and [Iconic](https://github.com/UnderStackDev/omarchy_iconic) at `bce1cd2`. It continues the [icon themes plan](ICON-THEMES-PLAN.md), whose I0–I2 shipped.
+Status: L1 to L4 implemented on November 8, 2026, with their automated, visual, and nested checks done; what is left of them needs a real session (see [LIVE-CHECKS.md](LIVE-CHECKS.md#icon-packs)). L5, the release, is next. Decisions settled by Jason on November 8, 2026 (see [§10](#10-decisions)). Written November 8, 2026, against Omarchy 4.5 and [Iconic](https://github.com/UnderStackDev/omarchy_iconic) at `bce1cd2`. It continues the [icon themes plan](ICON-THEMES-PLAN.md), whose I0–I2 shipped.
 
 Iconic is a separate Omarchy app (MIT, © 2026 UnderStackDev) that picks icon themes, installs theme archives, and edits app launchers. Its key idea is a small icon layer that makes Omarchy's launcher and dock show the chosen pack, which on Omarchy they otherwise do not. This plan takes what Iconic does that Control lacks, fixes the weak spots found in its code, and keeps what Control already does better.
 

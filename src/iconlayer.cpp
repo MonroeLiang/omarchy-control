@@ -333,6 +333,17 @@ QString stamp(const Env &env, const QString &pack) {
     return QString::fromLatin1(hash.result().toHex());
 }
 
+QHash<QString, QString> appIcons(const Env &env, const QString &pack) {
+    QHash<QString, QString> all;
+    for (const IconPack &member : IconThemes::lookupChain(env, pack)) {
+        const QHash<QString, QString> index = indexPack(member);
+        for (auto it = index.begin(); it != index.end(); ++it)
+            if (!all.contains(it.key()))
+                all.insert(it.key(), it.value());
+    }
+    return all;
+}
+
 Build build(const Env &env, const QString &pack) {
     Build result;
     const QString live = folder(env), next = nextFolder(env);

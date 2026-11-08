@@ -8,6 +8,8 @@
         <file alias="IconLayerStatus.qml">IconLayerStatus.qml</file>
         <file alias="IconFolderDialog.qml">IconFolderDialog.qml</file>
         <file alias="IconArchiveDialog.qml">IconArchiveDialog.qml</file>
+        <file alias="LauncherIconDialog.qml">LauncherIconDialog.qml</file>
+        <file alias="LauncherEditorPanel.qml">LauncherEditorPanel.qml</file>
         <file alias="TrayIcon.qml">TrayIcon.qml</file>
         <file alias="AppCombo.qml">AppCombo.qml</file>
         <file alias="AppField.qml">AppField.qml</file>

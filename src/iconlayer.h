@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QHash>
 #include <QList>
 #include <QString>
 #include <QStringList>
@@ -56,6 +57,10 @@ struct Build {
     QString error;
     QList<Icon> icons;
 };
+
+// Every app and device icon `pack` can show, from itself, what it inherits, and hicolor:
+// icon name to file, the nearest size first. For choosing an icon by sight.
+QHash<QString, QString> appIcons(const Env &env, const QString &pack);
 
 // Builds a fresh layer for `pack` beside the live one and swaps it in, so the shell never
 // sees a half-built one. Not thread-safe against itself: the caller holds the layer lock.
