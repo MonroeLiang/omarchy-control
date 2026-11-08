@@ -1,5 +1,7 @@
 # Everything except main(), shared with the test binary and screenshot harness.
 INCLUDEPATH += $$PWD/src
+# The tray icon's host is found on the session bus.
+QT += dbus
 
 HEADERS += \
     $$PWD/src/env.h \
@@ -32,6 +34,7 @@ HEADERS += \
     $$PWD/src/backend.h \
     $$PWD/src/coverage.h \
     $$PWD/src/cli.h \
+    $$PWD/src/trayhost.h \
     $$PWD/src/gui.h
 
 SOURCES += \
@@ -64,4 +67,5 @@ SOURCES += \
     $$PWD/src/backend.cpp \
     $$PWD/src/coverage.cpp \
     $$PWD/src/cli.cpp \
+    $$PWD/src/trayhost.cpp \
     $$PWD/src/gui.cpp

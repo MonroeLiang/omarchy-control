@@ -153,6 +153,46 @@ ApplicationWindow {
         scrollPageToTop()
     }
     onActiveChanged: if (active) { backend.windowActivated(); theme.refreshRounding() }
+
+    // ---- Tray: the mark in the bar's tray brings the window back ----------------
+    // With a tray to wait in, closing only hides the window, so the app stays one click
+    // away. Q, Ctrl+Q, and Quit in the tray's menu end it. Without a tray, closing quits.
+    readonly property bool inTray: trayIcon.item !== null && trayIcon.item.available
+    // Quitting asks the window to close first, so the close below has to know to let it.
+    property bool quitting: false
+    function quitApp() {
+        quitting = true
+        Qt.quit()
+    }
+    onClosing: function (close) {
+        if (quitting)
+            return
+        if (!inTray) {
+            quitApp()
+            return
+        }
+        close.accepted = false
+        hide()
+    }
+    // Shows the window where the person is now. Showing it again, rather than only
+    // asking for focus, brings it to the workspace in view, which a request alone cannot.
+    function summon() {
+        if (visible && !active)
+            hide()
+        show()
+        raise()
+        requestActivate()
+    }
+    Loader {
+        id: trayIcon
+        active: trayHost.available
+        source: "qrc:/TrayIcon.qml"
+    }
+    Connections {
+        target: trayIcon.item
+        function onOpenRequested() { win.summon() }
+        function onQuitRequested() { win.quitApp() }
+    }
     Component.onCompleted: {
         if (initialPage.length)
             currentPage = initialPage
@@ -170,8 +210,7 @@ ApplicationWindow {
         function onToast(text, kind) { toast.show(text, kind) }
         function onNavigate(page, focus) { win.go(page, focus) }
         function onRaiseRequested(page, focus) {
-            win.raise()
-            win.requestActivate()
+            win.summon()
             if (focus.length) {
                 var target = backend.entry(focus)
                 if (target.page)
@@ -186,8 +225,8 @@ ApplicationWindow {
     Shortcut { sequences: ["Ctrl+K", "Ctrl+F"]; context: Qt.ApplicationShortcut; onActivated: { searchField.forceActiveFocus(); searchField.selectAll() } }
     Shortcut { sequence: "Alt+Left"; context: Qt.ApplicationShortcut; onActivated: win.back() }
     Shortcut { sequence: "?"; context: Qt.ApplicationShortcut; enabled: !win.typing; onActivated: win.helpVisible = !win.helpVisible }
-    Shortcut { sequence: "Q"; context: Qt.ApplicationShortcut; enabled: !win.typing; onActivated: Qt.quit() }
-    Shortcut { sequence: "Ctrl+Q"; context: Qt.ApplicationShortcut; onActivated: Qt.quit() }
+    Shortcut { sequence: "Q"; context: Qt.ApplicationShortcut; enabled: !win.typing; onActivated: win.quitApp() }
+    Shortcut { sequence: "Ctrl+Q"; context: Qt.ApplicationShortcut; onActivated: win.quitApp() }
     Shortcut {
         sequence: "Escape"
         context: Qt.ApplicationShortcut

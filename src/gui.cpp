@@ -14,6 +14,7 @@
 #include "iconthemes.h"
 #include "theme.h"
 #include "translator.h"
+#include "trayhost.h"
 
 // One window per session: a second launch hands its destination to the running
 // one, which also rules out two instances racing to apply changes.
@@ -51,6 +52,8 @@ int runGui(const Env &env, const QStringList &arguments, std::function<void(QQml
     app->setDesktopFileName("omarchy-control");
     app->setWindowIcon(QIcon::fromTheme("omarchy-control"));
     QQuickStyle::setStyle("Material");
+    // The window decides when to quit: with a tray to wait in, closing only hides it.
+    app->setQuitOnLastWindowClosed(false);
 
     // Installed before anything is translated, and every qsTr() binding is
     // re-evaluated when the Omarchy language changes.
@@ -59,6 +62,7 @@ int runGui(const Env &env, const QStringList &arguments, std::function<void(QQml
 
     Theme theme(env);
     Backend backend(env);
+    TrayHost trayHost;
 
     QLocalServer server;
     QLocalServer::removeServer(socketName(env));
@@ -79,6 +83,7 @@ int runGui(const Env &env, const QStringList &arguments, std::function<void(QQml
     engine.rootContext()->setContextProperty("translator", &translator);
     engine.rootContext()->setContextProperty("theme", &theme);
     engine.rootContext()->setContextProperty("backend", &backend);
+    engine.rootContext()->setContextProperty("trayHost", &trayHost);
     engine.rootContext()->setContextProperty("initialPage", page);
     engine.rootContext()->setContextProperty("initialSetting", setting);
     engine.load(QUrl("qrc:/Main.qml"));

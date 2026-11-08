@@ -218,7 +218,7 @@ AppPanel {
                 style: "primary"
                 leadingIcon: "refresh"
                 text: qsTr("Restart now")
-                onClicked: if (root.updates.restart()) Qt.quit()
+                onClicked: if (root.updates.restart()) win.quitApp()
             }
 
             AppButton {

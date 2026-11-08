@@ -439,6 +439,102 @@ try:
     bad = [line for line in output_text.splitlines() if "qrc:/" in line or "QML" in line]
     check("no QML warnings in the real window", not bad, "; ".join(bad)[:400])
 
+    # The tray. The session above has no D-Bus, so the shell hosts no tray and closing
+    # quits. Here it gets a private bus that starts nothing on its own, and the real shell
+    # comes back on it to host the app's icon.
+    bus_conf = R + "/bus.conf"
+    open(bus_conf, "w").write(f'''<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig><type>session</type><listen>unix:path={R}/bus</listen>
+<policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/><allow own="*"/></policy></busconfig>
+''')
+    bus = subprocess.Popen(["dbus-daemon", "--config-file=" + bus_conf, "--nofork"], env=app_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    # The tray icon where the package installs it, so the app sends it by name as an
+    # installed copy does, and the bar can recolour it.
+    icons = R + "/share/icons/hicolor/symbolic/apps"
+    os.makedirs(icons)
+    shutil.copy(ROOT + "/pkgbuild/omarchy-control-symbolic.svg", icons)
+    tray_env = dict(app_env, DBUS_SESSION_BUS_ADDRESS=f"unix:path={R}/bus")
+    installed_env = dict(tray_env, XDG_DATA_DIRS=f"{R}/share:/usr/local/share:/usr/share")
+
+    def busctl(*args):
+        r = subprocess.run(["/usr/bin/busctl", "--user", "--json=short", *args], env=tray_env, capture_output=True, text=True, timeout=10)
+        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
+
+    def tray_items():
+        r = busctl("get-property", "org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher", "org.kde.StatusNotifierWatcher", "RegisteredStatusNotifierItems")
+        return r["data"] if r else []
+
+    def windows():
+        return sum(c.get("class") == "omarchy-control" for c in json.loads(run("hyprctl", "-j", "clients").stdout))
+
+    def wait_for(test, seconds=10):
+        for _ in range(int(seconds * 5)):
+            if test():
+                return True
+            time.sleep(0.2)
+        return test()
+
+    def close_window():
+        """As Super+W does: the window is asked to close, and may decline."""
+        for c in json.loads(run("hyprctl", "-j", "clients").stdout):
+            if c.get("class") == "omarchy-control":
+                run("hyprctl", "dispatch", f'hl.dsp.window.close({{ window = "address:{c["address"]}" }})')
+
+    # One shell per configuration: the old one has to be gone before the new one starts.
+    kill_all(nested_processes("quickshell"))
+    wait_for(lambda: not nested_processes("quickshell"))
+    time.sleep(0.5)
+    shell = subprocess.Popen(["quickshell", "-n", "-p", OMARCHY + "/shell"], env=dict(tray_env, QS_DISABLE_FILE_WATCHER="1", QS_NO_RELOAD_POPUP="1"), stdout=shell_log, stderr=shell_log, start_new_session=True)
+    host = wait_for(lambda: busctl("get-property", "org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher", "org.kde.StatusNotifierWatcher", "IsStatusNotifierHostRegistered") == {"type": "b", "data": True}, 20)
+    check("the real shell hosts a tray on the private bus", host)
+    gui = subprocess.Popen([APP, "open"], env=dict(installed_env, QT_QPA_PLATFORM="wayland", QT_FORCE_STDERR_LOGGING="1"), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    item = None
+    if wait_for(lambda: windows() == 1 and tray_items()):
+        item = tray_items()[0]
+    check("the running app puts its icon in the tray", item is not None, str(tray_items()))
+    # An item is registered as "service/path", or by service alone at the usual path.
+    service, _, path = (item or "").partition("/")
+    path = "/" + (path or "StatusNotifierItem")
+
+    def item_property(name):
+        r = busctl("get-property", service, path, "org.kde.StatusNotifierItem", name)
+        return r["data"] if r else None
+
+    tooltip = item_property("ToolTip") if item else None
+    check("the tray icon is the installed symbolic mark, which the bar recolours", item and item_property("IconName") == "omarchy-control-symbolic", str(item_property("IconName") if item else None))
+    check("the tray icon is named for the app", item and item_property("Id") == "omarchy-control" and tooltip and tooltip[2] == "Omarchy Control", f"id={item_property('Id') if item else None} tooltip={tooltip}")
+    close_window()
+    closed = wait_for(lambda: windows() == 0)
+    time.sleep(0.5)
+    check("closing the window keeps the app in the tray", closed and gui.poll() is None and tray_items() == [item], f"windows={windows()} running={gui.poll() is None}")
+    subprocess.run(["/usr/bin/busctl", "--user", "call", service, path, "org.kde.StatusNotifierItem", "Activate", "ii", "0", "0"], env=tray_env, capture_output=True, timeout=10)
+    check("clicking the tray icon brings the window back", wait_for(lambda: windows() == 1))
+    close_window()
+    wait_for(lambda: windows() == 0)
+    second = subprocess.run([APP, "open"], env=dict(tray_env, QT_QPA_PLATFORM="wayland"), capture_output=True, text=True, timeout=10)
+    check("launching again from the tray's hidden state shows the one window", second.returncode == 0 and wait_for(lambda: windows() == 1) and gui.poll() is None)
+
+    # Quit from the tray's menu, found by its label the way the bar finds it.
+    menu_path = (item_property("Menu") if item else None) or "/"
+    layout = busctl("call", "--", service, menu_path, "com.canonical.dbusmenu", "GetLayout", "iias", "0", "-1", "0")
+    entries = layout["data"][1][2] if layout else []
+    labels = {entry["data"][1].get("label", {}).get("data", ""): entry["data"][0] for entry in entries if entry.get("type") == "(ia{sv}av)"}
+    check("the tray's menu offers Open and Quit", "Open Omarchy Control" in labels and "Quit Omarchy Control" in labels, f"{labels} menu={menu_path} layout={str(layout)[:700]}")
+    clicked = None
+    if "Quit Omarchy Control" in labels:
+        clicked = subprocess.run(["/usr/bin/busctl", "--user", "call", "--", service, menu_path, "com.canonical.dbusmenu", "Event", "isvu", str(labels["Quit Omarchy Control"]), "clicked", "s", "", "0"], env=tray_env, capture_output=True, text=True, timeout=10)
+    try:
+        gui.wait(5)
+        quit_ok = True
+    except subprocess.TimeoutExpired:
+        gui.kill()
+        quit_ok = False
+    check("Quit in the tray's menu ends the app and takes its icon away", quit_ok and wait_for(lambda: tray_items() == [], 5), f"quit={quit_ok} items={tray_items()} click={clicked and (clicked.returncode, clicked.stdout, clicked.stderr)} labels={labels}")
+    bad = [line for line in gui.stdout.read().splitlines() if "qrc:/" in line or "QML" in line or "Labs Platform" in line]
+    check("no warnings from the tray", not bad, "; ".join(bad)[:400])
+    kill_all(nested_processes("quickshell"))
+    bus.terminate()
+
     guard = open(R + "/guard.log").read().splitlines() if os.path.exists(R + "/guard.log") else []
     print(f"\nStubbed calls blocked: {len(guard)}: " + ", ".join(sorted({line.split()[0] for line in guard})))
 
